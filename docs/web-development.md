@@ -139,6 +139,8 @@ restart/resume, certificate trust and extension operation with no native host in
 
 Linux/Docker/Compose/systemd testing is deferred by request; the later server acceptance
 checklist is [linux-server-testing.md](linux-server-testing.md). Application features come first.
+Keeping this fork mergeable with the official application is a separate future task, planned in
+[upstream-merge-plan.md](upstream-merge-plan.md).
 
 - Advanced media/gallery inspection and jobs; pre-start torrent metadata/file picker, tracker
   removal/replacement and advanced priorities beyond engine-supported selection/piece order.

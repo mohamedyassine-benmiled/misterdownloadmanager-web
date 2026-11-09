@@ -33,7 +33,7 @@ Implementation was subsequently authorized. Completed source changes:
 - Full Windows workspace tests and Clippy pass (non-ignored tests); Rust binaries build with locked dependencies. Linux-specific tests and runtime validation remain pending.
 - CLI readiness command and Docker healthcheck. CI includes web fixture checks and real Linux headless integration (new CI jobs still require a runner execution).
 
-The development host now has a project-local Rust toolchain and Chromium. Per the latest user instruction, Linux/Docker/Compose/systemd runtime testing is deferred until application features are finished; `docs/linux-server-testing.md` is the later server acceptance checklist. Advanced parity is not complete: media/gallery workflows, pre-start torrent selection, accounts/secrets, durable capture jobs/idempotency, backup/restore and SSE remain open. See `docs/web-development.md` for exact verification results and commands.
+The development host now has a project-local Rust toolchain and Chromium. Per the latest user instruction, Linux/Docker/Compose/systemd runtime testing is deferred until application features are finished; `docs/linux-server-testing.md` is the later server acceptance checklist. Merging the official application's later releases is a separate future task: the scan, conflict list and split plan are in `docs/upstream-merge-plan.md`. Advanced parity is not complete: media/gallery workflows, pre-start torrent selection, accounts/secrets, durable capture jobs/idempotency, backup/restore and SSE remain open. See `docs/web-development.md` for exact verification results and commands.
 
 ## 2. Repository findings: extend what already exists
 
