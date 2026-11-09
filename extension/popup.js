@@ -17,6 +17,7 @@ for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el
 for (const el of document.querySelectorAll("[data-i18n-placeholder]")) el.placeholder = t(el.dataset.i18nPlaceholder);
 $("help").href = HELP;
 $("support").href = SPONSORS;
+$("remote-code").setAttribute("aria-label", t("popup_remote_code"));
 
 // The tab it is about: the window's active tab; with `?page=ADDRESS` (this page opened in a tab of
 // its own, for the tests and the pictures), the tab showing that address.
@@ -38,6 +39,9 @@ async function show() {
   } else if (s.connected && s.remote) {
     box.classList.add(s.paused ? "warn" : "ok");
     text.textContent = s.paused ? t("status_paused") : t("status_remote", s.remote);
+  } else if (s.remote) {
+    box.classList.add("bad");
+    text.textContent = t(s.why === "not-paired" ? "popup_remote_help" : s.why === "address" ? "remote_address" : s.why === "unreachable" ? "remote_unreachable" : "remote_failed");
   } else if (s.connected) {
     box.classList.add(s.paused ? "warn" : "ok");
     text.textContent = s.paused ? t("status_paused") : s.app ? t("status_connected_version", s.app) : t("status_connected");
@@ -46,7 +50,7 @@ async function show() {
     text.textContent = t(`status_${(s.why || "not_installed").replace(/-/g, "_")}`);
   }
   const fix = $("fix");
-  fix.hidden = s.connected && s.why !== "update-app";
+  fix.hidden = Boolean(s.remote) || (s.connected && s.why !== "update-app");
   fix.href = `${HELP}#${s.why || "not-installed"}`;
   $("take").checked = !s.paused;
   showDeclined(s.connected && s.declined);
@@ -54,9 +58,13 @@ async function show() {
   $("open").disabled = $("options").disabled = !s.connected;
   $("version").textContent = s.version ? `v${s.version}` : "";
   // Send downloads to: this computer, or another MDM (#157).
+  if (s.remote) {
+    $("remote-form").hidden = false;
+    if (document.activeElement !== $("remote-url")) $("remote-url").value = s.remote;
+  }
   $("to-here").checked = !s.remote && $("remote-form").hidden;
   $("to-remote").checked = Boolean(s.remote) || !$("remote-form").hidden;
-  $("open").disabled = $("open").disabled || Boolean(s.remote);
+  $("open").disabled = s.remote ? false : $("open").disabled;
   $("options").disabled = $("options").disabled || Boolean(s.remote);
   const tab = await currentTab();
   let site = "";
@@ -67,7 +75,7 @@ async function show() {
     // Not a web page (the browser's own): nothing to leave.
   }
   const exclude = $("exclude");
-  exclude.hidden = !site || !s.connected;
+  exclude.hidden = !site || !s.connected || Boolean(s.remote);
   exclude.textContent = t("popup_exclude_site", site);
   exclude.title = exclude.textContent;
   exclude.onclick = async () => {
@@ -277,11 +285,10 @@ $("to-here").addEventListener("change", async () => {
   await ask({ type: "remote-off" });
   show();
 });
-$("remote-open").addEventListener("click", () => {
-  try {
-    const u = new URL($("remote-url").value.trim());
-    if (u.protocol === "https:") ext.tabs.create({ url: u.origin + "/" });
-  } catch {
+$("remote-open").addEventListener("click", async () => {
+  const r = await ask({ type: "remote-open", url: $("remote-url").value });
+  $("remote-said").hidden = Boolean(r.ok);
+  if (!r.ok) {
     $("remote-said").textContent = t("remote_address");
     $("remote-said").hidden = false;
   }
@@ -289,7 +296,13 @@ $("remote-open").addEventListener("click", () => {
 $("remote-pair").addEventListener("click", async () => {
   const said = $("remote-said");
   said.hidden = true;
-  const r = await ask({ type: "remote-pair", url: $("remote-url").value, code: $("remote-code").value });
+  $("remote-pair").disabled = true;
+  let r;
+  try {
+    r = await ask({ type: "remote-pair", url: $("remote-url").value, code: $("remote-code").value });
+  } finally {
+    $("remote-pair").disabled = false;
+  }
   if (r.ok) {
     $("remote-form").hidden = true;
     $("remote-code").value = "";

@@ -8,6 +8,15 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Scope {
+    Capture,
+    /// Existing tokens retain download-control permissions, never owner access.
+    #[default]
+    Control,
+}
+
 /// One paired device.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Device {
@@ -18,6 +27,8 @@ pub struct Device {
     /// When it paired and when it was last seen, Unix seconds.
     pub added: i64,
     pub seen: i64,
+    #[serde(default)]
+    pub scope: Scope,
     /// SHA-256 of its token, hex.
     hash: String,
 }
@@ -99,6 +110,10 @@ impl Devices {
 
     /// Pair a new device called `name`: its record and its token (given once, to the device).
     pub fn add(&mut self, name: &str) -> (Device, String) {
+        self.add_scoped(name, Scope::Control)
+    }
+
+    pub fn add_scoped(&mut self, name: &str, scope: Scope) -> (Device, String) {
         let token = hex::encode(random(32));
         let mut id = hex::encode(random(4));
         while self.list.iter().any(|d| d.id == id) {
@@ -114,6 +129,7 @@ impl Devices {
             added: now(),
             seen: now(),
             hash: hash(&token),
+            scope,
         };
         self.list.push(device.clone());
         self.save();
@@ -163,6 +179,22 @@ fn same(a: &str, b: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scopes_survive_restart_and_legacy_devices_keep_control() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("devices.json");
+        let mut devices = Devices::load(Some(path.clone()));
+        let (_, capture) = devices.add_scoped("Extension", Scope::Capture);
+        let (_, control) = devices.add("Legacy phone");
+        let mut saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        saved[1].as_object_mut().unwrap().remove("scope");
+        std::fs::write(&path, serde_json::to_vec(&saved).unwrap()).unwrap();
+        let mut devices = Devices::load(Some(path));
+        assert_eq!(devices.check(&capture).unwrap().scope, Scope::Capture);
+        assert_eq!(devices.check(&control).unwrap().scope, Scope::Control);
+    }
 
     #[test]
     fn pair_check_remove() {

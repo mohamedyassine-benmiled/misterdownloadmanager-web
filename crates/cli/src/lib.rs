@@ -71,6 +71,8 @@ enum Cmd {
     },
     /// The running app's downloads, as JSON (automation API; turn it on with `api on`).
     Status,
+    /// Check the running application loop, HTTPS listener and authentication storage locally.
+    Health,
     /// Install (or update) yt-dlp for video downloads: its checksum list is verified against
     /// yt-dlp's signing key, the program against that list.
     InstallYtdlp,
@@ -215,6 +217,11 @@ enum Cmd {
     /// Show a new code that pairs a phone or a browser with the running app's remote control
     /// (#141, #157): its address, the code and a QR code to scan.
     Pair,
+    /// Recover Web UI access through the protected local IPC socket (not the network API).
+    WebAuth {
+        #[arg(value_parser = ["status", "unban", "disable-bypass", "reset-proxies", "reset-owner"])]
+        operation: String,
+    },
     /// Turn the running app's automation API on or off (off by default).
     Api {
         /// on or off.
@@ -1018,6 +1025,14 @@ async fn run(cmd: Cmd, json: bool, accounts: Option<&dyn Accounts>) -> anyhow::R
         Cmd::Remove { ids } => act("remove", ids),
         Cmd::Delete { ids } => act("delete", ids),
         Cmd::Pair => pair(),
+        Cmd::WebAuth { operation } => ask(mdm_ipc::Command {
+            query: Some(format!("web-auth:{operation}")),
+            ..Default::default()
+        }),
+        Cmd::Health => ask(mdm_ipc::Command {
+            query: Some("web-health".into()),
+            ..Default::default()
+        }),
         Cmd::Api { state } => ask(mdm_ipc::Command {
             api: Some(state == "on"),
             ..Default::default()

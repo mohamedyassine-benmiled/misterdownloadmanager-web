@@ -9,6 +9,8 @@ authors.workspace = true
 publish.workspace = true
 
 [dependencies]
+argon2 = "0.5.3"
+ipnet = { version = "2.11", features = ["serde"] }
 # Random tokens and codes from the system's generator (the crypto library rustls brings).
 aws-lc-rs.workspace = true
 axum.workspace = true
@@ -24,6 +26,7 @@ sha2.workspace = true
 tokio.workspace = true
 tokio-rustls.workspace = true
 tracing.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["json"] }

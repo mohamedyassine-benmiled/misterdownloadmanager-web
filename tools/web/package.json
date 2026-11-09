@@ -1,0 +1,7 @@
+{
+  "name": "mdm-web-tests",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node test.mjs", "test:headless": "node headless.mjs", "preview": "node preview.mjs" },
+  "devDependencies": { "playwright": "1.58.2" }
+}

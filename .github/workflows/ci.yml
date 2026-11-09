@@ -59,12 +59,13 @@ jobs:
 
       - uses: actions/cache@v4
         with:
+          # Cache build products, never headless test credentials/browser profiles.
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
+            target/debug
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-build-
 
       - name: Linux libraries
         if: runner.os == 'Linux'
@@ -91,6 +92,48 @@ jobs:
 
       - name: Tests
         run: cargo test --workspace
+
+      - uses: actions/setup-node@v4
+        if: runner.os == 'Linux'
+        with:
+          node-version: 22
+      - name: Real headless HTTPS and browser integration
+        if: runner.os == 'Linux'
+        run: |
+          cargo build --locked -p mdm-app -p mdm-cli
+          npm ci --prefix tools/web --no-audit --no-fund
+          npx --prefix tools/web playwright install --with-deps chromium
+          node tools/web/headless.mjs
+
+  web:
+    name: web workspace interactions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix tools/web --no-audit --no-fund
+      - run: npx --prefix tools/web playwright install --with-deps chromium
+      - run: node tools/web/test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-workspace-screenshots
+          path: target/web-shots/*.png
+          if-no-files-found: ignore
+
+  deployment-config:
+    name: deployment configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compose defaults and documented environment example
+        run: |
+          docker compose -f docker/compose.yml config --quiet
+          docker compose --env-file docker/.env.example -f docker/compose.yml config --quiet
 
   # A translator's reviewed rows (no "#, machine" line) must survive every pull request: no
   # tool or merge may drop them or hand them back to machine translation.

@@ -14,10 +14,12 @@
 //! The threats and how each is handled: docs/remote-control.md#security.
 
 pub mod addrs;
+pub mod auth;
 pub mod devices;
 mod http;
 pub mod pairing;
 pub mod tls;
+mod web_auth;
 
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
@@ -95,6 +97,8 @@ struct Inner {
     state: Mutex<State>,
     devices: Mutex<devices::Devices>,
     pairing: Mutex<pairing::Pairing>,
+    auth: Mutex<auth::Auth>,
+    auth_jobs: Arc<tokio::sync::Semaphore>,
 }
 
 #[derive(Default)]
@@ -121,6 +125,7 @@ impl Remote {
         texts: Texts,
     ) -> Remote {
         let devices = devices::Devices::load(Some(dir.join("devices.json")));
+        let auth = auth::Auth::load(dir.join("web-auth.json"));
         Remote {
             inner: Arc::new(Inner {
                 rt,
@@ -130,6 +135,8 @@ impl Remote {
                 state: Mutex::default(),
                 devices: Mutex::new(devices),
                 pairing: Mutex::default(),
+                auth: Mutex::new(auth),
+                auth_jobs: Arc::new(tokio::sync::Semaphore::new(4)),
             }),
         }
     }
@@ -173,6 +180,16 @@ impl Remote {
 
     pub fn devices(&self) -> Vec<Device> {
         self.inner.devices.lock().unwrap().list()
+    }
+
+    /// Local IPC only: recovery is never exposed as an anonymous HTTP operation.
+    pub fn auth_recovery(&self, operation: &str) -> Result<serde_json::Value, String> {
+        self.inner
+            .auth
+            .lock()
+            .unwrap()
+            .recover(operation)
+            .map_err(|e| e.code().to_owned())
     }
 
     /// Unpair device `id`: refused from its next request on.

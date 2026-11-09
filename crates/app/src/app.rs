@@ -26,6 +26,8 @@ use crate::store;
 use crate::winui;
 use mdm_ipc as ipc;
 
+pub(crate) mod web;
+
 /// A node of the Categories tree, what the list shows (saved: the last one comes back).
 #[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) enum View {
@@ -419,6 +421,8 @@ pub struct App {
     properties: Vec<crate::properties::Properties>,
     /// Verify checksum windows, one per download.
     checksums: Vec<crate::checksum::ChecksumDialog>,
+    /// Bounded web checksum tasks; digest reads never block the application loop.
+    web_checks: web::Checks,
     batch: Option<crate::batch::Batch>,
     video_dlg: Option<crate::videodlg::VideoDialog>,
     /// Download a gallery (#58).
@@ -943,6 +947,7 @@ impl App {
             confirm_category_delete: None,
             properties: Vec::new(),
             checksums: Vec::new(),
+            web_checks: Default::default(),
             batch: None,
             video_dlg: None,
             gallery_dlg: None,
@@ -2255,6 +2260,9 @@ impl App {
 
     /// Start or resume a download; `show` opens its progress dialog (IDM's default).
     fn start(&mut self, id: u64, show: bool) {
+        if self.moving.iter().any(|(moving, _, _)| *moving == id) {
+            return;
+        }
         let rt = self.rt.clone();
         let Some(item) = self.item(id) else { return };
         // A finished gallery may start again: it fetches the files not there yet (#58).
@@ -3003,7 +3011,10 @@ impl App {
                 }
                 Err(e) => {
                     if let Some(item) = self.item(id) {
-                        item.note(crate::i18n::t("The file could not be moved"));
+                        item.note(crate::i18n::fmt(
+                            crate::i18n::t("The file could not be moved: {error}"),
+                            &[("error", &e)],
+                        ));
                     }
                     self.notice = Some((
                         crate::i18n::mark("Move/Rename"),
@@ -3984,6 +3995,51 @@ impl App {
     /// is on, whatever the automation API's switch: it may list, add and act, nothing else.
     fn answer(&mut self, cmd: &ipc::Command) -> String {
         use ipc::api::{ApiAnswer, DownloadInfo, ErrorAnswer, ListAnswer, line};
+        if !cmd.remote && cmd.query.as_deref() == Some("web-health") {
+            let ready = self.remote.as_ref().is_some_and(|r| {
+                matches!(r.status(), mdm_remote::Status::Listening(_))
+                    && r.auth_recovery("status").is_ok()
+            });
+            return if ready {
+                serde_json::json!({ "ready": true }).to_string()
+            } else {
+                line(&ErrorAnswer {
+                    error: "web server is not ready".into(),
+                    code: Some("not-ready".into()),
+                })
+            };
+        }
+        if !cmd.remote
+            && let Some(operation) = cmd
+                .query
+                .as_deref()
+                .and_then(|q| q.strip_prefix("web-auth:"))
+        {
+            return match self
+                .remote
+                .as_ref()
+                .ok_or_else(|| "remote-off".to_owned())
+                .and_then(|r| r.auth_recovery(operation))
+            {
+                Ok(value) => value.to_string(),
+                Err(code) => line(&ErrorAnswer {
+                    error: code.clone(),
+                    code: Some(code),
+                }),
+            };
+        }
+        if let Some(request) = &cmd.web_request {
+            return if cmd.remote && cmd.web_owner && self.settings.remote_on {
+                self.web_request(request)
+                    .unwrap_or_else(|code| serde_json::json!({ "error": code, "code": code }))
+                    .to_string()
+            } else {
+                line(&ErrorAnswer {
+                    error: "owner required".into(),
+                    code: Some("owner-required".into()),
+                })
+            };
+        }
         if cmd.pair && !cmd.remote {
             return self.pair_answer();
         }
@@ -4033,6 +4089,12 @@ impl App {
             };
         }
         match cmd.query.as_deref() {
+            Some("capture") => serde_json::json!({
+                "api_version": 1, "connected": true,
+                "rules": { "types": self.settings.auto_types, "capture": true,
+                    "excludedSites": self.settings.excluded_sites, "excludedAddresses": self.settings.excluded_addresses,
+                    "opened": self.settings.capture_opened, "minKb": self.settings.capture_min_kb }
+            }).to_string(),
             Some("list") => {
                 let downloads = self
                     .items
@@ -4328,6 +4390,13 @@ impl App {
         }
         let mut answer = ipc::api::ActAnswer::default();
         for &id in ids {
+            if self.moving.iter().any(|(moving, _, _)| *moving == id) {
+                answer.skipped.push(ipc::api::Skipped {
+                    id,
+                    why: "file move in progress".into(),
+                });
+                continue;
+            }
             let Some(item) = self.item(id) else {
                 answer.skipped.push(ipc::api::Skipped {
                     id,

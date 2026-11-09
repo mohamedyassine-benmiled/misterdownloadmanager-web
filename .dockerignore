@@ -5,3 +5,7 @@ notes/
 website/
 docs/bench/
 **/node_modules/
+**/.env
+docker/config/
+docker/downloads/
+deploy/systemd/mdm.env

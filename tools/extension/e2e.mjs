@@ -1813,14 +1813,17 @@ const CASES = {
         document.getElementById("remote-code").value = ${JSON.stringify(code)};
         document.getElementById("remote-pair").click();
         return true; })()`);
-      // Paired: the boxes close and the status names the server.
+      // Paired: the destination stays editable and the checked status names the server.
       const host = new URL(r.url).host;
       const said = await until("paired", 15000, () =>
         popup.evaluate(`(() => {
           const bad = document.getElementById("remote-said");
           if (!bad.hidden && bad.textContent) return "refused: " + bad.textContent;
           const text = document.getElementById("status-text").textContent;
-          const ok = document.getElementById("remote-form").hidden && document.getElementById("status").classList.contains("ok");
+          const ok = !document.getElementById("remote-form").hidden
+            && document.getElementById("to-remote").checked
+            && document.getElementById("remote-code").value === ""
+            && document.getElementById("status").classList.contains("ok");
           return ok && text.includes(${JSON.stringify(host)}) ? text : ""; })()`),
       ).catch(async (e) => {
         e.message += ` (the popup: ${await popup.evaluate(`document.getElementById("status-text").textContent`).catch(() => "?")})`;

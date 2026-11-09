@@ -57,10 +57,8 @@ function hostProblem(error) {
 // `{ok: false, why}`.
 async function native(message, ms = HOST_WAIT) {
   // A download for another MDM (a server, #157): sent there, not to this computer's.
-  if (typeof message.url === "string" && message.url) {
-    const target = await remoteTarget();
-    if (target) return remoteSend(target, message);
-  }
+  const target = await remoteTarget();
+  if (target) return typeof message.url === "string" && message.url ? remoteSend(target, message) : { ok: false, why: "refused" };
   const app = await APP_NAME;
   const brands = app ? [...BRANDS, app] : BRANDS;
   const sent = { ...message, userAgent: navigator.userAgent, brands, v: VERSION };
@@ -80,45 +78,109 @@ async function native(message, ms = HOST_WAIT) {
 
 // ---- another MDM (#157): a server's, through its remote control ------------------------------
 
-// {url, token} while downloads go to another MDM instead of this computer's, else null.
+// Keep the destination even after its token is revoked: never silently send to this computer.
 async function remoteTarget() {
   const { remote } = await ext.storage.local.get({ remote: null });
-  return remote && remote.url && remote.token ? remote : null;
+  return remote && typeof remote.url === "string" && remote.url ? remote : null;
+}
+
+function remoteAddress(address) {
+  try {
+    const u = new URL(String(address).trim());
+    if (u.protocol !== "https:" || u.username || u.password || u.search || u.hash) return null;
+    // Relative API/asset links must stay below a proxy's prefix, including when entered without '/'.
+    if (!u.pathname.endsWith("/")) u.pathname += "/";
+    return u.href;
+  } catch {
+    return null;
+  }
 }
 
 // One request to the remote control's API at `base` (https://server:8463/). Never throws:
 // {status, body}, status 0 when it isn't reached (not running, or its certificate not accepted
 // in this browser yet). The browser's cookies never go with it.
 async function remoteCall(base, path, body, token) {
+  base = remoteAddress(base);
+  if (!base) return { status: 0, body: null, why: "address" };
+  const controller = new AbortController();
   try {
-    const r = await withTimeout(
-      fetch(new URL(path, base), {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify(body),
+    return await withTimeout((async () => {
+      const r = await fetch(new URL(path, base), {
+        method: body === undefined ? "GET" : "POST",
+        headers: { ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         credentials: "omit",
         cache: "no-store",
         redirect: "error",
-      }),
-      15000,
-    );
-    let json = null;
-    try {
-      json = await r.json();
-    } catch {
-      json = null;
-    }
-    return { status: r.status, body: json };
+        signal: controller.signal,
+      });
+      let json = null;
+      try { json = await r.json(); } catch { /* HTML proxy errors aren't API replies. */ }
+      return { status: r.status, body: json };
+    })(), 15000);
   } catch {
     return { status: 0, body: null };
+  } finally {
+    // Abort both the request and a stalled response body, not just the timeout's Promise.
+    controller.abort();
   }
+}
+
+async function noteRemote(target, why) {
+  const current = await remoteTarget();
+  if (!current || current.url !== target.url || current.token !== target.token) return;
+  await ext.storage.local.set({ remoteStatus: { url: target.url, why, at: Date.now() } });
+  if (why === "not-paired") await ext.storage.local.set({ remote: { url: target.url, token: null } });
+  await showStatus();
+}
+
+function remoteProblem(r) {
+  return r.why || (r.status === 401 ? "not-paired" : r.status === 0 ? "unreachable" : "failed");
+}
+
+let remoteInfo = null;
+let remoteInfoRequest = null;
+async function fetchRemoteInfo(target) {
+  if (remoteInfoRequest?.url === target.url && remoteInfoRequest?.token === target.token) return remoteInfoRequest.promise;
+  const promise = (async () => {
+    let reply = await remoteCall(target.url, "api/status", undefined, target.token);
+    if (reply.status === 404) reply = { ...(await remoteCall(target.url, "api/list", undefined, target.token)), legacy: true };
+    remoteInfo = { url: target.url, token: target.token, reply, at: Date.now() };
+    return reply;
+  })();
+  const request = { url: target.url, token: target.token, promise };
+  remoteInfoRequest = request;
+  try { return await promise; } finally { if (remoteInfoRequest === request) remoteInfoRequest = null; }
+}
+
+async function remoteCheck(target) {
+  if (!target.token) return { ok: false, why: "not-paired" };
+  const r = await fetchRemoteInfo(target);
+  const ok = r.status === 200 && !r.body?.error && (r.legacy
+    ? Array.isArray(r.body?.downloads) && Array.isArray(r.body?.queues) && Array.isArray(r.body?.categories)
+    : r.body?.api_version === 1 && r.body?.connected === true && typeof r.body?.rules?.types === "string");
+  const why = ok ? null : remoteProblem(r);
+  await noteRemote(target, why);
+  return { ok, why };
 }
 
 // A download handed to the other MDM: its address only (a site's sign-in stays in this browser).
 async function remoteSend(target, message) {
+  if (!target.token) return { ok: false, why: "refused" };
+  // Sending a GET instead of the original POST can silently download the wrong file.
+  if (message.post !== undefined) return { ok: false, why: "refused" };
+  try {
+    const u = new URL(message.url);
+    if (u.username || u.password) return { ok: false, why: "refused" };
+  } catch { return { ok: false, why: "refused" }; }
   const r = await remoteCall(target.url, "api/add", { url: message.url, start: true }, target.token);
-  if (r.status === 200 && r.body && !r.body.error) return { ok: true };
-  if (r.status === 401) await ext.storage.local.set({ remote: null }); // unpaired there
+  // A proxy's empty 200 (or HTML login page) is not acceptance. No automatic retry: the
+  // legacy API has no idempotency key and might have accepted a request whose reply was lost.
+  if (r.status === 200 && r.body && !r.body.error && ((Number.isSafeInteger(r.body.id) && r.body.id > 0) || r.body.pending === true)) {
+    await noteRemote(target, null);
+    return { ok: true };
+  }
+  await noteRemote(target, remoteProblem(r));
   return { ok: false, why: "refused" };
 }
 
@@ -129,18 +191,12 @@ const DEFAULT_TYPES =
 
 // Pair with the MDM at `address` with a code it shows; {ok} or {ok: false, why, left}.
 async function remotePair(address, code) {
-  let base;
-  try {
-    base = new URL(String(address).trim());
-  } catch {
-    return { ok: false, why: "address" };
-  }
-  if (base.protocol !== "https:") return { ok: false, why: "address" };
-  base = `${base.origin}/`;
+  const base = remoteAddress(address);
+  if (!base) return { ok: false, why: "address" };
   const name = ext.i18n.getMessage("remote_device_name") || "Browser";
-  const r = await remoteCall(base, "api/pair", { code: String(code), name }, null);
-  if (r.status === 200 && r.body && typeof r.body.token === "string") {
-    await ext.storage.local.set({ remote: { url: base, token: r.body.token } });
+  const r = await remoteCall(base, "api/pair", { code: String(code), name, scope: "capture" }, null);
+  if (r.status === 200 && /^[a-f0-9]{64}$/i.test(r.body?.token || "")) {
+    await ext.storage.local.set({ remote: { url: base, token: r.body.token }, remoteStatus: { url: base, why: null, at: Date.now() } });
     await refreshRules();
     await showStatus();
     return { ok: true };
@@ -152,8 +208,13 @@ async function remotePair(address, code) {
 // Back to this computer: unpaired there too (when it answers).
 async function remoteOff() {
   const target = await remoteTarget();
-  if (target) await remoteCall(target.url, "api/forget", {}, target.token);
-  await ext.storage.local.set({ remote: null });
+  if (target?.token) await remoteCall(target.url, "api/forget", {}, target.token);
+  rules = null;
+  await ext.storage.local.set({ remote: null, remoteStatus: null, rules: null });
+  remoteInfo = null;
+  // An older rules request may still be in flight. Let its destination guard reject it
+  // before asking this computer for a fresh set, rather than reusing that old Promise.
+  if (asking) await asking;
   await refreshRules();
   await showStatus();
   return { ok: true };
@@ -191,12 +252,20 @@ async function noteStatus(why, app) {
 }
 
 async function showStatus() {
-  const why = (await remoteTarget()) ? null : (await readStatus()).why;
+  const target = await remoteTarget();
+  const { remoteStatus } = await ext.storage.local.get({ remoteStatus: null });
+  const why = target ? (!target.token ? "not-paired" : remoteStatus?.url === target.url ? remoteStatus.why : "unreachable") : (await readStatus()).why;
   const { paused } = await ext.storage.local.get({ paused: false });
+  let title;
+  if (target) {
+    title = why ? t(why === "not-paired" ? "popup_remote_help" : "remote_unreachable") : paused ? t("status_paused") : t("status_remote", target.url);
+  } else {
+    title = why ? t(`status_${why.replace(/-/g, "_")}`) : paused ? t("status_paused") : t("status_connected");
+  }
   try {
     await action.setBadgeBackgroundColor({ color: why ? "#C42B1C" : "#6B6B6B" });
     await action.setBadgeText({ text: why && why !== "update-app" ? "!" : paused ? "II" : "" });
-    await action.setTitle({ title: why ? t(`status_${why.replace(/-/g, "_")}`) : paused ? t("status_paused") : t("status_connected") });
+    await action.setTitle({ title });
   } catch {
     // No toolbar button (a browser without one): the popup and the help page still say it.
   }
@@ -210,6 +279,8 @@ let rules = null;
 
 async function storedRules() {
   if (!rules) rules = (await ext.storage.local.get({ rules: null })).rules;
+  const target = await remoteTarget();
+  if ((rules?.source || null) !== (target?.url || null)) rules = null;
   return rules;
 }
 
@@ -221,7 +292,24 @@ function refreshRules() {
 }
 
 async function askRules() {
+  const target = await remoteTarget();
+  if (target) {
+    const cached = remoteInfo?.url === target.url && remoteInfo?.token === target.token && Date.now() - remoteInfo.at < 60000;
+    const reply = target.token ? (cached ? remoteInfo.reply : await fetchRemoteInfo(target)) : null;
+    const current = await remoteTarget();
+    if (!current || current.url !== target.url || current.token !== target.token) return null;
+    const configured = reply?.status === 200 && typeof reply.body?.rules?.types === "string" ? reply.body.rules : null;
+    // A capture-scoped token can read rules/status, but not the server's download history.
+    // Old servers without that endpoint retain the conservative default file types.
+    rules = { source: target.url, types: configured ? configured.types : DEFAULT_TYPES, capture: configured?.capture !== false,
+      excludedSites: configured?.excludedSites || "", excludedAddresses: Array.isArray(configured?.excludedAddresses) ? configured.excludedAddresses : [],
+      opened: configured?.opened === true, minKb: Number(configured?.minKb) || 0, at: Date.now() };
+    await ext.storage.local.set({ rules });
+    await syncOpenedRule();
+    return rules;
+  }
   const reply = await native({ rules: true });
+  if (await remoteTarget()) return null;
   if (reply.ok && typeof reply.types === "string") {
     rules = {
       types: reply.types,
@@ -237,12 +325,6 @@ async function askRules() {
     await syncOpenedRule();
     return rules;
   }
-  // No MDM on this computer, another one chosen: the app's default file types (the browser
-  // keeps the files it would open).
-  if (await remoteTarget()) {
-    rules = { types: DEFAULT_TYPES, capture: true, excludedSites: "", excludedAddresses: [], opened: false, minKb: 0, at: Date.now() };
-    return rules;
-  }
   return null;
 }
 
@@ -251,6 +333,11 @@ async function askRules() {
 // the browser keeps everything.
 async function currentRules() {
   const r = await storedRules();
+  const target = await remoteTarget();
+  if (target) {
+    if (r && Date.now() - r.at > 60000) refreshRules();
+    return target.token ? (r || refreshRules()) : null;
+  }
   const { why } = await readStatus();
   if (!r || (why && why !== "update-app")) return refreshRules();
   if (Date.now() - r.at > 60000) refreshRules();
@@ -1876,13 +1963,23 @@ async function pageMessage(m, sender) {
 
 async function popupMessage(m) {
   if (m.type === "state") {
-    const r = await refreshRules();
     const { paused } = await ext.storage.local.get({ paused: false });
-    const s = await readStatus();
     const { declined } = await ext.storage.local.get({ declined: null });
     const remote = await remoteTarget();
-    if (remote) return { connected: true, why: null, remote: remote.url, version: VERSION, paused, declined };
+    if (remote) {
+      const check = await remoteCheck(remote);
+      await refreshRules();
+      return { connected: check.ok, why: check.why, remote: remote.url, version: VERSION, paused, declined };
+    }
+    const r = await refreshRules();
+    const s = await readStatus();
     return { connected: Boolean(r) && (!s.why || s.why === "update-app"), why: s.why, app: s.app, version: VERSION, paused, declined };
+  }
+  if (m.type === "remote-open") {
+    const url = remoteAddress(m.url);
+    if (!url) return { ok: false, why: "address" };
+    await ext.tabs.create({ url });
+    return { ok: true };
   }
   if (m.type === "remote-pair" && typeof m.url === "string" && typeof m.code === "string") return remotePair(m.url, m.code);
   if (m.type === "remote-off") return remoteOff();
@@ -1897,7 +1994,11 @@ async function popupMessage(m) {
     await refreshRules();
     return { ok: Boolean(reply.ok) };
   }
-  if (m.type === "open-app") return { ok: Boolean((await native({ open: true })).ok) };
+  if (m.type === "open-app") {
+    const target = await remoteTarget();
+    if (target) return popupMessage({ type: "remote-open", url: target.url });
+    return { ok: Boolean((await native({ open: true })).ok) };
+  }
   if (m.type === "open-options") return { ok: Boolean((await native({ openOptions: true, page: "general" })).ok) };
   // The media the popup's tab loaded (#38), and one of them handed to the app.
   if (m.type === "media" && Number.isInteger(m.tab)) {

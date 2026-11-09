@@ -143,6 +143,8 @@
 	7z and RAR archives need 7-Zip, which isn't installed	7z and RAR archives need 7-Zip, which isn't installed
 #. text in a download's progress window
 	<< Hide details	<< Hide details
+#. web interface text in remote/web/app.js
+	A /0 subnet trusts everyone. Confirm the warning before saving it.	A /0 subnet trusts everyone. Confirm the warning before saving it.
 #. text in the Options window
 #. Options → Accounts: what these accounts are, and the services' rule against sharing
 	A debrid service downloads a file host's link with your own paid account and gives MDM a direct link. Use only your own account: sharing an account or its links breaks the services' terms and can get it suspended. Downloads the browser already started stay as they are.	A debrid service downloads a file host's link with your own paid account and gives MDM a direct link. Use only your own account: sharing an account or its links breaks the services' terms and can get it suspended. Downloads the browser already started stay as they are.
@@ -150,6 +152,10 @@
 #. a torrent through a debrid service: one of its files has a name that would be written outside its folder; nothing was written. {name} the file's name as the service gave it
 #. {name} = a file name (keep the braces as they are)
 	A file of this torrent can't be saved safely: {name}	A file of this torrent can't be saved safely: {name}
+#. web interface text in remote/web/app.js
+	A file operation is already running. Wait for it to finish.	A file operation is already running. Wait for it to finish.
+#. web interface text in remote/web/app.js
+	A file or download already uses that destination. Choose another name.	A file or download already uses that destination. Choose another name.
 #. text in the settings
 #. Options → DNS: the NextDNS configuration ID typed isn't one
 	A NextDNS configuration ID is six letters and digits (0-9, a-f).	A NextDNS configuration ID is six letters and digits (0-9, a-f).
@@ -168,6 +174,8 @@
 #. text in errors.rs
 #. an error: a server on this computer redirected the download to the internet, which would not go through the chosen network adapter; {adapter} its name
 	a server on this computer sent the download elsewhere, which would not go through {adapter}	a server on this computer sent the download elsewhere, which would not go through {adapter}
+#. web interface text in remote/web/app.js
+	A torrent operation is running. Wait for its result in Activity.	A torrent operation is running. Wait for its result in Activity.
 #. text in the Add torrent window
 #. Add trackers: MDM never contacts a tracker on this computer or the local network
 	A tracker on this computer or the local network is never contacted: {line}	A tracker on this computer or the local network is never contacted: {line}
@@ -188,11 +196,17 @@
 #. text in the Options window
 #. tab title: the user's debrid service accounts (Real-Debrid…)
 	Accounts	Accounts
+#. web interface text in remote/web/index.html
+	Actions	Actions
+#. web interface text in remote/web/index.html
+	Activity	Activity
 #. text in remote.rs
 #. remote control page (on a phone): button: add the download
 	Add	Add
 #. what a keyboard shortcut does in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 	Add a download (Add URL)	Add a download (Add URL)
+#. web interface text in remote/web/index.html
+	Add a link, send a download from your extension, or change the filters.	Add a link, send a download from your extension, or change the filters.
 #. message or event log entry in the main window
 #. title of the file dialog of View → Theme → Add a theme file
 #. title of the message when View → Theme → Add a theme file fails
@@ -207,6 +221,8 @@
 	Add browser...	Add browser...
 #. text in categories.rs
 	Add category	Add category
+#. web interface text in remote/web/index.html
+	Add download	Add download
 #. button in rssdlg.rs
 #. RSS feeds window: button that subscribes to the feed whose address is typed
 	Add feed	Add feed
@@ -238,7 +254,9 @@
 	Add to queue:	Add to queue:
 #. message or event log entry in the main window; window title in the Add torrent window
 	Add torrent	Add torrent
-#. window title in the Add torrent window
+#. web interface text in remote/web/index.html
+	Add tracker addresses (one per line)	Add tracker addresses (one per line)
+#. window title in the Add torrent window; web interface text in remote/web/index.html
 	Add trackers	Add trackers
 #. text in playlistdlg.rs
 #. asked before a playlist adds many downloads at once; {n} is how many
@@ -254,22 +272,24 @@
 #. message or event log entry in the main window
 #. {source} = how the download was added, e.g. "from the browser" (keep the braces as they are)
 	Added {source}	Added {source}
-#. text in remote.rs
+#. text in remote.rs; web interface text in remote/web/app.js
 #. remote control page (on a phone): a download was added
 	Added.	Added.
-#. text in remote.rs
+#. text in remote.rs; web interface text in remote/web/app.js
 #. remote control page (on a phone): a magnet link or .torrent file was added; MDM reads the torrent's files first
 	Added. MDM is reading the torrent: it joins the list in a moment.	Added. MDM is reading the torrent: it joins the list in a moment.
-#. text in the Batch download window; text in a dialog box; label in the Options window; text in a download's progress window
+#. text in the Batch download window; text in a dialog box; label in the Options window; text in a download's progress window; web interface text in remote/web/app.js
 #. noun: the web address (URL)
 #. column title: the web address (URL)
 	Address	Address
-#. message or event log entry in the main window
+#. text in transfers.rs; message or event log entry in the main window
 #. {host} = a server name such as "example.com" (keep the braces as they are)
 	Address changed to {host}	Address changed to {host}
-#. text in remote.rs
+#. text in remote.rs; web interface text in remote/web/index.html
 #. remote control page (on a phone): label of the box where a download's address or a magnet link is typed
 	Address or magnet link	Address or magnet link
+#. web interface text in remote/web/app.js
+	Address replaced. Start the download to resume.	Address replaced. Start the download to resume.
 #. text in the Options window; text in a download's Properties window
 #. Options → DNS over HTTPS: label before the server's https:// address
 	Address:	Address:
@@ -300,8 +320,12 @@
 #. text in remote.rs
 #. remote control page (on a phone): tab: every download
 	All	All
+#. web interface text in remote/web/app.js
+	All categories	All categories
 #. item in the Categories tree in the main window
 	All Downloads	All Downloads
+#. web interface text in remote/web/index.html; web interface text in remote/web/app.js
+	All downloads	All downloads
 #. message or event log entry in the main window
 	All files	All files
 #. text in helpers.rs
@@ -309,6 +333,12 @@
 #. text in the Download video window
 #. in the Subtitles list of Download video: every language the video's uploader gave
 	All the uploader's	All the uploader's
+#. web settings label in web.rs
+	Allow fallback to system DNS	Allow fallback to system DNS
+#. web settings label in web.rs
+	Allow incoming torrent connections	Allow incoming torrent connections
+#. web settings label in web.rs
+	Allow more than 32 connections	Allow more than 32 connections
 #. text in the Options window
 #. checkbox under the number of connections per download; {n} is 32
 #. {n} = a number (keep the braces as they are)
@@ -370,13 +400,17 @@
 #. text in the Options window
 #. Options → Network adapter: the first choice: no adapter is chosen, the system picks one for each connection
 	Any (the system chooses)	Any (the system chooses)
+#. web interface text in remote/web/index.html
+	Appearance	Appearance
+#. web interface text in remote/web/index.html
+	Application settings	Application settings
 #. text in the Scheduler window
 	April	April
 #. window title in extracting archives (a download's log, the Archive password window); text in extracting archives (a download's log, the Archive password window); text in the Link grabber window
 #. what a screen reader calls the Archive password window's box
 #. what a screen reader calls Link grabber's password box
 	Archive password	Archive password
-#. group box title in the Options window; text in the Options window
+#. web settings label in web.rs; group box title in the Options window; text in the Options window
 #. Options → Archives: group box title
 #. tab title: extracting downloaded archives, and Link grabber
 	Archives	Archives
@@ -429,7 +463,11 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Austria	Austria
-#. text in remote.rs
+#. web interface text in remote/web/index.html
+	Authentication	Authentication
+#. web interface text in remote/web/app.js
+	Authentication storage is unavailable. Check server logs and directory permissions.	Authentication storage is unavailable. Check server logs and directory permissions.
+#. text in remote.rs; web interface text in remote/web/app.js
 #. remote control page (on a phone): category choice: the category follows the file's type
 	Automatic (by file type)	Automatic (by file type)
 #. text in the Options window
@@ -440,12 +478,18 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Azerbaijan	Azerbaijan
+#. web interface text in remote/web/index.html
+	Background progress updates do not extend the session. Sessions also expire after 24 hours.	Background progress updates do not extend the session. Sessions also expire after 24 hours.
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Bahamas	Bahamas
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Bahrain	Bahrain
+#. web interface text in remote/web/index.html
+	Ban client after consecutive failures	Ban client after consecutive failures
+#. web interface text in remote/web/index.html
+	Ban duration (seconds)	Ban duration (seconds)
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Bangladesh	Bangladesh
@@ -475,6 +519,8 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Bhutan	Bhutan
+#. web settings label in web.rs
+	Bind to network adapter	Bind to network adapter
 #. text in the Add torrent window
 #. Torrent settings: the address of an IP blocklist (empty: none)
 	Block the addresses in this list (P2P or eMule format):	Block the addresses in this list (P2P or eMule format):
@@ -509,6 +555,10 @@
 #. button in categories.rs; button in the Options window
 #. the trailing ... means it opens a window: keep it
 	Browse...	Browse...
+#. web settings label in web.rs
+	Browser capture	Browser capture
+#. web interface text in remote/web/index.html
+	Browser extensions and devices	Browser extensions and devices
 #. text in extension.rs
 	Browser integration isn't set up on this computer, so no browser can reach Mister Download Manager yet.	Browser integration isn't set up on this computer, so no browser can reach Mister Download Manager yet.
 #. page title in the Options window
@@ -532,6 +582,10 @@
 	by batch download	by batch download
 #. message or event log entry in the main window
 	by Link grabber	by Link grabber
+#. web interface text in remote/web/index.html
+	Bypass authentication for clients in whitelisted IP subnets	Bypass authentication for clients in whitelisted IP subnets
+#. web interface text in remote/web/index.html
+	Bypass authentication for clients on localhost	Bypass authentication for clients on localhost
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Cabo Verde	Cabo Verde
@@ -544,7 +598,7 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Canada	Canada
-#. button in the Batch download window; button in categories.rs; text in the Checksum window; button in a dialog box; button in extracting archives (a download's log, the Archive password window); button in the Find window; button in gallerydlg.rs; text in the Link grabber window; text in the Help menu's windows (About, updates, shortcuts, Tell a friend); button in langpick.rs; button in the Options window; button in a download's progress window; text in remote.rs; button in the Scheduler window; button in the Add torrent window; button in the Download video window
+#. button in the Batch download window; button in categories.rs; text in the Checksum window; button in a dialog box; button in extracting archives (a download's log, the Archive password window); button in the Find window; button in gallerydlg.rs; text in the Link grabber window; text in the Help menu's windows (About, updates, shortcuts, Tell a friend); button in langpick.rs; button in the Options window; button in a download's progress window; text in remote.rs; button in the Scheduler window; button in the Add torrent window; button in the Download video window; web interface text in remote/web/index.html
 #. button: stop downloading the update
 	Cancel	Cancel
 #. text in errors.rs
@@ -561,15 +615,19 @@
 	cannot resume: {detail}	cannot resume: {detail}
 #. group box title in the Options window; text in the Options window
 	Capture downloads from the following browsers:	Capture downloads from the following browsers:
+#. web settings label in web.rs
+	Capture types normally opened in the browser	Capture types normally opened in the browser
+#. web settings label in web.rs
+	Captured file extensions	Captured file extensions
 #. text in extension.rs
 #. the headline of the window that offers the browser extension
 	Catch downloads from your browser	Catch downloads from your browser
-#. text in the main window (menus, toolbar, Categories pane)
+#. text in the main window (menus, toolbar, Categories pane); web interface text in remote/web/index.html
 #. title of the side pane that lists the categories
 	Categories	Categories
 #. page title in the Options window
 	Categories, file types, folders	Categories, file types, folders
-#. text in a dialog box; text in the Options window; text in remote.rs
+#. text in a dialog box; text in the Options window; text in remote.rs; web interface text in remote/web/index.html
 #. remote control page (on a phone): label of the category choice for a new download
 	Category	Category
 #. text in categories.rs
@@ -598,6 +656,10 @@
 #. text in the Options window
 #. {category} = a category name such as "Music" (keep the braces as they are)
 	Change folder for "{category}" category on last selected	Change folder for "{category}" category on last selected
+#. web interface text in remote/web/index.html
+	Change username or password	Change username or password
+#. web interface text in remote/web/app.js
+	Changes saved.	Changes saved.
 #. text in the Link grabber window
 #. Link grabber button (IDM's): tick every link
 	Check all	Check all
@@ -637,18 +699,22 @@
 #. {name} = a file name; {n} = a number (keep the braces as they are)
 #. the trailing ... means it is still going on: keep it
 	Checking {name} ({n} of {total})...	Checking {name} ({n} of {total})...
-#. text in the Checksum window; text in the Link grabber window
+#. text in the Checksum window; text in the Link grabber window; web interface text in remote/web/app.js
 #. the trailing ... means it is still going on: keep it
 	Checking...	Checking...
+#. web interface text in remote/web/app.js
+	Checksum saved.	Checksum saved.
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Chile	Chile
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	China	China
-#. text in remote.rs
+#. text in remote.rs; web interface text in remote/web/index.html
 #. remote control page (on a phone): what the ".torrent file" button does (screen readers)
 	Choose a .torrent file	Choose a .torrent file
+#. web interface text in remote/web/app.js
+	Choose a folder inside the downloads directory.	Choose a folder inside the downloads directory.
 #. text in langpick.rs
 	Choose a language	Choose a language
 #. text in langpick.rs
@@ -665,12 +731,14 @@
 #. button in the download list
 #. verb: clears this filter
 	Clear	Clear
+#. web interface text in remote/web/index.html
+	Clear selection	Clear selection
 #. text in a download's progress window
 #. column title: the peer's torrent program
 	Client	Client
 #. text in the Options window
 	Clock:	Clock:
-#. text in the Checksum window; text in the main window (menus, toolbar, Categories pane); button in crashui.rs; button in a dialog box; button in extension.rs; button in the Help menu's windows (About, updates, shortcuts, Tell a friend); button in helpers.rs; button in the download list; button in the Options window; button in rssdlg.rs; text in standard windows
+#. text in the Checksum window; text in the main window (menus, toolbar, Categories pane); button in crashui.rs; button in a dialog box; button in extension.rs; button in the Help menu's windows (About, updates, shortcuts, Tell a friend); button in helpers.rs; button in the download list; button in the Options window; button in rssdlg.rs; text in standard windows; web interface text in remote/web/index.html
 #. both verbs: Verify = check the file now; Close = close the window
 #. tooltip of the × that closes the Categories pane
 #. verb: closes this window
@@ -694,13 +762,21 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Comoros	Comoros
-#. item in the Categories tree in the download list; value in a column's filter list in the download list; text in the download list (sizes, speeds, status); text in a download's progress window; text in remote.rs
+#. item in the Categories tree in the download list; value in a column's filter list in the download list; text in the download list (sizes, speeds, status); text in a download's progress window; text in remote.rs; web interface text in remote/web/index.html
 #. a download's status (state it is in, not a command)
 #. a download's status (state it is in, not a command): finished
 	Complete	Complete
+#. web interface text in remote/web/index.html
+	Completed files are checked now. Pause unfinished downloads to set the checksum for their next run. Leave blank to clear it.	Completed files are checked now. Pause unfinished downloads to set the checksum for their next run. Leave blank to clear it.
+#. web interface text in remote/web/app.js
+	Completed moves appear above. Failures are recorded in Activity.	Completed moves appear above. Failures are recorded in Activity.
+#. web interface text in remote/web/app.js
+	Completed: {done}. Skipped: {skipped}.	Completed: {done}. Skipped: {skipped}.
 #. text in the download list (sizes, speeds, status)
 #. category name: compressed archives (zip, rar, 7z)
 	Compressed	Compressed
+#. web interface text in remote/web/index.html
+	Concurrent downloads	Concurrent downloads
 #. text in the Options window
 #. Options → DNS settings: NextDNS's own configuration ID (optional)
 	Configuration ID:	Configuration ID:
@@ -708,24 +784,36 @@
 	Confirm before deleting downloads	Confirm before deleting downloads
 #. window title in a dialog box
 	Confirm deletion of downloads	Confirm deletion of downloads
+#. web interface text in remote/web/index.html
+	Confirm device revocation	Confirm device revocation
+#. web interface text in remote/web/index.html
+	Confirm new password	Confirm new password
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Congo	Congo
 #. text in extension.rs
 #. in the browser extension's window, beside a browser whose extension reached MDM
 	Connected	Connected
+#. web interface text in remote/web/index.html
+	Connected through an authentication bypass rule.	Connected through an authentication bypass rule.
 #. text in extension.rs
 	Connected: downloads from your browser now come here.	Connected: downloads from your browser now come here.
 #. text in a download's progress window
 #. the trailing ... means it is still going on: keep it
 	Connecting...	Connecting...
-#. text in the Options window
+#. web settings label in web.rs; text in the Options window
 #. tab title: connection settings
 	Connection	Connection
+#. web interface text in remote/web/app.js
+	Connection lost. Showing the last snapshot; changes may not have reached the server.	Connection lost. Showing the last snapshot; changes may not have reached the server.
+#. web interface text in remote/web/index.html
+	Connections	Connections
 #. page title in the Options window
 	Connections and Limits	Connections and Limits
 #. text in the Options window
 	Connections:	Connections:
+#. web interface text in remote/web/index.html
+	Control who can access this server and how long sessions remain active.	Control who can access this server and how long sessions remain active.
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Cook Islands	Cook Islands
@@ -753,8 +841,18 @@
 #. in a download's log: {name} is the archive's file name, {why} the reason
 #. {name} = a file name (keep the braces as they are)
 	Couldn't extract {name}: {why}	Couldn't extract {name}: {why}
+#. web interface text in remote/web/app.js
+	Create account	Create account
+#. web interface text in remote/web/index.html
+	Create an owner account using the code from the server logs or the local pair command. Your password must contain at least 12 characters.	Create an owner account using the code from the server logs or the local pair command. Your password must contain at least 12 characters.
+#. web interface text in remote/web/index.html
+	Create extension pairing code	Create extension pairing code
 #. window title in a dialog box
 	Create folder	Create folder
+#. web interface text in remote/web/app.js
+	Create your owner account	Create your owner account
+#. web interface text in remote/web/app.js
+	Credentials changed. Sign in again.	Credentials changed. Sign in again.
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Croatia	Croatia
@@ -764,6 +862,14 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Curaçao	Curaçao
+#. web interface text in remote/web/index.html
+	Current password	Current password
+#. web interface text in remote/web/index.html
+	Current password to confirm changes	Current password to confirm changes
+#. web settings label in web.rs
+	Custom DNS server addresses	Custom DNS server addresses
+#. web interface text in remote/web/index.html
+	Custom folders stay inside the server downloads directory. Deleting a category keeps its files.	Custom folders stay inside the server downloads directory. Deleting a category keeps its files.
 #. text in the Options window
 	Customize "Download progress" dialog	Customize "Download progress" dialog
 #. text in the Options window
@@ -784,6 +890,8 @@
 #. text in the Scheduler window; option (radio button) in the Scheduler window
 #. adverb: every day (the other choice is once, on a date)
 	Daily	Daily
+#. web interface text in remote/web/index.html
+	Dark	Dark
 #. text in the Options window
 	Date order:	Date order:
 #. page title in the Options window
@@ -791,6 +899,8 @@
 #. text in the Options window
 #. a date's order: day first (30/10/2026)
 	Day, month, year	Day, month, year
+#. web interface text in remote/web/index.html; web interface text in remote/web/app.js
+	Days	Days
 #. page title in the Options window
 	Debrid service accounts	Debrid service accounts
 #. text in the Scheduler window
@@ -815,9 +925,9 @@
 #. checkbox in the Link grabber window
 #. Link grabber check box: after extracting, the archives go to the Recycle Bin
 	Delete archives after extracting	Delete archives after extracting
-#. window title in a dialog box
+#. window title in a dialog box; web interface text in remote/web/app.js
 	Delete category	Delete category
-#. message or event log entry in the main window; text in the Scheduler window
+#. message or event log entry in the main window; text in the Scheduler window; web interface text in remote/web/app.js
 	Delete queue	Delete queue
 #. text in a dialog box
 #. {category} = a category name such as "Music" (keep the braces as they are)
@@ -825,6 +935,8 @@
 #. text in remote.rs
 #. remote control page (on a phone): checkbox when removing a download: delete its file from the computer too
 	Delete the file too	Delete the file too
+#. web interface text in remote/web/index.html
+	Delete the files from disk too	Delete the files from disk too
 #. message or event log entry in the main window; text in the Scheduler window
 #. asked before deleting a queue; its downloads stay in the list
 #. {queue} = a queue name such as "Main queue" (keep the braces as they are)
@@ -833,21 +945,29 @@
 	Delete the selected downloads (asks first)	Delete the selected downloads (asks first)
 #. what a keyboard shortcut does in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 	Delete the selected downloads and their files (asks first)	Delete the selected downloads and their files (asks first)
+#. web interface text in remote/web/app.js
+	Delete this category? Its files will be kept.	Delete this category? Its files will be kept.
+#. web interface text in remote/web/app.js
+	Delete this queue? Its downloads and files will be kept.	Delete this queue? Its downloads and files will be kept.
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Denmark	Denmark
-#. text in a dialog box
+#. text in a dialog box; web interface text in remote/web/index.html
 	Description	Description
 #. checkbox in the Find window
 	Description or part of the description	Description or part of the description
 #. text in a download's Properties window
 	Description:	Description:
+#. web interface text in remote/web/app.js
+	Destination	Destination
 #. text in the Options window
 #. column title: a paired phone's or computer's name
 	Device	Device
 #. text in the Add torrent window
 #. the DHT (finding peers without trackers) is turned off in Torrent settings
 	DHT off	DHT off
+#. web interface text in remote/web/app.js
+	Discard unsaved changes?	Discard unsaved changes?
 #. text in errors.rs
 #. {error} = an error message (keep the braces as they are)
 	disk error: {error}	disk error: {error}
@@ -856,15 +976,23 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Djibouti	Djibouti
+#. web settings label in web.rs
+	DNS mode (0: system, 1: plain, 2: TLS, 3: HTTPS)	DNS mode (0: system, 1: plain, 2: TLS, 3: HTTPS)
 #. text in the settings
 #. a way of asking a DNS, in its name in messages: "Cloudflare (DNS over HTTPS)"
 	DNS over HTTPS	DNS over HTTPS
 #. text in the settings
 #. a way of asking a DNS, in its name in messages: "Cloudflare (DNS over TLS)"
 	DNS over TLS	DNS over TLS
+#. web settings label in web.rs
+	DNS provider ID	DNS provider ID
 #. window title in the Options window
 #. window title: the settings of the DNS chosen in Options → Connection
 	DNS settings	DNS settings
+#. web settings label in web.rs
+	DNS TLS server name	DNS TLS server name
+#. web settings label in web.rs
+	DNS-over-HTTPS URL	DNS-over-HTTPS URL
 #. text in the Options window
 	DNS:	DNS:
 #. checkbox in the Options window
@@ -894,7 +1022,7 @@
 #. text in the Options window; text in a download's progress window
 #. button: close the window (the device is paired)
 	Done	Done
-#. button in the Options window
+#. button in the Options window; web interface text in remote/web/app.js
 #. button (short): move the account down the list
 	Down	Down
 #. button in the Help menu's windows (About, updates, shortcuts, Tell a friend)
@@ -907,11 +1035,13 @@
 	Download a gallery	Download a gallery
 #. window title in a dialog box; text in a dialog box; text in the Options window
 	Download complete	Download complete
+#. web interface text in remote/web/index.html
+	Download details	Download details
 #. text in the Options window
 	Download failed	Download failed
 #. window title in a dialog box
 	Download File Info	Download File Info
-#. text in the Add torrent window
+#. text in the Add torrent window; web interface text in remote/web/index.html
 #. Add torrent, a checkbox: download the files from their start, to watch a video while it downloads
 	Download in order	Download in order
 #. button in a dialog box
@@ -963,7 +1093,7 @@
 #. text in a dialog box
 #. {size} = a file size such as "4.2 MB"; {bytes} = a number of bytes (keep the braces as they are)
 	Downloaded {size} ({bytes} Bytes)	Downloaded {size} ({bytes} Bytes)
-#. item in the Categories tree in the download list; value in a column's filter list in the download list; text in remote.rs
+#. item in the Categories tree in the download list; value in a column's filter list in the download list; text in remote.rs; web interface text in remote/web/index.html
 #. a download's status (state it is in, not a command)
 	Downloading	Downloading
 #. message or event log entry in the main window
@@ -984,12 +1114,14 @@
 #. {name} = yt-dlp or ffmpeg; {n} of {total} = which helper of how many; {percent} = how far, e.g. 45%
 #. {name} = a file name; {n} = a number (keep the braces as they are)
 	Downloading {name} ({n} of {total})... {percent}	Downloading {name} ({n} of {total})... {percent}
-#. text in the download list; text in the Options window
+#. web settings label in web.rs; text in the download list; text in the Options window; web interface text in remote/web/index.html
 #. tab title: download settings
 	Downloads	Downloads
 #. text in the tray icon's menu
 #. tray menu: a submenu of the downloads now running; choosing one shows its progress window
 	Downloads in progress	Downloads in progress
+#. web interface text in remote/web/index.html
+	Downloads in this queue	Downloads in this queue
 #. text in a dialog box
 #. {time} = a time of day (keep the braces as they are)
 	Downloads stopped and will resume automatically at {time}.	Downloads stopped and will resume automatically at {time}.
@@ -1009,6 +1141,8 @@
 	Dropped links	Dropped links
 #. window title in a dialog box
 	Duplicate download link	Duplicate download link
+#. web settings label in web.rs
+	Duplicate URL policy (0: numbered copy, 1: numbered copy, 2: overwrite, 3: reuse)	Duplicate URL policy (0: numbered copy, 1: numbered copy, 2: overwrite, 3: reuse)
 #. text in the Options window
 #. Options → Network adapter: what "Any" means
 	Each connection takes the system's route.	Each connection takes the system's route.
@@ -1018,9 +1152,11 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Ecuador	Ecuador
-#. button in the Options window
+#. button in the Options window; web interface text in remote/web/app.js
 #. verb: edit the item
 	Edit	Edit
+#. web interface text in remote/web/index.html
+	Edit category	Edit category
 #. text in the Options window
 	Edit exception	Edit exception
 #. button in the Options window
@@ -1028,6 +1164,8 @@
 	Edit list ...	Edit list ...
 #. text in the Options window
 	Edit login	Edit login
+#. web interface text in remote/web/index.html
+	Edit queue	Edit queue
 #. button in the Options window
 #. verb: edit the item
 #. the trailing ... means it opens a window: keep it
@@ -1043,6 +1181,20 @@
 #. text in gallerydlg.rs
 #. in Download a gallery, after the "Files at most" box
 	Empty: all of them. On most sites the newest come first.	Empty: all of them. On most sites the newest come first.
+#. web settings label in web.rs
+	Enable DHT	Enable DHT
+#. web settings label in web.rs
+	Enable global speed limit	Enable global speed limit
+#. web settings label in web.rs
+	Enable global torrent upload limit	Enable global torrent upload limit
+#. web settings label in web.rs
+	Enable local peer discovery	Enable local peer discovery
+#. web settings label in web.rs
+	Enable per-download speed limit	Enable per-download speed limit
+#. web settings label in web.rs
+	Enable speed limiter on startup	Enable speed limiter on startup
+#. web settings label in web.rs
+	Enable transfer quota	Enable transfer quota
 #. text in crashui.rs
 #. crash report window button: end the frozen MDM and start it again
 	End and restart MDM	End and restart MDM
@@ -1053,10 +1205,18 @@
 #. text in the Add torrent window
 #. Add trackers: OK with an empty box
 	Enter a tracker's address, one a line	Enter a tracker's address, one a line
+#. web interface text in remote/web/app.js
+	Enter a valid MD5, SHA-1, SHA-256, SHA-512 or CRC32 checksum.	Enter a valid MD5, SHA-1, SHA-256, SHA-512 or CRC32 checksum.
+#. web interface text in remote/web/app.js
+	Enter an HTTP, HTTPS, FTP or FTPS address without embedded credentials.	Enter an HTTP, HTTPS, FTP or FTPS address without embedded credentials.
 #. window title in a dialog box
 	Enter new address to download	Enter new address to download
 #. window title in the Scheduler window
 	Enter queue name	Enter queue name
+#. web interface text in remote/web/app.js
+	Enter up to 100 HTTP, HTTPS or UDP tracker addresses, one per line.	Enter up to 100 HTTP, HTTPS or UDP tracker addresses, one per line.
+#. web interface text in remote/web/app.js
+	Enter valid IPv4/IPv6 addresses or CIDRs, one per line.	Enter valid IPv4/IPv6 addresses or CIDRs, one per line.
 #. text in rssdlg.rs
 #. RSS feeds window, Download rules: which episodes to take (season x episode)
 	Episodes:	Episodes:
@@ -1069,7 +1229,7 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Eritrea	Eritrea
-#. text in a dialog box; item in the Categories tree in the download list; value in a column's filter list in the download list; text in the download list (sizes, speeds, status); text in remote.rs
+#. text in a dialog box; item in the Categories tree in the download list; value in a column's filter list in the download list; text in the download list (sizes, speeds, status); text in remote.rs; web interface text in remote/web/index.html
 #. in Download File Info, where the size goes: the address didn't answer
 #. a download's status (state it is in, not a command)
 #. a download's status (state it is in, not a command): it failed
@@ -1107,8 +1267,10 @@
 	Exit	Exit
 #. checkbox in a download's progress window; checkbox in the Scheduler window
 	Exit Mister Download Manager when done	Exit Mister Download Manager when done
-#. text in the Checksum window
+#. text in the Checksum window; web interface text in remote/web/index.html
 	Expected checksum (MD5, SHA-1, SHA-256, SHA-512 or CRC32):	Expected checksum (MD5, SHA-1, SHA-256, SHA-512 or CRC32):
+#. web interface text in remote/web/app.js
+	Expected checksum saved; checked when the download finishes.	Expected checksum saved; checked when the download finishes.
 #. message or event log entry in the main window
 #. event log entry: the user gave the checksum the file must have
 #. {algorithm} = a checksum algorithm such as "SHA-256" (keep the braces as they are)
@@ -1128,6 +1290,8 @@
 #. checkbox in the Options window
 #. Options → Archives check box (a Link grabber package has its own "Extract when done")
 	Extract archives when their download completes	Extract archives when their download completes
+#. web settings label in web.rs
+	Extract completed archives automatically	Extract completed archives automatically
 #. text in the Link grabber window
 #. Link grabber check box: extract the package's archives once they are downloaded
 	Extract when done	Extract when done
@@ -1138,6 +1302,8 @@
 #. a download's status: its archive is being extracted (#37)
 #. the trailing ... means it is still going on: keep it
 	Extracting...	Extracting...
+#. web settings label in web.rs
+	Extraction subfolder (0: smart, 1: always, 2: never)	Extraction subfolder (0: smart, 1: always, 2: never)
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Falkland Islands	Falkland Islands
@@ -1170,9 +1336,11 @@
 #. text in a download's progress window; text in a download's Properties window
 #. noun: a file of no known type
 	File	File
+#. web interface text in remote/web/index.html
+	File extensions	File extensions
 #. text in the Scheduler window
 	File Name	File Name
-#. text in the Download video window
+#. text in the Download video window; web interface text in remote/web/index.html
 	File name	File name
 #. checkbox in the Find window
 	File name or part of the name	File name or part of the name
@@ -1190,6 +1358,8 @@
 	Files	Files
 #. window title in a dialog box
 	Files already there	Files already there
+#. web interface text in remote/web/index.html
+	Files are downloaded to the server, not this browser.	Files are downloaded to the server, not this browser.
 #. text in gallerydlg.rs
 #. label before the box for how many of a gallery's files to download at most
 	Files at most	Files at most
@@ -1198,6 +1368,8 @@
 	Files go to: {folder}	Files go to: {folder}
 #. text in the Scheduler window; tab in the Scheduler window
 	Files in the queue	Files in the queue
+#. web interface text in remote/web/index.html
+	Files to download	Files to download
 #. button in the Find window
 #. verb: button that starts the search
 	Find	Find
@@ -1225,6 +1397,8 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Finland	Finland
+#. web interface text in remote/web/index.html
+	First and last pieces first	First and last pieces first
 #. text in the Options window
 	First day of the week:	First day of the week:
 #. text in the Batch download window
@@ -1232,6 +1406,10 @@
 #. text in the Download video window
 #. a note in Download video while FLAC is chosen: FLAC keeps the site's (already lossy) sound exactly, it can't make it better, the file is only bigger
 	FLAC keeps the sound exactly, but it can't add quality the site's sound doesn't have: the file is only bigger.	FLAC keeps the sound exactly, but it can't add quality the site's sound doesn't have: the file is only bigger.
+#. web interface text in remote/web/app.js
+	Folder managed by the desktop configuration	Folder managed by the desktop configuration
+#. web interface text in remote/web/index.html
+	Folder relative to downloads directory	Folder relative to downloads directory
 #. text in categories.rs
 	Folder:	Folder:
 #. text in the Batch download window
@@ -1350,6 +1528,8 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Gibraltar	Gibraltar
+#. web settings label in web.rs
+	Global speed limit (KB/sec)	Global speed limit (KB/sec)
 #. text in a download's progress window
 #. a torrent's sharing, when Torrent settings keep it on
 	Goes on after the download finishes	Goes on after the download finishes
@@ -1446,6 +1626,8 @@
 	Hungary	Hungary
 #. text in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 	I download with Mister Download Manager: fast, free, and it looks like the download manager you already know. {link}	I download with Mister Download Manager: fast, free, and it looks like the download manager you already know. {link}
+#. web interface text in remote/web/index.html
+	I understand that a /0 rule trusts every address in that address family.	I understand that a /0 rule trusts every address in that address family.
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Iceland	Iceland
@@ -1458,6 +1640,8 @@
 	If it can't be reached, use the system's DNS	If it can't be reached, use the system's DNS
 #. checkbox in the Options window
 	Ignore file modification time changes when resuming a download	Ignore file modification time changes when resuming a download
+#. web settings label in web.rs
+	Ignore modification time when resuming	Ignore modification time when resuming
 #. message or event log entry in the main window
 	Import	Import
 #. value in a column's filter list in the download list
@@ -1512,6 +1696,8 @@
 #. text in the Options window
 #. Options → DNS over HTTPS: label before the server's IP addresses, which may be left empty
 	IP addresses (optional):	IP addresses (optional):
+#. web interface text in remote/web/index.html
+	IP/subnet whitelist	IP/subnet whitelist
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Iran	Iran
@@ -1589,6 +1775,8 @@
 	Kazakhstan	Kazakhstan
 #. text in a dialog box; text in a download's progress window; text in the Add torrent window
 	KBytes/sec	KBytes/sec
+#. web settings label in web.rs
+	Keep seeding completed torrents	Keep seeding completed torrents
 #. checkbox in the Add torrent window
 	Keep sharing torrents after they finish	Keep sharing torrents after they finish
 #. text in countries.rs
@@ -1634,6 +1822,9 @@
 #. text in the Options window
 #. column title: when the device last reached MDM
 	Last seen	Last seen
+#. web interface text in remote/web/app.js
+#. {time} = a time of day (keep the braces as they are)
+	Last seen: {time}	Last seen: {time}
 #. text in a download's Properties window
 #. {last} = the date and time of the last attempt to download
 	Last try  {last}	Last try  {last}
@@ -1669,6 +1860,8 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Liechtenstein	Liechtenstein
+#. web interface text in remote/web/index.html
+	Light	Light
 #. checkbox in a dialog box
 	Limit all downloads together to	Limit all downloads together to
 #. text in a download's progress window
@@ -1714,9 +1907,20 @@
 #. text in playlistdlg.rs
 #. button in Download video for a channel: list its next videos
 	Load more	Load more
+#. web interface text in remote/web/app.js
+#. the trailing ... means it is still going on: keep it
+	Loading download details...	Loading download details...
+#. web interface text in remote/web/index.html
+#. the trailing ... means it is still going on: keep it
+	Loading downloads...	Loading downloads...
+#. web interface text in remote/web/app.js
+#. the trailing ... means it is still going on: keep it
+	Loading settings...	Loading settings...
 #. text in the Add torrent window
 #. where a magnet's peers came from: computers on your own network; {peers} = "3 peers"
 	Local network: {peers}	Local network: {peers}
+#. web interface text in remote/web/index.html
+	Local recovery: misterdownloadmanager-cli web-auth unban. Reset access with web-auth reset-owner, then request a new pair code.	Local recovery: misterdownloadmanager-cli web-auth unban. Reset access with web-auth reset-owner, then request a new pair code.
 #. text in the Batch download window; text in a dialog box; text in a download's Properties window
 #. noun: the user name for the server (an input box follows)
 #. noun: the user name and password section
@@ -1772,11 +1976,15 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Malta	Malta
+#. web interface text in remote/web/index.html
+	Manage	Manage
 #. text in the Options window
 	Manual proxy/socks configuration	Manual proxy/socks configuration
 #. checkbox in the Add torrent window
 #. Torrent settings: ask the router (UPnP) to forward the port
 	Map the port on the router (UPnP)	Map the port on the router (UPnP)
+#. web settings label in web.rs
+	Map torrent port with UPnP	Map torrent port with UPnP
 #. text in the Scheduler window
 	March	March
 #. text in countries.rs
@@ -1800,6 +2008,8 @@
 #. text in standard windows
 #. a window's title-bar button: makes the window fill the screen
 	Maximize	Maximize
+#. web settings label in web.rs
+	Maximum connections per download	Maximum connections per download
 #. text in a dialog box
 #. {kb} is an input box (kilobytes per second), drawn where it stands in the translation
 	Maximum download speed for one file {kb} KBytes/sec	Maximum download speed for one file {kb} KBytes/sec
@@ -1817,7 +2027,7 @@
 #. text in the Options window
 #. Options → Remote → Pair a device: the remote control isn't listening (no network, port taken): the Remote page says why
 	MDM can't be reached on the network now: Options → Remote says why.	MDM can't be reached on the network now: Options → Remote says why.
-#. text in remote.rs
+#. text in remote.rs; web interface text in remote/web/app.js
 #. remote control page (on a phone): the address typed isn't one MDM downloads (not http, https, ftp or magnet)
 	MDM cannot download this address.	MDM cannot download this address.
 #. text in remote.rs
@@ -1851,6 +2061,8 @@
 #. text in the Options window
 #. checkbox: the Minimize button hides MDM's windows to the notification area (system tray) instead of the taskbar
 	Minimize to the notification area	Minimize to the notification area
+#. web settings label in web.rs
+	Minimum captured file size (KB)	Minimum captured file size (KB)
 #. text in rssdlg.rs; text in the Add torrent window
 #. RSS feeds window: the unit after the minutes box
 #. Torrent settings: the unit after the minutes box
@@ -1927,6 +2139,8 @@
 #. button in a download's Properties window
 #. verb: move the file to another folder
 	Move	Move
+#. web interface text in remote/web/index.html
+	Move a completed file or change a destination before downloading starts. Existing files are never replaced.	Move a completed file or change a destination before downloading starts. Existing files are never replaced.
 #. what a keyboard shortcut does in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 	Move a page up / down	Move a page up / down
 #. what a keyboard shortcut does in the Help menu's windows (About, updates, shortcuts, Tell a friend)
@@ -1936,8 +2150,12 @@
 #. text in a dialog box
 #. choice in Delete category: what happens to the category's downloads
 	Move its downloads to General	Move its downloads to General
+#. web interface text in remote/web/index.html
+	Move or rename	Move or rename
 #. what a keyboard shortcut does in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 	Move or rename the selected download	Move or rename the selected download
+#. web interface text in remote/web/app.js
+	Move requested. The destination updates when the file operation finishes.	Move requested. The destination updates when the file operation finishes.
 #. text in a download's Properties window
 	Move to folder	Move to folder
 #. message or event log entry in the main window
@@ -1948,7 +2166,7 @@
 	Move without changing the selection	Move without changing the selection
 #. message or event log entry in the main window
 	Move/Rename	Move/Rename
-#. message or event log entry in the main window
+#. text in transfers.rs; message or event log entry in the main window; web interface text in remote/web/app.js
 #. the trailing ... means it is still going on: keep it
 	Moving the file...	Moving the file...
 #. text in countries.rs
@@ -1973,7 +2191,7 @@
 #. text in a download's progress window
 #. column title: connection number (abbreviation of Number)
 	N.	N.
-#. text in the Link grabber window; text in the Add torrent window
+#. text in the Link grabber window; text in the Add torrent window; web interface text in remote/web/index.html
 #. column title: file name
 	Name	Name
 #. text in categories.rs; text in the Link grabber window; text in rssdlg.rs
@@ -1989,6 +2207,8 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Nauru	Nauru
+#. web interface text in remote/web/index.html
+	Navigation	Navigation
 #. text in whereis.rs
 #. how far a download's server is, by its round trip (under 60 ms)
 	near	near
@@ -2013,13 +2233,21 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	New Caledonia	New Caledonia
+#. web interface text in remote/web/index.html
+	New category	New category
 #. button in the Options window
 #. Options → Remote → Pair a device: button: show a new code
 	New code	New code
+#. web interface text in remote/web/index.html
+	New download address	New download address
 #. text in the Options window
 	New exception	New exception
 #. text in the Options window
 	New login	New login
+#. web interface text in remote/web/index.html
+	New password	New password
+#. web interface text in remote/web/index.html
+	New queue	New queue
 #. text in rssdlg.rs
 #. RSS feeds window: the name a new download rule starts with
 #. RSS feeds window, Download rules: make a new rule
@@ -2027,6 +2255,8 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	New Zealand	New Zealand
+#. web interface text in remote/web/index.html
+	Newest first	Newest first
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Nicaragua	Nicaragua
@@ -2041,6 +2271,10 @@
 	Niue	Niue
 #. button in a dialog box; text in a download's progress window
 	No	No
+#. web interface text in remote/web/app.js
+	No active connection details.	No active connection details.
+#. web interface text in remote/web/app.js
+	No active login bans.	No active login bans.
 #. text in a dialog box
 	No addresses yet	No addresses yet
 #. text in extension.rs
@@ -2049,6 +2283,8 @@
 #. text in extension.rs
 #. a check of Test browser integration: no browser's extension has reached MDM
 	No browser's extension has connected yet	No browser's extension has connected yet
+#. web interface text in remote/web/app.js
+	No connected peers.	No connected peers.
 #. text in torrent downloads
 #. an error: the app has no folder for its own data
 	no data folder	no data folder
@@ -2061,7 +2297,7 @@
 #. message or event log entry in the main window
 #. title in the empty download list (this category or queue has no downloads)
 	No downloads here	No downloads here
-#. text in remote.rs
+#. text in remote.rs; web interface text in remote/web/index.html
 #. remote control page (on a phone): the list shown is empty
 	No downloads here.	No downloads here.
 #. message or event log entry in the main window
@@ -2087,6 +2323,8 @@
 	No mail app opened.	No mail app opened.
 #. text in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 	No mail app: the message is copied, paste it in your mail.	No mail app: the message is copied, paste it in your mail.
+#. web interface text in remote/web/app.js
+	No paired extension devices.	No paired extension devices.
 #. text in errors.rs
 	no peer sent the torrent's file list in time	no peer sent the torrent's file list in time
 #. text in the Add torrent window
@@ -2103,6 +2341,8 @@
 #. text in the Add torrent window
 #. the magnet link names no tracker (a server that lists a torrent's peers)
 	No trackers	No trackers
+#. web interface text in remote/web/app.js
+	No trackers listed.	No trackers listed.
 #. text in the Download video window
 #. the Download video window: yt-dlp found no video on the page
 	No video found on this page. Play the video, then use the Download video button over it.	No video found on this page. Play the video, then use the Download video button over it.
@@ -2186,6 +2426,8 @@
 	October	October
 #. option (radio button) in the Options window
 	Off	Off
+#. web interface text in remote/web/index.html
+	Off by default. Other local users and programs will also be trusted. Reverse-proxy traffic is not direct localhost traffic.	Off by default. Other local users and programs will also be trusted. Reverse-proxy traffic is not direct localhost traffic.
 #. text in the Add torrent window
 	Off: a finished torrent stops, like any download.	Off: a finished torrent stops, like any download.
 #. text in the Options window
@@ -2227,6 +2469,8 @@
 	Once it is added, this window says so. Chrome may also ask by itself at its next start.	Once it is added, this window says so. Chrome may also ask by itself at its next start.
 #. text in the Options window
 	One address per line; * stands for any text: example.com/private/*	One address per line; * stands for any text: example.com/private/*
+#. web interface text in remote/web/index.html
+	One IPv4/IPv6 address or CIDR per line. An empty list trusts nobody.	One IPv4/IPv6 address or CIDR per line. An empty list trusts nobody.
 #. option (radio button) in the Scheduler window
 	One-time downloading	One-time downloading
 #. text in the Link grabber window
@@ -2240,6 +2484,8 @@
 #. text in the Scheduler window
 #. the Scheduler, under "Wake the computer to run this queue" (Linux): the computer's wake alarm can be set by an administrator only
 	Only an administrator can allow this	Only an administrator can allow this
+#. web interface text in remote/web/app.js
+	Only completed files or downloads with no received data can be moved. Pause the download first.	Only completed files or downloads with no received data can be moved. Pause the download first.
 #. tooltip (why a control is greyed) in the Download video window
 #. why "Put them into the video" is greyed: the chosen file type can't hold subtitles
 	Only MP4 and MKV videos can hold subtitles	Only MP4 and MKV videos can hold subtitles
@@ -2250,6 +2496,8 @@
 #. in Download video, a list longer than MDM lists: only its first {n} videos are shown
 #. {n} = a number (keep the braces as they are)
 	Only the first {n} videos are listed.	Only the first {n} videos are listed.
+#. web interface text in remote/web/index.html
+	Only these proxies may supply X-Forwarded-For. They must overwrite incoming client headers. Leave empty when connecting directly.	Only these proxies may supply X-Forwarded-For. They must overwrite incoming client headers. Leave empty when connecting directly.
 #. checkbox in a dialog box
 	Only while I'm using the computer	Only while I'm using the computer
 #. button in a dialog box; text in a dialog box; button in a download's Properties window
@@ -2292,6 +2540,8 @@
 #. text in the Options window
 #. Options → Add an account: label before the field for the service's API token (the other way to sign in)
 	Or paste your API token:	Or paste your API token:
+#. web interface text in remote/web/app.js
+	Owner login required	Owner login required
 #. text in the Link grabber window
 #. Link grabber: the box that edits the selected package
 	Package	Package
@@ -2310,12 +2560,16 @@
 #. text in remote.rs
 #. remote control page (on a phone): title of the pairing screen
 	Pair with Mister Download Manager	Pair with Mister Download Manager
+#. web interface text in remote/web/index.html
+	Pair your extension with this server URL. Device tokens cannot change owner authentication settings.	Pair your extension with this server URL. Device tokens cannot change owner authentication settings.
 #. text in the Options window
 #. column title: when the device was paired
 	Paired	Paired
 #. text in the Options window
 #. Options → Remote: label above the list of paired phones and computers
 	Paired devices:	Paired devices:
+#. web interface text in remote/web/app.js
+	Pairing code created. It is single-use and expires in 10 minutes.	Pairing code created. It is single-use and expires in 10 minutes.
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Pakistan	Pakistan
@@ -2334,11 +2588,13 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Paraguay	Paraguay
-#. text in the Batch download window; text in a dialog box; label in the Options window; text in the Options window; text in a download's Properties window
+#. text in the Batch download window; text in a dialog box; label in the Options window; text in the Options window; text in a download's Properties window; web interface text in remote/web/index.html
 	Password	Password
 #. text in the Link grabber window; text in the Options window
 #. Link grabber: the package's archives' password (a label before its box)
 	Password:	Password:
+#. web interface text in remote/web/app.js
+	Passwords do not match.	Passwords do not match.
 #. text in the Add torrent window
 	Paste a magnet link or choose a .torrent file, then Look up.	Paste a magnet link or choose a .torrent file, then Look up.
 #. text in the Link grabber window
@@ -2353,22 +2609,30 @@
 #. text in the Link grabber window
 #. Link grabber: where links came from: the clipboard (pasted with Ctrl+V)
 	Pasted	Pasted
-#. text in a download's progress window; text in remote.rs
+#. text in a download's progress window; text in remote.rs; web interface text in remote/web/index.html; web interface text in remote/web/app.js
 #. verb: pause the download
 #. remote control page (on a phone): button: pause a download
 	Pause	Pause
+#. web interface text in remote/web/app.js
+	Pause an unfinished download before changing its source or checksum.	Pause an unfinished download before changing its source or checksum.
+#. web interface text in remote/web/index.html
+	Pause an unfinished download first. Existing data is kept and checked when it resumes. Stored request credentials are cleared.	Pause an unfinished download first. Existing data is kept and checked when it resumes. Stored request credentials are cleared.
 #. text in a download's Properties window
 #. tooltip of the greyed Move button in File Properties
 	Pause the download first	Pause the download first
 #. text in a download's progress window
 #. a download's status (state it is in, not a command): stopped for now
 	Paused	Paused
-#. text in a download's progress window
+#. web interface text in remote/web/app.js
+	Peer and piece information appears while the torrent session is available.	Peer and piece information appears while the torrent session is available.
+#. text in a download's progress window; web interface text in remote/web/index.html
 #. tab title: the other computers sharing the torrent
 	Peers	Peers
 #. text in the Add torrent window
 #. a magnet link's lookup, after 30 seconds: peers are known but none answered
 	Peers were found, but none answered yet. A firewall or a VPN may be blocking the connections.	Peers were found, but none answered yet. A firewall or a VPN may be blocking the connections.
+#. web settings label in web.rs
+	Per-download speed limit (KB/sec)	Per-download speed limit (KB/sec)
 #. option (radio button) in the Scheduler window
 	Periodic synchronization	Periodic synchronization
 #. text in countries.rs
@@ -2413,6 +2677,8 @@
 #. text in debrid.rs
 #. Options → Accounts: a debrid account's state; {days} the days of premium left
 	premium, {days} days left	premium, {days} days left
+#. web settings label in web.rs
+	Preserve the server file date	Preserve the server file date
 #. button in a dialog box
 #. verb: open the part already downloaded
 	Preview	Preview
@@ -2425,6 +2691,11 @@
 #. text in the download list (sizes, speeds, status)
 #. category name: programs and installers (exe, msi)
 	Programs	Programs
+#. web interface text in remote/web/index.html
+	Progress	Progress
+#. web interface text in remote/web/app.js
+#. {name} = a file name (keep the braces as they are)
+	Progress for {name}	Progress for {name}
 #. what a keyboard shortcut does in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 	Properties of the selected download	Properties of the selected download
 #. text in a download's progress window
@@ -2434,11 +2705,21 @@
 	Proxy / Socks	Proxy / Socks
 #. page title in the Options window
 	Proxy / socks configuration	Proxy / socks configuration
+#. web settings label in web.rs
+	Proxy and DNS	Proxy and DNS
+#. web settings label in web.rs
+	Proxy host	Proxy host
+#. web settings label in web.rs
+	Proxy mode (0: none, 1: system, 2: PAC, 3: manual)	Proxy mode (0: none, 1: system, 2: PAC, 3: manual)
+#. web settings label in web.rs
+	Proxy port	Proxy port
 #. text in the settings
 #. the proxy's password in the system's keychain (Credential Manager, the keyring): its name there, followed by the proxy's address
 	proxy server	proxy server
 #. label in the Options window
 	Proxy server address	Proxy server address
+#. web settings label in web.rs
+	Proxy username	Proxy username
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Puerto Rico	Puerto Rico
@@ -2463,12 +2744,16 @@
 	Queue processing started	Queue processing started
 #. text in the Options window
 	Queue processing stopped/finished	Queue processing stopped/finished
-#. text in remote.rs
+#. text in remote.rs; web interface text in remote/web/index.html
 #. remote control page (on a phone): a download's state: added, waiting to start
 	Queued	Queued
-#. item in the Categories tree in the main window; text in the Scheduler window
+#. item in the Categories tree in the main window; text in the Scheduler window; web interface text in remote/web/index.html
 #. plural noun: the download queues
 	Queues	Queues
+#. web interface text in remote/web/index.html
+	Queues and scheduler	Queues and scheduler
+#. web settings label in web.rs
+	Quota interval (hours)	Quota interval (hours)
 #. text in the Options window
 #. Options → Sites Logins → Cookies for video sites: a note under the choices
 	Read on this computer only, and sent only to the video's site.	Read on this computer only, and sent only to the video's site.
@@ -2486,6 +2771,8 @@
 #. text in helpers.rs
 #. the helpers are downloaded, checked and ready; {list} = names and versions, e.g. "yt-dlp 2026.10.26, ffmpeg 9.0"
 	Ready: {list}	Ready: {list}
+#. web interface text in remote/web/index.html
+	Reannounce	Reannounce
 #. message or event log entry in the main window
 #. event log entry: Reannounce failed, with the reason
 #. {error} = an error message (keep the braces as they are)
@@ -2493,9 +2780,13 @@
 #. text in a download's progress window
 #. column title: how much came from the peer
 	Received	Received
+#. web interface text in remote/web/app.js
+	Received {received} · uploaded {uploaded}	Received {received} · uploaded {uploaded}
 #. text in a download's progress window
 #. the trailing ... means it is still going on: keep it
 	Receiving data...	Receiving data...
+#. web interface text in remote/web/index.html
+	Recheck	Recheck
 #. message or event log entry in the main window
 #. event log entry: Recheck failed, with the reason
 #. {error} = an error message (keep the braces as they are)
@@ -2514,6 +2805,8 @@
 #. text in rssdlg.rs
 #. RSS feeds window, Download rules: the two boxes above hold regular expressions
 	Regular expressions	Regular expressions
+#. web interface text in remote/web/index.html
+	Remaining	Remaining
 #. text in a download's progress window
 	Remember Speed Limiter settings for this file	Remember Speed Limiter settings for this file
 #. text in a dialog box
@@ -2525,11 +2818,13 @@
 #. text in the Options window
 #. Options page title: control MDM from a phone or another computer on the local network
 	Remote control	Remote control
-#. button in the Options window; text in remote.rs; button in rssdlg.rs
+#. button in the Options window; text in remote.rs; button in rssdlg.rs; web interface text in remote/web/index.html; web interface text in remote/web/app.js
 #. verb: remove the item
 #. remote control page (on a phone): button: remove a download from the list
 #. RSS feeds window: unsubscribe from the selected feed
 	Remove	Remove
+#. web interface text in remote/web/index.html
+	Remove downloads	Remove downloads
 #. text in the Scheduler window
 	Remove from the queue	Remove from the queue
 #. text in a dialog box
@@ -2539,9 +2834,16 @@
 #. remote control page (on a phone): question before removing a download; {name} its file name
 #. {name} = a file name (keep the braces as they are)
 	Remove {name} from the list?	Remove {name} from the list?
+#. web interface text in remote/web/app.js
+#. {n} = a number (keep the braces as they are)
+	Remove {n} downloads from the list?	Remove {n} downloads from the list?
+#. web interface text in remote/web/index.html
+	Replace address	Replace address
 #. text in the Batch download window
 #. group box title: what the * in the address is replaced with (numbers or letters)
 	Replace asterisk to	Replace asterisk to
+#. web interface text in remote/web/index.html
+	Replace expired link	Replace expired link
 #. text in crashui.rs
 #. crash report window button: start MDM again
 	Restart MDM	Restart MDM
@@ -2556,21 +2858,29 @@
 #. text in a download's progress window
 #. label: whether the server lets a stopped download continue (Yes / No)
 	Resume capability	Resume capability
+#. web interface text in remote/web/app.js
+	Resume data could not be updated. Check server storage before trying again.	Resume data could not be updated. Check server storage before trying again.
 #. message or event log entry in the main window
 #. event log entry, past tense: the download resumed (just now)
 	Resumed	Resumed
 #. button in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 #. button: check for updates again
 	Retry	Retry
+#. web interface text in remote/web/index.html
+	Retry limit (blank: unlimited)	Retry limit (blank: unlimited)
 #. text in a download's progress window
 #. a connection's state: it failed and tries again, with the reason
 #. {error} = an error message (keep the braces as they are)
 	Retrying: {error}	Retrying: {error}
+#. web interface text in remote/web/index.html; web interface text in remote/web/app.js
+	Revoke device	Revoke device
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Romania	Romania
 #. window title in rssdlg.rs
 	RSS feeds	RSS feeds
+#. web interface text in remote/web/index.html
+	Run once on date (blank: recurring)	Run once on date (blank: recurring)
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Russia	Russia
@@ -2622,8 +2932,14 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Saudi Arabia	Saudi Arabia
+#. web interface text in remote/web/index.html
+	Save and verify	Save and verify
 #. text in a dialog box
 	Save As	Save As
+#. web interface text in remote/web/index.html
+	Save authentication settings	Save authentication settings
+#. web interface text in remote/web/index.html
+	Save changes	Save changes
 #. text in gallerydlg.rs; text in the Options window; text in the Add torrent window; text in the Download video window
 #. tab title: where downloads are saved
 	Save to	Save to
@@ -2636,9 +2952,13 @@
 #. Link grabber: the folder the package's files go to (a label before its box)
 #. RSS feeds window, Download rules: the folder the rule's torrents go to
 	Save to:	Save to:
+#. web interface text in remote/web/index.html
+	Save torrent changes	Save torrent changes
 #. text in a download's progress window
 #. label before the folder the torrent is saved in
 	Saved in	Saved in
+#. web interface text in remote/web/index.html
+	Saving signs out all browser sessions. Extension tokens are managed separately.	Saving signs out all browser sessions. Extension tokens are managed separately.
 #. tab in the Scheduler window
 #. noun: tab title; when the queue starts and stops
 	Schedule	Schedule
@@ -2646,10 +2966,20 @@
 #. noun: the tool that starts and stops queues on time
 #. noun: opens the Scheduler (the tool that starts queues on time)
 	Scheduler	Scheduler
+#. web interface text in remote/web/app.js
+	Scheduler timezone: {timezone}. Times use the server clock.	Scheduler timezone: {timezone}. Times use the server clock.
+#. web interface text in remote/web/index.html
+	Search by name or address	Search by name or address
+#. web interface text in remote/web/index.html
+	Search downloads	Search downloads
 #. text in langpick.rs
 	Search:	Search:
 #. text in the Batch download window
 	Second file:	Second file:
+#. web settings label in web.rs
+	Seeding ratio limit (hundredths)	Seeding ratio limit (hundredths)
+#. web settings label in web.rs
+	Seeding time limit (minutes)	Seeding time limit (minutes)
 #. text in a dialog box
 #. title of the folder picker
 	Select a folder	Select a folder
@@ -2658,6 +2988,8 @@
 	Select all	Select all
 #. what a keyboard shortcut does in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 	Select all downloads	Select all downloads
+#. web interface text in remote/web/app.js
+	Select at least one torrent file. Each file must be selected only once.	Select at least one torrent file. Each file must be selected only once.
 #. what a keyboard shortcut does in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 	Select every download up to this one	Select every download up to this one
 #. button in playlistdlg.rs; button in the Add torrent window
@@ -2675,6 +3007,11 @@
 	Select the first / last download	Select the first / last download
 #. what a keyboard shortcut does in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 	Select the previous / next download	Select the previous / next download
+#. web interface text in remote/web/index.html
+	Select visible downloads	Select visible downloads
+#. web interface text in remote/web/app.js
+#. {name} = a file name (keep the braces as they are)
+	Select {name}	Select {name}
 #. text in the Add torrent window
 #. the files chosen: {files} = "3 files", {size} = their total size
 #. {size} = a file size such as "4.2 MB" (keep the braces as they are)
@@ -2702,6 +3039,8 @@
 #. text in a dialog box; text in the Options window; text in a download's progress window
 #. label before where a download's server is (its country and round trip)
 	Server	Server
+#. web interface text in remote/web/index.html
+	Server URL	Server URL
 #. text in the Options window; text in a download's Properties window
 	Server:	Server:
 #. text in the Options window
@@ -2712,6 +3051,8 @@
 	Service	Service
 #. text in the Options window
 	Service:	Service:
+#. web interface text in remote/web/index.html
+	Session inactivity timeout (seconds)	Session inactivity timeout (seconds)
 #. text in the Add torrent window
 #. why "Use the proxy" is greyed in Torrent settings
 	Set a socks5:// proxy in Options → Proxy / Socks first	Set a socks5:// proxy in Options → Proxy / Socks first
@@ -2735,6 +3076,8 @@
 #. button: opens the DNS's details (how it's asked, its servers, a test)
 #. the trailing ... means it opens a window: keep it
 	Settings...	Settings...
+#. web interface text in remote/web/index.html
+	Setup code	Setup code
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Seychelles	Seychelles
@@ -2791,9 +3134,19 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Sierra Leone	Sierra Leone
+#. web interface text in remote/web/index.html; web interface text in remote/web/app.js
+	Sign in	Sign in
 #. button in the Options window
 #. button: sign in to the debrid service in the browser, by typing a code there
 	Sign in in the browser	Sign in in the browser
+#. web interface text in remote/web/index.html
+	Sign in to manage settings	Sign in to manage settings
+#. web interface text in remote/web/index.html; web interface text in remote/web/app.js
+	Sign in to your server	Sign in to your server
+#. web interface text in remote/web/app.js
+	Sign in with the owner password to manage these settings.	Sign in with the owner password to manage these settings.
+#. web interface text in remote/web/index.html
+	Sign out	Sign out
 #. text in the Options window
 #. Options → Accounts: where the debrid accounts' sign-ins and the other passwords are kept (the macOS login keychain)
 	Sign-ins and passwords are kept in the macOS keychain.	Sign-ins and passwords are kept in the macOS keychain.
@@ -2822,6 +3175,8 @@
 	Site/path	Site/path
 #. text in the Options window
 	Site/path:	Site/path:
+#. web settings label in web.rs
+	Sites excluded from capture	Sites excluded from capture
 #. text in the Options window
 #. tab title: user names and passwords for sites
 	Sites Logins	Sites Logins
@@ -2829,7 +3184,7 @@
 	Sites send their best quality as separate video and audio, and ffmpeg joins them. On this system MDM uses yours: install ffmpeg with your package manager.	Sites send their best quality as separate video and audio, and ffmpeg joins them. On this system MDM uses yours: install ffmpeg with your package manager.
 #. text in helpers.rs
 	Sites send their best quality as separate video and audio. ffmpeg puts them together into one file that plays anywhere.	Sites send their best quality as separate video and audio. ffmpeg puts them together into one file that plays anywhere.
-#. text in the Link grabber window; text in a download's progress window; text in the Scheduler window; text in the Add torrent window
+#. text in the Link grabber window; text in a download's progress window; text in the Scheduler window; text in the Add torrent window; web interface text in remote/web/index.html
 #. column title: the file's size
 #. column title: file size
 	Size	Size
@@ -2837,6 +3192,8 @@
 	size unknown	size unknown
 #. text in a download's Properties window
 	Size:	Size:
+#. web interface text in remote/web/index.html
+	Skip to content	Skip to content
 #. text in a download's progress window
 #. a torrent file the user chose not to download
 	Skipped	Skipped
@@ -2860,6 +3217,8 @@
 	Some	Some
 #. text in a dialog box
 	Some of the torrent's files are already in this folder:	Some of the torrent's files are already in this folder:
+#. web interface text in remote/web/index.html
+	Sort downloads	Sort downloads
 #. text in the Options window
 	Sound file	Sound file
 #. page title in the Options window
@@ -2889,6 +3248,10 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Spain	Spain
+#. web interface text in remote/web/index.html
+	Speed	Speed
+#. web interface text in remote/web/index.html
+	Speed limit (KB/sec, 0: unlimited)	Speed limit (KB/sec, 0: unlimited)
 #. text in a download's progress window; text in the tray icon's menu
 #. tab title: the tool that limits the download speed
 	Speed Limiter	Speed Limiter
@@ -2897,7 +3260,7 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Sri Lanka	Sri Lanka
-#. text in the Link grabber window; text in remote.rs
+#. text in the Link grabber window; text in remote.rs; web interface text in remote/web/index.html; web interface text in remote/web/app.js
 #. Link grabber button: download the ticked links now
 #. remote control page (on a phone): button: start a download or a queue
 	Start	Start
@@ -2911,13 +3274,17 @@
 	Start downloading immediately while displaying "Download File Info" dialog	Start downloading immediately while displaying "Download File Info" dialog
 #. text in the tray icon's menu
 	Start main download queue	Start main download queue
-#. text in remote.rs
+#. text in remote.rs; web interface text in remote/web/app.js
 #. remote control page (on a phone): "When" choice: start the download at once
 	Start now	Start now
 #. text in a download's progress window
 	Start positions and download progress by connections	Start positions and download progress by connections
 #. checkbox in a dialog box
 	Start the queue now	Start the queue now
+#. web interface text in remote/web/index.html
+	Start time	Start time
+#. web interface text in remote/web/index.html
+	Start with the server	Start with the server
 #. message or event log entry in the main window
 #. {queue} = a queue name such as "Main queue" (keep the braces as they are)
 	Start {queue}	Start {queue}
@@ -2943,14 +3310,14 @@
 #. text in the Options window
 #. column title: the account's state (premium, days left)
 	State	State
-#. text in the Link grabber window; group box title in the Options window; text in a download's progress window; text in the Scheduler window
+#. text in the Link grabber window; group box title in the Options window; text in a download's progress window; text in the Scheduler window; web interface text in remote/web/app.js
 #. noun: label before the download's state
 #. column title: the download's state
 	Status	Status
 #. text in a download's Properties window
 #. label before the download's state
 	Status:	Status:
-#. text in remote.rs; text in the Add torrent window
+#. text in remote.rs; text in the Add torrent window; web interface text in remote/web/app.js
 #. remote control page (on a phone): button: stop a queue
 	Stop	Stop
 #. text in the Scheduler window; checkbox in the Scheduler window
@@ -2960,19 +3327,27 @@
 	Stop listing	Stop listing
 #. text in the tray icon's menu
 	Stop main download queue	Stop main download queue
+#. web settings label in web.rs
+	Stop seeding after time limit	Stop seeding after time limit
+#. web settings label in web.rs
+	Stop seeding at ratio limit	Stop seeding at ratio limit
 #. text in the Add torrent window
 #. Torrent settings, under "Keep sharing": or stop sharing a finished torrent after sharing it for the number of minutes in the box after it
 	Stop sharing after sharing for	Stop sharing after sharing for
 #. text in the Add torrent window
 #. Torrent settings, under "Keep sharing": stop sharing a finished torrent once its share ratio (sent ÷ received) reaches the number in the box after it
 	Stop sharing at a share ratio of	Stop sharing at a share ratio of
+#. web settings label in web.rs
+	Stop the torrent engine when idle	Stop the torrent engine when idle
 #. checkbox in the Add torrent window
 #. Torrent settings: stop listening when nothing needs the torrent engine
 	Stop the torrent engine when no torrent is running	Stop the torrent engine when no torrent is running
+#. web interface text in remote/web/index.html
+	Stop time	Stop time
 #. message or event log entry in the main window
 #. {queue} = a queue name such as "Main queue" (keep the braces as they are)
 	Stop {queue}	Stop {queue}
-#. value in a column's filter list in the download list; text in the download list (sizes, speeds, status); text in remote.rs
+#. value in a column's filter list in the download list; text in the download list (sizes, speeds, status); text in remote.rs; web interface text in remote/web/index.html
 #. a download's status (state it is in, not a command)
 #. a download's status (state it is in, not a command): stopped by the user
 	Stopped	Stopped
@@ -3027,6 +3402,8 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Syria	Syria
+#. web interface text in remote/web/index.html
+	System theme	System theme
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Taiwan	Taiwan
@@ -3043,6 +3420,8 @@
 	Tell a friend	Tell a friend
 #. group box title in the Options window
 	Temporary directory	Temporary directory
+#. web interface text in remote/web/index.html
+	Temporary login bans	Temporary login bans
 #. button in the Options window
 #. button: asks the chosen DNS for an address, to see it works
 	Test	Test
@@ -3118,6 +3497,8 @@
 #. text in a dialog box
 #. {n} = a number (keep the braces as they are)
 	The computer will shut down in {n} seconds.	The computer will shut down in {n} seconds.
+#. web interface text in remote/web/app.js
+	The configuration changed or a value is invalid. Reload this page section and check the values.	The configuration changed or a value is invalid. Reload this page section and check the values.
 #. text in errors.rs
 	the connection closed before the part was complete	the connection closed before the part was complete
 #. text in errors.rs
@@ -3152,19 +3533,23 @@
 #. text in errors.rs
 	the file changed on the server	the file changed on the server
 #. message or event log entry in the main window
-	The file could not be moved	The file could not be moved
-#. message or event log entry in the main window
 #. {error} = an error message (keep the braces as they are)
 	The file could not be moved: {error}	The file could not be moved: {error}
+#. web interface text in remote/web/app.js
+	The file could not be read. Check its location and server permissions.	The file could not be read. Check its location and server permissions.
 #. message or event log entry in the main window
 #. {error} = an error message (keep the braces as they are)
 	The file could not be read: {error}	The file could not be read: {error}
 #. text in the Checksum window
 #. {algorithm} = a checksum algorithm such as "SHA-256" (keep the braces as they are)
 	The file does NOT match ({algorithm})	The file does NOT match ({algorithm})
+#. web interface text in remote/web/app.js
+	The file does NOT match the expected checksum.	The file does NOT match the expected checksum.
 #. text in the Checksum window
 #. {algorithm} = a checksum algorithm such as "SHA-256" (keep the braces as they are)
 	The file matches ({algorithm})	The file matches ({algorithm})
+#. web interface text in remote/web/app.js
+	The file matches the expected checksum.	The file matches the expected checksum.
 #. text in a dialog box
 	The file saved as	The file saved as
 #. text in the download list (sizes, speeds, status)
@@ -3205,6 +3590,8 @@
 	the password is wrong	the password is wrong
 #. text in errors.rs
 	the path is too long for Windows: {path}	the path is too long for Windows: {path}
+#. web interface text in remote/web/app.js
+	The proxy client address could not be verified. Check trusted proxy configuration.	The proxy client address could not be verified. Check trusted proxy configuration.
 #. text in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 #. why updates could not be checked: the newest release on the site has no number
 	the release has no version	the release has no version
@@ -3233,10 +3620,16 @@
 	the server can't send parts of the file, so it can't be resumed	the server can't send parts of the file, so it can't be resumed
 #. text in errors.rs
 	the server did not answer in time	the server did not answer in time
+#. web interface text in remote/web/app.js
+	The server did not answer. Check the connection and try again.	The server did not answer. Check the connection and try again.
 #. text in errors.rs
 	the server did not send the requested part	the server did not send the requested part
 #. text in errors.rs
 	the server is busy ({status}); try again later	the server is busy ({status}); try again later
+#. web interface text in remote/web/app.js
+	The server is busy. Wait a moment and try again.	The server is busy. Wait a moment and try again.
+#. web interface text in remote/web/app.js
+	The server refused the operation: {reason}	The server refused the operation: {reason}
 #. text in errors.rs
 	the server sent a web page instead of the file (sign-in needed or the link expired?)	the server sent a web page instead of the file (sign-in needed or the link expired?)
 #. text in errors.rs
@@ -3273,6 +3666,8 @@
 	The update couldn't be installed: {error}	The update couldn't be installed: {error}
 #. text in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 	The update is open in your system's package installer.	The update is open in your system's package installer.
+#. web interface text in remote/web/app.js
+	The username, password or setup code is incorrect.	The username, password or setup code is incorrect.
 #. text in a download's Properties window
 	The web page from which this file was obtained:	The web page from which this file was obtained:
 #. message or event log entry in the main window
@@ -3325,7 +3720,7 @@
 #. {error} is why, in English (a file that isn't a theme or a colour scheme, a colour missing)
 #. {error} = an error message (keep the braces as they are)
 	This file can't be used as a theme: {error}	This file can't be used as a theme: {error}
-#. text in remote.rs
+#. text in remote.rs; web interface text in remote/web/app.js
 #. remote control page (on a phone): the file chosen is too large for a .torrent file
 	This file is too large to be a torrent.	This file is too large to be a torrent.
 #. text in a dialog box
@@ -3338,7 +3733,7 @@
 	this is a Google Drive folder, not a file	this is a Google Drive folder, not a file
 #. text in errors.rs
 	this is not a magnet link or a .torrent file	this is not a magnet link or a .torrent file
-#. text in remote.rs
+#. text in remote.rs; web interface text in remote/web/app.js
 #. remote control page (on a phone): the file chosen isn't a .torrent file
 	This is not a torrent file.	This is not a torrent file.
 #. text in extension.rs
@@ -3353,6 +3748,8 @@
 #. tooltip (why a control is greyed) in the Download video window
 #. why "Put them into the video" is greyed: ffmpeg (a helper program) is not installed
 	This needs ffmpeg	This needs ffmpeg
+#. web interface text in remote/web/app.js
+	This operation is available for regular file downloads only.	This operation is available for regular file downloads only.
 #. text in the Options window
 #. Options → Accounts: a portable copy (it writes nothing outside its folder) keeps the sign-ins in its own settings, encrypted so that only this Windows account can read them
 	This portable copy keeps sign-ins and passwords in its own settings, encrypted for your Windows account.	This portable copy keeps sign-ins and passwords in its own settings, encrypted for your Windows account.
@@ -3368,6 +3765,8 @@
 #. text in errors.rs
 #. {name} = a file name (keep the braces as they are)
 	this torrent has a file name that isn't safe to write, so it wasn't added: {name}	this torrent has a file name that isn't safe to write, so it wasn't added: {name}
+#. web interface text in remote/web/app.js
+	This torrent has too many files to edit here. File selection is read-only.	This torrent has too many files to edit here. File selection is read-only.
 #. text in the Add torrent window
 	This torrent is already in the download list	This torrent is already in the download list
 #. text in errors.rs
@@ -3417,23 +3816,41 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Tonga	Tonga
+#. web interface text in remote/web/app.js
+	Too many failed logins. Try again in {seconds} seconds, or use local recovery.	Too many failed logins. Try again in {seconds} seconds, or use local recovery.
 #. text in errors.rs
 	too many redirects	too many redirects
 #. value in a column's filter list in the download list; text in the Add torrent window
 #. where a download comes from: Web (web or FTP server) or Torrent (BitTorrent)
 #. noun: label before the torrent file or magnet link
 	Torrent	Torrent
+#. web interface text in remote/web/app.js
+	Torrent changes requested. Results appear in Activity.	Torrent changes requested. Results appear in Activity.
+#. web interface text in remote/web/index.html
+	Torrent controls	Torrent controls
 #. text in the download list (sizes, speeds, status)
 	Torrent downloads (magnet links and .torrent files)	Torrent downloads (magnet links and .torrent files)
+#. web interface text in remote/web/index.html
+	Torrent file	Torrent file
 #. message or event log entry in the main window; text in the Add torrent window
 #. the kind of file the Open dialog lists
 	Torrent files	Torrent files
+#. web interface text in remote/web/app.js
+	Torrent info hash	Torrent info hash
+#. web settings label in web.rs
+	Torrent listening port (0: automatic)	Torrent listening port (0: automatic)
+#. web interface text in remote/web/app.js
+	Torrent metadata is unavailable. Wait for discovery or restore the saved torrent file.	Torrent metadata is unavailable. Wait for discovery or restore the saved torrent file.
+#. web interface text in remote/web/app.js
+	Torrent operation requested. Results appear in Activity.	Torrent operation requested. Results appear in Activity.
 #. window title in the Add torrent window
 	Torrent settings	Torrent settings
 #. text in torrent downloads
 #. an error: Torrent settings ask for the proxy, and Options → Proxy / Socks has no SOCKS5 one
 	Torrent settings say to use the proxy, but Proxy / Socks has no SOCKS5 proxy	Torrent settings say to use the proxy, but Proxy / Socks has no SOCKS5 proxy
-#. text in the download list (sizes, speeds, status)
+#. web settings label in web.rs
+	Torrent upload limit (KB/sec)	Torrent upload limit (KB/sec)
+#. web settings label in web.rs; text in the download list (sizes, speeds, status)
 #. category name: torrent downloads (BitTorrent)
 	Torrents	Torrents
 #. text in torrent downloads
@@ -3443,18 +3860,28 @@
 #. text in a download's progress window
 #. column title: a server that lists the peers
 	Tracker	Tracker
-#. text in a download's progress window
+#. web interface text in remote/web/app.js
+	Tracker update requested. Results appear in Activity.	Tracker update requested. Results appear in Activity.
+#. text in a download's progress window; web interface text in remote/web/index.html
 #. tab title: the servers that list the peers
 	Trackers	Trackers
 #. text in the Add torrent window
 #. Add trackers: above the box; {name} is the torrent's name
 #. {name} = a file name (keep the braces as they are)
 	Trackers to add to {name}, one address a line:	Trackers to add to {name}, one address a line:
+#. web settings label in web.rs
+	Transfer quota (MB)	Transfer quota (MB)
 #. text in a download's progress window
 	Transfer rate	Transfer rate
+#. web settings label in web.rs
+	Trash archives after extraction	Trash archives after extraction
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Trinidad and Tobago	Trinidad and Tobago
+#. web interface text in remote/web/index.html
+	Trusted proxy IPs/CIDRs	Trusted proxy IPs/CIDRs
+#. web interface text in remote/web/index.html
+	Trusted reverse proxies	Trusted reverse proxies
 #. button in helpers.rs
 	Try again	Try again
 #. text in the Scheduler window
@@ -3553,30 +3980,38 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	United States Minor Outlying Islands	United States Minor Outlying Islands
-#. text in a download's Properties window
+#. text in a download's Properties window; web interface text in remote/web/app.js
 	Unknown	Unknown
 #. text in a dialog box; text in a download's progress window; text in whereis.rs
 #. the reason a download failed is not known
 #. where a download's server is: not known (no address seen)
 #. where a download's server is: an address the location table doesn't place
 	unknown	unknown
-#. button in the Options window
+#. button in the Options window; web interface text in remote/web/app.js
 #. button (short): move the account up the list (accounts are asked in the list's order)
 	Up	Up
 #. text in playlistdlg.rs
 #. a quality in Download video for a whole playlist: each video at this height or the nearest below; {height} is a number (1080)
 	Up to {height}p	Up to {height}p
+#. web interface text in remote/web/index.html
+	Update credentials and sign out	Update credentials and sign out
 #. button in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 #. button: download and install the new version, then restart
 	Update now	Update now
 #. text in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 #. {error} = an error message (keep the braces as they are)
 	Updates could not be checked: {error}	Updates could not be checked: {error}
+#. web interface text in remote/web/index.html
+	Upload limit (KB/sec, 0: unlimited)	Upload limit (KB/sec, 0: unlimited)
+#. web interface text in remote/web/app.js
+	Uploaded	Uploaded
 #. text in a dialog box
 	URL	URL
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Uruguay	Uruguay
+#. web interface text in remote/web/app.js
+	Use a valid file name without folder separators.	Use a valid file name without folder separators.
 #. text in the Options window
 	Use advanced browser integration	Use advanced browser integration
 #. button in helpers.rs
@@ -3595,9 +4030,19 @@
 #. text in the Batch download window
 #. why Batch download's OK is greyed
 	Use one * only	Use one * only
+#. web settings label in web.rs
+	Use passive FTP	Use passive FTP
+#. web settings label in web.rs
+	Use proxy for FTP	Use proxy for FTP
+#. web settings label in web.rs
+	Use proxy for HTTP	Use proxy for HTTP
+#. web settings label in web.rs
+	Use proxy for HTTPS	Use proxy for HTTPS
 #. text in the Options window
 #. \\n starts a new line: break lines where they fit the translation
 	Use proxy/socks from a browser's request if there are download errors /\nfor the downloads intercepted from the browser	Use proxy/socks from a browser's request if there are download errors /\nfor the downloads intercepted from the browser
+#. web settings label in web.rs
+	Use SOCKS5 proxy for torrents	Use SOCKS5 proxy for torrents
 #. checkbox in a download's progress window
 	Use Speed Limiter	Use Speed Limiter
 #. text in the Options window
@@ -3622,15 +4067,21 @@
 	User	User
 #. page title in the Options window
 	User names and passwords for servers/sites	User names and passwords for servers/sites
+#. web settings label in web.rs
+	User-Agent	User-Agent
 #. text in the Options window
 	User-Agent for manually added downloads:	User-Agent for manually added downloads:
 #. text in the Options window
 	User:	User:
 #. label in the Options window
 	UserName	UserName
+#. web interface text in remote/web/index.html
+	Username	Username
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Uzbekistan	Uzbekistan
+#. web interface text in remote/web/index.html
+	Validated server settings. Existing transfers keep their current connection options until restarted.	Validated server settings. Existing transfers keep their current connection options until restarted.
 #. text in a download's progress window
 	Value	Value
 #. text in countries.rs
@@ -3648,7 +4099,7 @@
 #. text in the Checksum window
 #. both verbs: Verify = check the file now; Close = close the window
 	Verify	Verify
-#. window title in the Checksum window; text in the Checksum window
+#. window title in the Checksum window; text in the Checksum window; web interface text in remote/web/index.html
 	Verify checksum	Verify checksum
 #. text in the download list (sizes, speeds, status)
 #. the trailing ... means it is still going on: keep it
@@ -3685,7 +4136,7 @@
 #. tooltip (why a control is greyed) in the Download video window
 #. why Download Now is greyed: a playlist's videos are still being listed
 	Wait for the list, or stop listing	Wait for the list, or stop listing
-#. text in remote.rs
+#. text in remote.rs; web interface text in remote/web/app.js
 #. remote control page (on a phone): "When" choice: the download waits in a queue; {queue} its name
 #. {queue} = a queue name such as "Main queue" (keep the braces as they are)
 	Wait in {queue}	Wait in {queue}
@@ -3698,6 +4149,9 @@
 #. Options → Remote → Pair a device: how long the code stays valid; {time} = minutes:seconds ("9:58")
 #. {time} = a time of day (keep the braces as they are)
 	Waiting for the device. The code works for {time}.	Waiting for the device. The code works for {time}.
+#. web interface text in remote/web/app.js
+#. the trailing ... means it is still going on: keep it
+	Waiting for the server. Retrying automatically...	Waiting for the server. Retrying automatically...
 #. message or event log entry in the main window
 	Waiting: the download limit is reached (Scheduler)	Waiting: the download limit is reached (Scheduler)
 #. text in the Scheduler window
@@ -3712,6 +4166,10 @@
 #. value in a column's filter list in the download list
 #. where a download comes from: Web (web or FTP server) or Torrent (BitTorrent)
 	Web	Web
+#. web interface text in remote/web/index.html
+	Web UI authentication	Web UI authentication
+#. web interface text in remote/web/index.html
+	Web workspace	Web workspace
 #. text in the Scheduler window
 	Wednesday	Wednesday
 #. text in countries.rs
@@ -3725,7 +4183,7 @@
 	What were you doing when it happened? (optional)	What were you doing when it happened? (optional)
 #. text in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 	What's new:	What's new:
-#. text in remote.rs
+#. text in remote.rs; web interface text in remote/web/index.html
 #. remote control page (on a phone): label of the choice: start the new download now, or let it wait in a queue
 	When	When
 #. text in the Batch download window
@@ -3810,6 +4268,8 @@
 #. text in helpers.rs
 #. Video helpers (macOS, Linux): {path} = the system's ffmpeg
 	Your system's: {path}	Your system's: {path}
+#. web interface text in remote/web/index.html
+	Your transfers, live from the server.	Your transfers, live from the server.
 #. text in the Download video window
 #. the Download video window: yt-dlp couldn't read the cookies of the browser chosen in Options (Chrome, Edge...), which holds them while it runs; {browser} = its name
 	yt-dlp can't read {browser}'s cookies while {browser} is open. Close {browser} and look the page up again, or choose Firefox in Options → Sites Logins.	yt-dlp can't read {browser}'s cookies while {browser} is open. Close {browser} and look the page up again, or choose Firefox in Options → Sites Logins.
@@ -3868,6 +4328,8 @@
 #. text in the download list
 #. {column} = a column title (keep the braces as they are)
 	{column} contains	{column} contains
+#. web interface text in remote/web/app.js
+	{complete} of {total} pieces verified	{complete} of {total} pieces verified
 #. message or event log entry in the main window
 #. {count} = "2 downloading"; {speed} = all of them together, like "1.25 MB/sec"
 #. {count} = a number (keep the braces as they are)
@@ -3952,6 +4414,9 @@
 #. a number of connections the app learned by itself for a server
 #. {n} = a number (keep the braces as they are)
 	{n} (auto)	{n} (auto)
+#. web interface text in remote/web/app.js
+#. {n} = a number (keep the braces as they are)
+	{n} downloads · {concurrency} concurrent	{n} downloads · {concurrency} concurrent
 #. text in playlistdlg.rs
 #. in Download video for a playlist: how many videos are ticked, of how many
 #. {n} = a number (keep the braces as they are)
@@ -3959,11 +4424,16 @@
 #. text in the Link grabber window
 #. {n} = a number (keep the braces as they are)
 	{n} of {total} selected	{n} of {total} selected
+#. web interface text in remote/web/app.js
+#. {n} = a number (keep the braces as they are)
+	{n} selected	{n} selected
 #. text in the download list (sizes, speeds, status)
 #. a torrent's status while the user's debrid service downloads it, before MDM gets its files; {service} the service ("Real-Debrid"), {percent} how far it is ("45%")
 	{percent} at {service}	{percent} at {service}
 #. text in errors.rs
 	{problem} ({cause})	{problem} ({cause})
+#. web interface text in remote/web/app.js
+	{received} of {total}	{received} of {total}
 #. text in errors.rs
 #. a debrid service's error: too many requests; MDM waits and retries
 	{service} asks to slow down; MDM will try again in a minute	{service} asks to slow down; MDM will try again in a minute
@@ -4009,7 +4479,7 @@
 #. text in a download's Properties window
 #. {size} = a file size such as "4.2 MB"; {bytes} = a number of bytes (keep the braces as they are)
 	{size} ({bytes} Bytes)	{size} ({bytes} Bytes)
-#. text in remote.rs
+#. text in remote.rs; web interface text in remote/web/app.js
 #. remote control page (on a phone): free disk space on the computer; {size} e.g. "120 GB"
 #. {size} = a file size such as "4.2 MB" (keep the braces as they are)
 	{size} free	{size} free

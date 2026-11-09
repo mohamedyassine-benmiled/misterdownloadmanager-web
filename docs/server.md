@@ -16,8 +16,8 @@ computer on your network), the browser extension pointed at it, or its command l
 Build the image from MDM's source (a published image comes later):
 
 ```sh
-git clone https://github.com/anefzaoui/misterdownloadmanager
-cd misterdownloadmanager
+git clone https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web
+cd misterdownloadmanager-web
 docker build -t misterdownloadmanager .
 ```
 
@@ -46,26 +46,75 @@ docker run -d --name mdm --restart unless-stopped \
 
 [docker/compose.yml](../docker/compose.yml) does the same with Docker Compose.
 
-## Pair your phone
+### Configurable Docker Compose (web fork)
 
-`docker logs mdm` shows the address to open and, while no device is paired, a pairing code with a
+The fork's Compose template defaults to access from the Docker host only and builds the image
+from this checkout. It does not depend on a pre-published image. From the repository root:
+
+```sh
+cp docker/.env.example docker/.env
+mkdir -p docker/config docker/downloads
+```
+
+Edit `docker/.env` before starting:
+
+- Set `MDM_UID` and `MDM_GID` to the output of `id -u` and `id -g`. Both mounted directories
+  must be writable by that user; `/config` must also be private to that user.
+- `MDM_CONFIG_DIR` and `MDM_DOWNLOADS_DIR` are bind-mount paths. Relative paths resolve from
+  `docker/compose.yml`'s directory, so `./config` means `docker/config`. Absolute paths work too.
+- To connect from another device, set `MDM_BIND_ADDRESS` to the host's specific LAN/VPN IP,
+  `MDM_REMOTE_URL` to the HTTPS URL clients will open, and `MDM_REMOTE_HOSTS` to any hostname
+  used in that URL. Permit the port only on the intended private network.
+- `MDM_WEB_PORT` is the host's port; the container continues listening on 8463. If you change
+  it, update the public URL too. Do not set the container's listener to host loopback.
+- `TZ` controls the server's timezone. `MDM_BUILD_PROFILE=dev` is useful for a faster trial
+  build; use `release` for normal deployment.
+
+```sh
+docker compose --env-file docker/.env -f docker/compose.yml config --quiet
+docker compose --env-file docker/.env -f docker/compose.yml up -d --build
+docker compose --env-file docker/.env -f docker/compose.yml logs mdm
+docker compose --env-file docker/.env -f docker/compose.yml exec mdm misterdownloadmanager-cli pair
+```
+
+Compose reaps helper processes, waits up to 60 seconds for a clean stop, and rotates container
+logs. The image healthcheck runs `misterdownloadmanager-cli health` against the local application
+loop, HTTPS listener state and authentication storage; it needs no owner credentials. The Compose and systemd templates
+still require Linux runtime validation; see [web development status](web-development.md).
+The current remote API remains intended for LAN/VPN use, not direct internet exposure.
+
+## Set up the Web UI owner
+
+`docker logs mdm` shows the address to open and, before owner setup or while no device is paired, a one-time code with a
 QR code:
 
 ```text
 The remote control listens at: https://172.17.0.2:8463/
 Its certificate's SHA-256 fingerprint: DE:26:7F:…
-No device is paired yet. Open the address (or scan this) and enter the code 1037 1606 …
+Open the address to set up the Web UI owner, or pair an extension, with code 1037 1606 …
 ```
 
 Inside a container, the address MDM finds is the container's own: give it the one you open, the
 **server's** address with the port you published, as `-e MDM_REMOTE_URL=https://192.168.1.10:8463/`,
-and the log and the QR code show that one. Then pair as
-[Control MDM from your phone](remote-control.md#pair-your-phone) says. For another code, at any
+and the log and the QR code show that one. Open the HTTPS page, verify the certificate fingerprint,
+and choose an owner username and a password of at least 12 bytes using that code. Subsequent
+browser visits use the owner login, not a saved extension token. For another code, at any
 time:
 
 ```sh
 docker exec mdm misterdownloadmanager-cli pair
 ```
+
+The downloads-first workspace includes details, bulk actions, allowlisted application settings,
+custom categories, queue membership/schedules and extension-device management. **Authentication**
+contains username/password changes, localhost/subnet bypass (both off by default), failed-login
+bans and inactivity timeout. Sensitive changes require the current owner password. See
+[authentication and local recovery](webui-authentication.md) and [remaining feature scope](web-development.md).
+
+Owner download details also provide [file and torrent tools](web-download-tools.md): safe
+move/rename, paused source replacement, checksum verification, torrent file/order/upload
+controls, tracker additions and peer information. Deployment testing is deliberately deferred
+to [the Linux server checklist](linux-server-testing.md) until application work is complete.
 
 To open the page by the server's name (`https://nas.local:8463/`), give MDM that name:
 `-e MDM_REMOTE_HOSTS=nas.local` (several: separated by commas). Other names are refused, so that
@@ -106,13 +155,86 @@ The command line talks to it as to a desktop MDM, with the same data folder:
 `MDM_DATA_DIR=~/mdm-server misterdownloadmanager-cli status` (once `api on`), `pair`, and adding
 an address: `misterdownloadmanager /d https://example.com/file.zip`.
 
+### Run as a systemd service (web fork)
+
+After installing the release binaries (or building them from source), place
+`misterdownloadmanager` and `misterdownloadmanager-cli` in `/usr/local/bin`. The example service
+assumes those paths and a dedicated non-login account. On a system using `useradd`:
+
+```sh
+sudo useradd --system --user-group --home-dir /var/lib/mdm --shell /usr/sbin/nologin mdm
+sudo install -d -o mdm -g mdm -m 0700 /var/lib/mdm
+sudo install -d -o mdm -g mdm -m 0750 /srv/downloads
+sudo install -d -o root -g root -m 0755 /etc/mdm
+sudo install -o root -g root -m 0600 deploy/systemd/mdm.env.example /etc/mdm/mdm.env
+sudo install -o root -g root -m 0644 deploy/systemd/mdm.service /etc/systemd/system/mdm.service
+```
+
+If the account or folders already exist, inspect them first rather than recreating or recursively
+changing ownership. Edit `/etc/mdm/mdm.env` for your directories, URL and listener. The default
+listener is `127.0.0.1`; for private remote access, choose a specific LAN/VPN address assigned to
+the host. Do not use `0.0.0.0`: the existing runtime intentionally refuses wildcard listeners.
+
+```sh
+sudo systemd-analyze verify /etc/systemd/system/mdm.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now mdm
+sudo journalctl -u mdm -n 50 --no-pager
+sudo -u mdm env MDM_DATA_DIR=/var/lib/mdm /usr/local/bin/misterdownloadmanager-cli pair
+```
+
+The service has no desktop session requirement and logs to journald. `systemctl stop mdm`
+allows 60 seconds to persist the list before forced termination. The configuration/state folder
+is private; new files use a restrictive umask. The service cannot access home directories; use
+a service-owned directory under `/srv` or a mounted share instead. If another service must read
+completed downloads, deliberately configure directory/ACL access rather than running MDM as root.
+
+For another downloads mount, use `sudo systemctl edit mdm` and replace the mount dependency:
+
+```ini
+[Unit]
+RequiresMountsFor=
+RequiresMountsFor=/mnt/downloads
+```
+
+Also set `MDM_DOWNLOADS=/mnt/downloads` in `/etc/mdm/mdm.env`, grant `mdm` access to that directory,
+then reload and restart the service. Ensure network shares are mounted before starting; otherwise
+files may land on the underlying local filesystem. Environment overrides persisted settings,
+and CLI flags override both. Back up `/var/lib/mdm` (including authentication/TLS material) while
+the service is stopped, plus the downloads/partial files you need; protect that backup as a secret.
+
 ## Send downloads from your browser
 
 In the browser extension's menu, **Send downloads to → Another Mister Download Manager (a server)**: type the server's address,
 open it once in that browser to accept its certificate, then enter a pairing code (`pair`
 above). Downloads the extension catches, and **Download with Mister Download Manager** on a link,
 then go to the server instead of this computer. The browser's cookies are not sent to the server:
-a download that needs you to be signed in to a site stays with this computer.
+session-bound or IP-bound links may fail on the server even when they work in the browser.
+POST/form downloads and URLs containing embedded credentials stay with the browser; use the
+local destination when a download requires your browser session.
+
+New extension pairings are capture-only: they can add downloads and read server capture rules/status,
+but cannot read history, delete downloads or change owner settings. Issue a fresh one-time code
+from **Extensions → Generate pairing code** (requires owner password) or the local CLI. Existing
+legacy download-control tokens keep their previous permissions; revoke unneeded devices in the UI.
+
+The extension preserves an optional URL prefix, such as `https://nas.example/mdm/`; the proxy
+must route that prefix to MDM and preserve its Host/Origin policy. Prefix preservation in the
+extension is implemented, but end-to-end reverse-proxy deployment remains a separate validation
+task. Plain HTTP, embedded server credentials, query strings and fragments are refused in the
+server setting. Tokens are local to this browser and are not sent through redirects.
+
+Opening the extension popup checks the actual server response rather than assuming a saved token
+means it is online. The URL remains visible and **Open Mister Download Manager** opens that
+server's web interface. If the token is revoked, pair again using a new code; the extension keeps
+the configured URL and never silently switches to a local MDM. Only selecting **This computer**
+switches the destination back.
+
+The browser download is canceled only after a valid acceptance response. Failed or malformed
+responses leave it with the browser. The legacy API has no idempotency support, so a request whose
+reply is lost can still have been accepted by the server; the extension does not automatically
+retry it. Check the web list before sending again. Torrent metadata requests still use the
+existing `pending` acknowledgment; persistent job IDs and durable capture acceptance are planned.
 
 ## What a server doesn't do
 

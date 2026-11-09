@@ -29,7 +29,7 @@ const MAX_URL: usize = 8192;
 const ANSWER_WAIT: Duration = Duration::from_secs(5);
 
 pub struct State {
-    inner: Arc<Inner>,
+    pub(crate) inner: Arc<Inner>,
     pub hosts: Vec<String>,
     generation: u64,
 }
@@ -44,7 +44,7 @@ impl State {
     }
 }
 
-type S = axum::extract::State<Arc<State>>;
+pub(crate) type S = axum::extract::State<Arc<State>>;
 
 /// The connection's other end (for the log of pairing tries; tokens are never logged).
 #[derive(Clone, Copy, Debug)]
@@ -83,6 +83,7 @@ pub fn router(state: Arc<State>) -> Router {
         .route("/api/texts", get(texts))
         .route("/api/pair", post(pair))
         .route("/api/list", get(list))
+        .route("/api/status", get(capture_status))
         .route("/api/add", post(add))
         .route(
             "/api/torrent",
@@ -91,6 +92,14 @@ pub fn router(state: Arc<State>) -> Router {
         .route("/api/act", post(act))
         .route("/api/queue", post(queue))
         .route("/api/forget", post(forget))
+        .merge(crate::web_auth::routes())
+        .route("/api/v1/downloads", get(list).post(add))
+        .route("/api/v1/actions", post(act))
+        .route("/api/v1/queues/action", post(queue))
+        .route(
+            "/api/v1/torrent",
+            post(torrent).layer(DefaultBodyLimit::max(MAX_TORRENT)),
+        )
         .layer(DefaultBodyLimit::max(MAX_BODY))
         .layer(axum::middleware::from_fn_with_state(state.clone(), guard))
         .with_state(state)
@@ -108,7 +117,7 @@ fn asset(kind: &'static str, body: &'static str) -> Response {
 }
 
 /// An error answer, shaped as the automation API's (`mdm_ipc::api::ErrorAnswer`).
-fn error(status: StatusCode, code: &str) -> Response {
+pub(crate) fn error(status: StatusCode, code: &str) -> Response {
     let body = mdm_ipc::api::line(&mdm_ipc::api::ErrorAnswer {
         error: code.replace('-', " "),
         code: Some(code.to_owned()),
@@ -116,7 +125,7 @@ fn error(status: StatusCode, code: &str) -> Response {
     (status, [(header::CONTENT_TYPE, "application/json")], body).into_response()
 }
 
-fn json(body: String) -> Response {
+pub(crate) fn json(body: String) -> Response {
     ([(header::CONTENT_TYPE, "application/json")], body).into_response()
 }
 
@@ -139,6 +148,16 @@ async fn guard(s: S, req: Request, next: Next) -> Response {
     // Another site's page sending requests here (its scripts can't read the token, but none of
     // its requests are taken either). The page itself may be opened from a link anywhere.
     if req.uri().path().starts_with("/api/") && !same_origin(headers, &host) {
+        return error(StatusCode::FORBIDDEN, "other-origin");
+    }
+    // Browser administration is not the legacy extension-token surface. An extension origin
+    // can capture through /api/add but must never obtain browser sessions or owner settings.
+    if req.uri().path().starts_with("/api/v1/")
+        && headers
+            .get(header::ORIGIN)
+            .and_then(|o| o.to_str().ok())
+            .is_some_and(|o| !o.eq_ignore_ascii_case(&format!("https://{host}")))
+    {
         return error(StatusCode::FORBIDDEN, "other-origin");
     }
     let mut res = next.run(req).await;
@@ -212,14 +231,30 @@ impl FromRequestParts<Arc<State>> for Paired {
             .filter(|t| !t.is_empty() && t.len() <= 128);
         let device = token.and_then(|t| s.inner.devices.lock().unwrap().check(t));
         match device {
-            Some(d) => Ok(Paired(d.id)),
-            None => Err(error(StatusCode::UNAUTHORIZED, "not-paired")),
+            Some(d) => {
+                if d.scope == crate::devices::Scope::Capture
+                    && !matches!(
+                        parts.uri.path(),
+                        "/api/status" | "/api/add" | "/api/torrent" | "/api/forget"
+                    )
+                {
+                    return Err(error(StatusCode::FORBIDDEN, "insufficient-scope"));
+                }
+                Ok(Paired(d.id))
+            }
+            None if token.is_some() => Err(error(StatusCode::UNAUTHORIZED, "not-paired")),
+            None => {
+                crate::web_auth::identity(parts, s, false)
+                    .await
+                    .map_err(crate::web_auth::failure)?;
+                Ok(Paired(String::new()))
+            }
         }
     }
 }
 
 /// Hand `cmd` (marked remote) to the app and answer with what it says.
-async fn ask(s: &State, mut cmd: mdm_ipc::Command) -> Response {
+pub(crate) async fn ask(s: &State, mut cmd: mdm_ipc::Command) -> Response {
     cmd.remote = true;
     let sink = s.inner.sink.clone();
     let answer = tokio::task::spawn_blocking(move || sink.ask(cmd, ANSWER_WAIT))
@@ -249,6 +284,12 @@ struct PairBody {
     code: String,
     #[serde(default)]
     name: String,
+    #[serde(default = "capture_scope")]
+    scope: crate::devices::Scope,
+}
+
+fn capture_scope() -> crate::devices::Scope {
+    crate::devices::Scope::Capture
 }
 
 async fn pair(
@@ -259,13 +300,13 @@ async fn pair(
     let check = s.inner.pairing.lock().unwrap().check(&b.code, peer.0.ip());
     match check {
         Check::Right => {
-            let (device, token) = s.inner.devices.lock().unwrap().add(&b.name);
+            let (device, token) = s.inner.devices.lock().unwrap().add_scoped(&b.name, b.scope);
             s.inner.pairing.lock().unwrap().done(&device.name);
             tracing::info!("remote control: {} paired ({})", device.name, peer.0.ip());
             // The app shows it (Options' list, the pairing window).
             s.inner.sink.wake();
             json(
-                serde_json::json!({ "token": token, "id": device.id, "name": device.name })
+                serde_json::json!({ "token": token, "id": device.id, "name": device.name, "scope": device.scope })
                     .to_string(),
             )
         }
@@ -291,6 +332,17 @@ async fn list(s: S, _: Paired) -> Response {
         &s,
         mdm_ipc::Command {
             query: Some("list".into()),
+            ..Default::default()
+        },
+    )
+    .await
+}
+
+async fn capture_status(s: S, _: Paired) -> Response {
+    ask(
+        &s,
+        mdm_ipc::Command {
+            query: Some("capture".into()),
             ..Default::default()
         },
     )

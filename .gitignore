@@ -24,3 +24,9 @@ node_modules/
 /.claude/worktrees/
 # Keys (API keys, signing keys): never committed.
 /k/
+
+# Server deployments: local configuration, credentials and downloaded files.
+/docker/.env
+/docker/config/
+/docker/downloads/
+/deploy/systemd/mdm.env

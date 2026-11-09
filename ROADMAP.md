@@ -7,6 +7,27 @@ issue, where the details and the discussion are. Released changes are in
 
 ✅ done, coming in 0.5.0 · 🔄 being built · 📋 planned · 🔍 looking into it
 
+## Web fork
+
+The fork's implementation sequence and acceptance criteria are in [plan.md](plan.md).
+
+- ✅ Extension server destinations preserve a URL prefix, check connectivity when the popup
+  opens, retain the destination after revocation, and open the server's web interface.
+- ✅ Remote-capture regression tests for Firefox and Chromium, including browser fallback.
+- 🔄 Configurable Docker Compose and native Linux/systemd deployment templates; Linux runtime
+  validation is pending.
+- ✅ Scoped owner enrollment, separate capture/control device tokens and a versioned core management API.
+- ✅ Web UI username/password settings, optional localhost/subnet authentication bypass,
+  failed-login bans and session timeout ([requirements](docs/webui-authentication.md)).
+- ✅ Responsive downloads workspace, details, bulk actions, allowlisted settings, categories and queue/schedule editing.
+- ✅ Owner move/rename, expired-link replacement and checksums; torrent file selection, piece
+  order/upload limits, trackers, peer details and recheck/reannounce controls.
+- 🔄 Real headless integration and deployment acceptance; see [verification status](docs/web-development.md).
+- 📋 Advanced media/gallery, pre-start torrent selection, accounts/secrets, durable capture jobs,
+  backup/restore, SSE updates, hardened reverse-proxy deployment and published images.
+- ⏸ Linux, Docker/Compose and systemd runtime validation is deferred until application work is
+  complete: [later server checklist](docs/linux-server-testing.md).
+
 ## Version 0.5.0
 
 Everything below ships together, in version 0.5.0.

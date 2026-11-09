@@ -77,9 +77,15 @@ pub struct Command {
     /// A queue by name: where `url` waits (with `later`), or the one `action` starts or stops.
     pub queue: Option<String>,
     /// Sent by the remote control (#141, crates/remote) on behalf of a paired device, never read
-    /// from a request line: no window opens for it, and it may only add, list and act.
+    /// from a request line: no window opens for it. Owner operations additionally require the
+    /// internal-only `web_owner` flag set by the authenticated HTTPS boundary.
     #[serde(skip)]
     pub remote: bool,
+    /// In-process web administration only. Neither field is accepted from local JSON IPC.
+    #[serde(skip)]
+    pub web_owner: bool,
+    #[serde(skip)]
+    pub web_request: Option<serde_json::Value>,
     /// The remote control: an uploaded .torrent file's bytes (never read from a request line).
     #[serde(skip)]
     pub torrent_file: Option<Vec<u8>>,
@@ -136,7 +142,11 @@ pub struct BrowserCookie {
 impl Command {
     /// Asks for an answer (a JSON line) rather than "ok".
     pub fn wants_reply(&self) -> bool {
-        self.query.is_some() || self.api.is_some() || self.action.is_some() || self.pair
+        self.query.is_some()
+            || self.api.is_some()
+            || self.action.is_some()
+            || self.pair
+            || self.web_request.is_some()
     }
 }
 

@@ -59,7 +59,8 @@ pub fn config(settings: &Settings) -> mdm_remote::Config {
     }
 }
 
-/// The page's own texts (crates/remote/web), English as written there.
+/// Legacy remote-page keys retained during migration. New workspace literals are collected
+/// from the embedded source below, and tools/i18n/extract.py collects the same source files.
 const PAGE: &[&str] = &[
     // i18n: remote control page (on a phone): its menu's button
     crate::i18n::mark("More"),
@@ -172,6 +173,30 @@ const KNOWN: &[&str] = &[
 /// The units the page writes sizes and speeds with (context "unit"; key `unit:<template>`).
 const UNITS: &[&str] = &["{n} KB", "{n} MB", "{n} GB", "{n} KB/sec", "{n} MB/sec"];
 
+fn web_sources() -> std::collections::BTreeSet<String> {
+    let html = include_str!("../../remote/web/index.html");
+    let js = include_str!("../../remote/web/app.js");
+    let mut sources = std::collections::BTreeSet::new();
+    for attr in ["data-t=\"", "data-ta=\"", "data-tp=\""] {
+        for part in html.split(attr).skip(1) {
+            sources.insert(part.split('"').next().unwrap_or_default().to_owned());
+        }
+    }
+    for call in ["T('", "F('"] {
+        for part in js.split(call).skip(1) {
+            sources.insert(part.split('\'').next().unwrap_or_default().to_owned());
+        }
+    }
+    for field in crate::app::web::specs() {
+        for key in ["label", "section"] {
+            if let Some(text) = field[key].as_str() {
+                sources.insert(text.to_owned());
+            }
+        }
+    }
+    sources
+}
+
 /// The page's texts in the first of `langs` (the browser's languages, most wanted first) that
 /// MDM speaks; else in MDM's own language.
 pub fn page_texts(langs: &str) -> mdm_remote::PageTexts {
@@ -185,6 +210,9 @@ pub fn page_texts(langs: &str) -> mdm_remote::PageTexts {
     let mut texts = std::collections::BTreeMap::new();
     for s in PAGE.iter().chain(KNOWN) {
         texts.insert((*s).to_owned(), i.t(lang, s).to_owned());
+    }
+    for s in web_sources() {
+        texts.insert(s.clone(), i.t(lang, &s).to_owned());
     }
     for u in UNITS {
         texts.insert(format!("unit:{u}"), i.tc(lang, "unit", u).to_owned());
@@ -293,16 +321,11 @@ mod tests {
             used.push(s.to_owned());
         }
         assert!(used.len() > 40, "the page's texts were found");
+        let texts = page_texts("en");
         for u in &used {
             assert!(
-                PAGE.contains(&u.as_str()) || KNOWN.contains(&u.as_str()),
+                texts.texts.contains_key(u),
                 "the page shows {u:?}, which remote.rs doesn't list"
-            );
-        }
-        for p in PAGE {
-            assert!(
-                used.iter().any(|u| u == p),
-                "{p:?} is listed but not on the page"
             );
         }
     }

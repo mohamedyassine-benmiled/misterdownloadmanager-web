@@ -6,3 +6,6 @@ tools/installer/languages/*.isl text eol=crlf
 crates/*/tests/fixtures/** -text
 # Scripts that run inside Linux (mdm-lab copies them in from a Windows checkout).
 tools/lab/wsl/*.sh text eol=lf
+# Deployment files are copied from Windows checkouts onto Linux hosts.
+deploy/systemd/* text eol=lf
+docker/.env.example text eol=lf

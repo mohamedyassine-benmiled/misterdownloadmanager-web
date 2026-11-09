@@ -107,7 +107,7 @@ fn pair_then_control() {
         // No code shown: refused.
         let pair = |code: &str| {
             c.post(format!("{base}api/pair"))
-                .json(&serde_json::json!({ "code": code, "name": "Test phone" }))
+                .json(&serde_json::json!({ "code": code, "name": "Test phone", "scope": "control" }))
                 .send()
         };
         assert_eq!(pair("12345678").await.unwrap().status(), 410);
@@ -291,4 +291,137 @@ fn never_every_address() {
         });
         assert_eq!(remote.status(), Status::NoAddress, "{listen}");
     }
+}
+
+#[test]
+fn owner_authentication_and_csrf_end_to_end() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let (remote, base, _seen, dir) = start(&rt);
+    rt.block_on(async {
+        let c = client();
+        let endpoint = |path: &str| format!("{base}api/v1/{path}");
+        let r = c.get(endpoint("auth/session")).send().await.unwrap();
+        let view: serde_json::Value = r.json().await.unwrap();
+        assert_eq!(view["configured"], false);
+        assert_eq!(c.get(endpoint("auth/settings")).send().await.unwrap().status(), 401);
+        let code = remote.start_pairing();
+        let r = c.post(endpoint("auth/setup")).json(&serde_json::json!({
+            "code": code, "username": "owner", "password": "correct horse battery staple"
+        })).send().await.unwrap();
+        assert_eq!(r.status(), 200);
+        let set_cookie = r.headers()["set-cookie"].to_str().unwrap().to_owned();
+        assert!(set_cookie.contains("Secure") && set_cookie.contains("HttpOnly") && set_cookie.contains("SameSite=Strict"));
+        let cookie = set_cookie.split(';').next().unwrap().to_owned();
+        let body: serde_json::Value = r.json().await.unwrap();
+        let csrf = body["csrf"].as_str().unwrap().to_owned();
+        assert_eq!(c.post(endpoint("auth/setup")).json(&serde_json::json!({"username":"other","password":"another long password","code":code})).send().await.unwrap().status(), 409);
+        let r = c.get(endpoint("auth/settings")).header("cookie", &cookie).send().await.unwrap();
+        assert_eq!(r.status(), 200);
+        let settings: serde_json::Value = r.json().await.unwrap();
+        assert_eq!(settings["username"], "owner");
+        assert!(settings.get("password_hash").is_none());
+        assert_eq!(settings["policy"]["bypass_localhost"], false);
+        assert_eq!(settings["policy"]["max_failures"], 5);
+        let mut policy = settings["policy"].clone();
+        policy["bypass_localhost"] = true.into();
+        let update = serde_json::json!({ "current_password": "correct horse battery staple", "revision": settings["revision"], "policy": policy });
+        assert_eq!(c.post(endpoint("auth/settings")).header("cookie", &cookie).json(&update).send().await.unwrap().status(), 403, "CSRF required even with an authenticated cookie");
+        let r = c.post(endpoint("auth/settings")).header("cookie", &cookie).header("x-csrf-token", &csrf).json(&update).send().await.unwrap();
+        assert_eq!(r.status(), 200);
+        let settings: serde_json::Value = r.json().await.unwrap();
+        // Bypass grants a workspace session, not authentication-policy administration.
+        let r = c.get(endpoint("auth/session")).send().await.unwrap();
+        let bypass_cookie = r.headers()["set-cookie"].to_str().unwrap().split(';').next().unwrap().to_owned();
+        let bypass: serde_json::Value = r.json().await.unwrap();
+        assert_eq!(bypass["authenticated"], true); assert_eq!(bypass["owner"], false);
+        assert_eq!(c.get(endpoint("auth/settings")).header("cookie", &bypass_cookie).send().await.unwrap().status(), 403);
+        let spoof: serde_json::Value = c.get(endpoint("auth/session")).header("x-forwarded-for", "127.0.0.1").send().await.unwrap().json().await.unwrap();
+        assert_eq!(spoof["authenticated"], false, "forwarded traffic is not direct localhost");
+        // A universal allowlist needs explicit confirmation, not just a valid password.
+        let mut unsafe_policy = settings["policy"].clone(); unsafe_policy["subnets"] = serde_json::json!(["::/0"]);
+        let r = c.post(endpoint("auth/settings")).header("cookie", &cookie).header("x-csrf-token", &csrf)
+            .json(&serde_json::json!({ "revision":settings["revision"], "policy":unsafe_policy, "current_password":"correct horse battery staple" })).send().await.unwrap();
+        assert_eq!(r.status(), 400);
+        let r = c.get(endpoint("auth/settings")).header("cookie", &cookie).header("origin", "https://evil.example").send().await.unwrap();
+        assert_eq!(r.status(), 403);
+        let r = c.get(endpoint("auth/settings")).header("cookie", &cookie).header("origin", "chrome-extension://untrusted").send().await.unwrap();
+        assert_eq!(r.status(), 403, "extension origins cannot use browser administration");
+        // Credential changes revoke all browser sessions and never store the password itself.
+        let r = c.post(endpoint("auth/credentials")).header("cookie", &cookie).header("x-csrf-token", &csrf)
+            .json(&serde_json::json!({ "username":"new-owner", "password":"a new sufficiently long password", "current_password":"correct horse battery staple" })).send().await.unwrap();
+        assert_eq!(r.status(), 200);
+        assert_eq!(c.get(endpoint("auth/settings")).header("cookie", &cookie).send().await.unwrap().status(), 401);
+        assert_eq!(c.post(endpoint("auth/login")).json(&serde_json::json!({ "username":"new-owner", "password":"a new sufficiently long password" })).send().await.unwrap().status(), 200);
+        let saved = std::fs::read_to_string(dir.path().join("remote/web-auth.json")).unwrap();
+        assert!(saved.contains("$argon2id$")); assert!(!saved.contains("sufficiently long password"));
+    });
+    remote.stop();
+}
+
+#[test]
+fn new_device_tokens_default_to_capture_only() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let (remote, base, _, _dir) = start(&rt);
+    rt.block_on(async {
+        let c = client();
+        let code = remote.start_pairing();
+        let r = c
+            .post(format!("{base}api/pair"))
+            .json(&serde_json::json!({ "code": code, "name": "Extension" }))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(r.status(), 200);
+        let body: serde_json::Value = r.json().await.unwrap();
+        assert_eq!(body["scope"], "capture");
+        let token = body["token"].as_str().unwrap();
+        assert_eq!(
+            c.get(format!("{base}api/list"))
+                .bearer_auth(token)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            403
+        );
+        assert_eq!(
+            c.get(format!("{base}api/status"))
+                .bearer_auth(token)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            200
+        );
+        assert_eq!(
+            c.get(format!("{base}api/v1/auth/settings"))
+                .bearer_auth(token)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            401
+        );
+        assert_eq!(
+            c.post(format!("{base}api/add"))
+                .bearer_auth(token)
+                .json(&serde_json::json!({ "url":"https://example.com/file.zip" }))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            200
+        );
+        assert_eq!(
+            c.post(format!("{base}api/act"))
+                .bearer_auth(token)
+                .json(&serde_json::json!({ "action":"delete", "ids":[1] }))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            403
+        );
+    });
+    remote.stop();
 }

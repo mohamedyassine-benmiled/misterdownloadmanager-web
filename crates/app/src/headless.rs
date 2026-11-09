@@ -215,12 +215,16 @@ fn tell(app: &mut crate::app::App) -> bool {
             if let Some(fp) = remote.fingerprint() {
                 println!("Its certificate's SHA-256 fingerprint: {fp}");
             }
-            if remote.devices().is_empty() {
+            if remote.devices().is_empty()
+                || remote
+                    .auth_recovery("status")
+                    .is_ok_and(|v| v["username"].as_str() == Some(""))
+            {
                 let answer: Result<mdm_ipc::api::PairAnswer, _> =
                     serde_json::from_str(&app.pair_answer());
                 if let Ok(a) = answer {
                     println!(
-                        "No device is paired yet. Open the address (or scan this) and enter the code {} {} (it works for {} minutes; `misterdownloadmanager-cli pair` shows a new one):\n{}",
+                        "Open the address to set up the Web UI owner, or pair an extension, with code {} {} (it works for {} minutes; `misterdownloadmanager-cli pair` shows a new one):\n{}",
                         &a.code[..4],
                         &a.code[4..],
                         a.minutes,

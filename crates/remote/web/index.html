@@ -1,105 +1,140 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<meta name="referrer" content="no-referrer">
-<title>Mister Download Manager</title>
-<link rel="icon" href="icon.png">
-<link rel="apple-touch-icon" href="icon.png">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="app.css">
-<script src="app.js" defer></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="no-referrer">
+  <title>Mister Download Manager</title>
+  <link rel="icon" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="app.css">
+  <script src="app.js" defer></script>
 </head>
 <body>
-<header class="bar">
-  <img src="icon.png" alt="" width="28" height="28">
-  <div class="title">
-    <strong>Mister Download Manager</strong>
-    <span id="summary" class="muted"></span>
-  </div>
-  <button id="menu" class="icon" type="button" hidden aria-haspopup="true" aria-expanded="false" data-ta="More">&#8942;</button>
-  <div id="menu-list" class="popup" role="menu" hidden>
-    <button id="forget" type="button" role="menuitem" data-t="Forget this device"></button>
-  </div>
+<a href="#content" class="skip" data-t="Skip to content"></a>
+<header class="appbar">
+  <a class="brand" href="#downloads"><img src="icon.png" alt="" width="34" height="34"><span>Mister Download Manager<small data-t="Web workspace"></small></span></a>
+  <span id="summary" class="summary"></span>
+  <label class="theme-label"><span class="sr-only" data-t="Appearance"></span><select id="theme"><option value="system" data-t="System theme"></option><option value="light" data-t="Light"></option><option value="dark" data-t="Dark"></option></select></label>
+  <button id="logout" hidden data-t="Sign out"></button>
 </header>
 
-<main>
-  <section id="pair" class="card" hidden>
-    <h1 data-t="Pair with Mister Download Manager"></h1>
-    <p data-t="On the computer, open Options, then Remote, and click Pair a device. Enter the code it shows."></p>
-    <form id="pair-form" autocomplete="off">
-      <label for="code" data-t="Code"></label>
-      <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="9" required dir="ltr">
-      <label for="name" data-t="This device's name"></label>
-      <input id="name" name="name" maxlength="40">
-      <p id="pair-error" class="error" role="alert"></p>
-      <button class="primary" type="submit" data-t="Pair"></button>
-    </form>
-  </section>
-
-  <section id="main" hidden>
-    <form id="add" class="card" autocomplete="off">
-      <label for="url" data-t="Address or magnet link"></label>
-      <div class="row">
-        <input id="url" type="url" inputmode="url" dir="ltr" placeholder="https://…   magnet:?…">
-        <label class="button file" tabindex="0" role="button" data-ta="Choose a .torrent file">
-          <span dir="auto" data-t=".torrent file"></span>
-          <input id="file" type="file" accept=".torrent,application/x-bittorrent">
-        </label>
-      </div>
-      <p id="file-name" class="muted" hidden></p>
-      <div class="row">
-        <label class="field"><span data-t="Category"></span><select id="category"></select></label>
-        <label class="field"><span data-t="When"></span><select id="when"></select></label>
-      </div>
-      <button class="primary" type="submit" data-t="Add"></button>
-    </form>
-
-    <div id="queues" class="chips" aria-live="polite"></div>
-
-    <div class="tabs" role="tablist">
-      <button type="button" role="tab" data-filter="all" aria-selected="true" data-t="All"></button>
-      <button type="button" role="tab" data-filter="active" aria-selected="false" data-t="Unfinished"></button>
-      <button type="button" role="tab" data-filter="done" aria-selected="false" data-t="Finished"></button>
-    </div>
-    <ul id="list" class="list"></ul>
-    <p id="empty" class="muted center" hidden data-t="No downloads here."></p>
-  </section>
-
-  <p id="offline" class="banner" role="status" hidden></p>
-</main>
-
-<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-
-<dialog id="confirm">
-  <form method="dialog">
-    <p id="confirm-text"></p>
-    <label class="check"><input id="confirm-file" type="checkbox"> <span data-t="Delete the file too"></span></label>
-    <div class="actions">
-      <button value="cancel" data-t="Cancel"></button>
-      <button value="ok" class="primary danger" data-t="Remove"></button>
-    </div>
+<section id="login-panel" class="login-panel" hidden>
+  <img src="icon.png" width="48" height="48" alt="">
+  <h1 id="login-title" data-t="Sign in to your server"></h1>
+  <p id="setup-help" class="muted" hidden data-t="Create an owner account using the code from the server logs or the local pair command. Your password must contain at least 12 characters."></p>
+  <form id="login-form">
+    <div id="setup-code-field" hidden><label for="setup-code" data-t="Setup code"></label><input id="setup-code" inputmode="numeric" autocomplete="one-time-code" maxlength="9" dir="ltr"></div>
+    <label for="login-username" data-t="Username"></label><input id="login-username" name="username" autocomplete="username" maxlength="64" required>
+    <label for="login-password" data-t="Password"></label><input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="1024" required>
+    <p id="login-error" class="error" role="alert"></p>
+    <button class="primary" id="login-submit" type="submit" data-t="Sign in"></button>
   </form>
-</dialog>
+</section>
 
-<template id="item">
-  <li class="item">
-    <div class="line">
-      <span class="name" dir="auto"></span>
-      <span class="state"></span>
-    </div>
-    <div class="bar-track"><div class="bar-fill"></div></div>
-    <div class="line">
-      <span class="detail muted"></span>
-      <span class="buttons">
-        <button type="button" class="act toggle"></button>
-        <button type="button" class="act icon remove" data-ta="Remove">&#215;</button>
-      </span>
-    </div>
-    <p class="error-text error" hidden></p>
-  </li>
-</template>
+<div id="workspace" class="shell" hidden>
+  <aside class="navigation" data-ta="Navigation">
+    <nav>
+      <h2 data-t="Downloads"></h2>
+      <button data-page="downloads" data-filter="all" aria-current="page"><span data-t="All downloads"></span><span class="count" data-count="all">0</span></button>
+      <button data-page="downloads" data-filter="Downloading"><span data-t="Downloading"></span><span class="count" data-count="Downloading">0</span></button>
+      <button data-page="downloads" data-filter="Queued"><span data-t="Queued"></span><span class="count" data-count="Queued">0</span></button>
+      <button data-page="downloads" data-filter="Stopped"><span data-t="Stopped"></span><span class="count" data-count="Stopped">0</span></button>
+      <button data-page="downloads" data-filter="Complete"><span data-t="Complete"></span><span class="count" data-count="Complete">0</span></button>
+      <button data-page="downloads" data-filter="Error"><span data-t="Error"></span><span class="count" data-count="Error">0</span></button>
+      <h2 data-t="Manage"></h2>
+      <button data-page="queues" data-t="Queues and scheduler"></button>
+      <button data-page="categories" data-t="Categories"></button>
+      <button data-page="settings" data-t="Application settings"></button>
+      <button data-page="security" data-t="Web UI authentication"></button>
+      <button data-page="devices" data-t="Browser extensions and devices"></button>
+    </nav>
+    <p class="nav-note" data-t="Files are downloaded to the server, not this browser."></p>
+  </aside>
+  <main id="content" tabindex="-1">
+    <p id="section-loading" class="notice" role="status" hidden></p>
+    <p id="offline" class="banner" role="status" hidden></p>
+    <p id="bypass-note" class="notice" hidden><span data-t="Connected through an authentication bypass rule."></span> <button id="owner-login" data-t="Sign in to manage settings"></button></p>
+
+    <section id="page-downloads" data-view="downloads">
+      <div class="page-heading"><div><h1 id="view-title" data-t="All downloads"></h1><p class="muted" data-t="Your transfers, live from the server."></p></div><button id="show-add" class="primary" data-t="Add download"></button></div>
+      <section id="add-panel" class="surface add-panel" hidden>
+        <form id="add-form">
+          <label for="url" data-t="Address or magnet link"></label>
+          <div class="inline"><input id="url" type="url" inputmode="url" dir="ltr" placeholder="https://…"><label class="button file" for="torrent-file" tabindex="0" role="button" data-ta="Choose a .torrent file"><span data-t="Torrent file"></span><input id="torrent-file" type="file" accept=".torrent,application/x-bittorrent"></label></div>
+          <p id="file-name" class="muted" hidden></p>
+          <div class="form-grid"><label><span data-t="Category"></span><select id="add-category"></select></label><label><span data-t="When"></span><select id="add-when"></select></label></div>
+          <div class="actions"><button type="button" id="close-add" data-t="Cancel"></button><button type="submit" class="primary" data-t="Add download"></button></div>
+        </form>
+      </section>
+      <div class="filters"><label class="search"><span class="sr-only" data-t="Search downloads"></span><input id="search" type="search" data-tp="Search by name or address"></label><label><span class="sr-only" data-t="Category"></span><select id="filter-category"></select></label><label><span class="sr-only" data-t="Sort downloads"></span><select id="sort"><option value="newest" data-t="Newest first"></option><option value="name" data-t="Name"></option><option value="size" data-t="Size"></option><option value="progress" data-t="Progress"></option></select></label></div>
+      <div id="bulk" class="bulk" hidden><strong id="selection-count"></strong><button data-bulk="start" data-t="Start"></button><button data-bulk="pause" data-t="Pause"></button><button id="bulk-remove" data-t="Remove"></button><button id="clear-selection" data-t="Clear selection"></button></div>
+      <div class="transfer-layout" id="transfer-layout">
+        <div class="surface transfers">
+          <p id="loading" class="empty" role="status" data-t="Loading downloads..."></p>
+          <table id="downloads-table" hidden><thead><tr><th class="select-column"><input id="select-all" type="checkbox" data-ta="Select visible downloads"></th><th data-t="Name"></th><th data-t="Progress"></th><th class="optional" data-t="Size"></th><th data-t="Speed"></th><th class="optional" data-t="Remaining"></th><th class="actions-column"><span class="sr-only" data-t="Actions"></span></th></tr></thead><tbody id="download-list"></tbody></table>
+          <div id="empty" class="empty" hidden><h2 data-t="No downloads here."></h2><p class="muted" data-t="Add a link, send a download from your extension, or change the filters."></p></div>
+        </div>
+        <aside id="details" class="surface detail-panel" hidden>
+          <div class="section-heading"><h2 data-t="Download details"></h2><button id="close-details" data-t="Close"></button></div>
+          <h3 id="detail-name" dir="auto"></h3><dl id="detail-info"></dl>
+           <form id="detail-form" hidden><label for="detail-description" data-t="Description"></label><textarea id="detail-description" maxlength="4096" rows="2"></textarea><label for="detail-category" data-t="Category"></label><select id="detail-category"></select><label for="detail-limit" data-t="Speed limit (KB/sec, 0: unlimited)"></label><input id="detail-limit" type="number" min="0" max="1073741824" required><button type="submit" class="primary" data-t="Save changes"></button></form>
+           <div id="file-tools" hidden>
+             <details class="detail-tool"><summary data-t="Move or rename"></summary><p class="field-help" data-t="Move a completed file or change a destination before downloading starts. Existing files are never replaced."></p><form id="move-form"><label for="move-name" data-t="File name"></label><input id="move-name" maxlength="255" required dir="auto"><label for="move-folder" data-t="Folder relative to downloads directory"></label><input id="move-folder" dir="ltr" maxlength="2048"><button type="submit" data-t="Move or rename"></button><p id="move-result" role="status" class="field-help"></p></form></details>
+             <details class="detail-tool"><summary data-t="Replace expired link"></summary><p class="field-help" data-t="Pause an unfinished download first. Existing data is kept and checked when it resumes. Stored request credentials are cleared."></p><form id="source-form"><label for="source-url" data-t="New download address"></label><input id="source-url" type="url" dir="ltr" maxlength="8192" required><button type="submit" data-t="Replace address"></button><p id="source-result" role="status" class="field-help"></p></form></details>
+             <details class="detail-tool"><summary data-t="Verify checksum"></summary><p class="field-help" data-t="Completed files are checked now. Pause unfinished downloads to set the checksum for their next run. Leave blank to clear it."></p><form id="checksum-form"><label for="checksum-expected" data-t="Expected checksum (MD5, SHA-1, SHA-256, SHA-512 or CRC32):"></label><input id="checksum-expected" dir="ltr" maxlength="256"><button type="submit" data-t="Save and verify"></button></form><p id="checksum-result" role="status" class="field-help"></p><code id="checksum-actual" class="checksum-value" hidden></code></details>
+           </div>
+           <section id="torrent-tools" hidden>
+             <h3 data-t="Torrent controls"></h3><p id="torrent-health" class="field-help" role="status"></p>
+             <form id="torrent-form"><label class="check"><input id="torrent-order" type="checkbox"><span data-t="Download in order"></span></label><label class="check"><input id="torrent-ends" type="checkbox"><span data-t="First and last pieces first"></span></label><label for="torrent-upload" data-t="Upload limit (KB/sec, 0: unlimited)"></label><input id="torrent-upload" type="number" min="0" max="1073741824" required><h3 data-t="Files to download"></h3><div id="torrent-files" class="torrent-files"></div><button type="submit" class="primary" data-t="Save torrent changes"></button></form>
+             <div class="actions torrent-actions"><button type="button" data-torrent-action="recheck" data-t="Recheck"></button><button type="button" data-torrent-action="reannounce" data-t="Reannounce"></button></div>
+             <details class="detail-tool"><summary data-t="Trackers"></summary><ul id="torrent-trackers" class="activity-list"></ul><form id="trackers-form"><label for="tracker-addresses" data-t="Add tracker addresses (one per line)"></label><textarea id="tracker-addresses" dir="ltr" rows="3" maxlength="16384" required></textarea><button type="submit" data-t="Add trackers"></button></form></details>
+             <details class="detail-tool"><summary data-t="Peers"></summary><div id="torrent-peers" class="data-list"></div></details>
+           </section>
+           <h3 data-t="Connections"></h3><div id="detail-connections" class="data-list"></div><h3 data-t="Activity"></h3><ol id="detail-log" class="activity-list"></ol>
+        </aside>
+      </div>
+      <section class="queue-strip"><h2 data-t="Queues"></h2><div id="queue-controls"></div></section>
+    </section>
+
+    <section data-view="settings" hidden><div class="page-heading"><div><h1 data-t="Application settings"></h1><p class="muted" data-t="Validated server settings. Existing transfers keep their current connection options until restarted."></p></div></div><form id="settings-form" class="surface settings-surface"><div id="settings-fields"></div><div class="save-bar"><button type="submit" class="primary" data-t="Save changes"></button><span id="settings-result" role="status"></span></div></form></section>
+
+    <section data-view="security" hidden>
+      <div class="page-heading"><div><h1 data-t="Web UI authentication"></h1><p class="muted" data-t="Control who can access this server and how long sessions remain active."></p></div></div>
+      <form id="auth-settings-form" class="surface settings-surface">
+        <h2 data-t="Authentication"></h2>
+        <p><span data-t="Username"></span>: <strong id="current-username"></strong></p>
+        <label class="check"><input id="bypass-localhost" type="checkbox"><span data-t="Bypass authentication for clients on localhost"></span></label>
+        <p class="field-help" data-t="Off by default. Other local users and programs will also be trusted. Reverse-proxy traffic is not direct localhost traffic."></p>
+        <label class="check"><input id="bypass-subnets" type="checkbox"><span data-t="Bypass authentication for clients in whitelisted IP subnets"></span></label>
+        <label for="auth-subnets" data-t="IP/subnet whitelist"></label><textarea id="auth-subnets" dir="ltr" rows="4" placeholder="192.168.1.0/24&#10;fd00::/64"></textarea><p class="field-help" data-t="One IPv4/IPv6 address or CIDR per line. An empty list trusts nobody."></p>
+        <label class="check danger-text"><input id="confirm-unsafe" type="checkbox"><span data-t="I understand that a /0 rule trusts every address in that address family."></span></label>
+        <div class="form-grid"><label><span data-t="Ban client after consecutive failures"></span><input id="max-failures" type="number" min="1" max="100" required></label><label><span data-t="Ban duration (seconds)"></span><input id="ban-seconds" type="number" min="1" max="604800" required></label><label><span data-t="Session inactivity timeout (seconds)"></span><input id="session-timeout" type="number" min="60" max="86400" required></label></div>
+        <p class="field-help" data-t="Background progress updates do not extend the session. Sessions also expire after 24 hours."></p>
+        <details><summary data-t="Trusted reverse proxies"></summary><label for="trusted-proxies" data-t="Trusted proxy IPs/CIDRs"></label><textarea id="trusted-proxies" dir="ltr" rows="3"></textarea><p class="field-help" data-t="Only these proxies may supply X-Forwarded-For. They must overwrite incoming client headers. Leave empty when connecting directly."></p></details>
+        <label for="auth-current-password" data-t="Current password to confirm changes"></label><input id="auth-current-password" type="password" autocomplete="current-password" required>
+        <div class="save-bar"><button type="submit" class="primary" data-t="Save authentication settings"></button><span id="auth-result" role="status"></span></div>
+      </form>
+      <form id="credentials-form" class="surface settings-surface">
+        <h2 data-t="Change username or password"></h2><p class="muted" data-t="Saving signs out all browser sessions. Extension tokens are managed separately."></p>
+        <div class="form-grid"><label><span data-t="Username"></span><input id="new-username" autocomplete="username" maxlength="64" required></label><label><span data-t="Current password"></span><input id="credentials-current" type="password" autocomplete="current-password" required></label><label><span data-t="New password"></span><input id="new-password" type="password" autocomplete="new-password" minlength="12" maxlength="1024" required></label><label><span data-t="Confirm new password"></span><input id="confirm-password" type="password" autocomplete="new-password" minlength="12" maxlength="1024" required></label></div>
+        <button type="submit" data-t="Update credentials and sign out"></button>
+      </form>
+      <section class="surface settings-surface"><h2 data-t="Temporary login bans"></h2><div id="ban-list"></div><p class="field-help" data-t="Local recovery: misterdownloadmanager-cli web-auth unban. Reset access with web-auth reset-owner, then request a new pair code."></p></section>
+    </section>
+
+    <section data-view="queues" hidden><div class="page-heading"><div><h1 data-t="Queues and scheduler"></h1><p class="muted" id="scheduler-timezone"></p></div><button id="new-queue" data-t="New queue"></button></div><div id="queue-list" class="surface data-list"></div><form id="queue-form" class="surface settings-surface" hidden><h2 data-t="Edit queue"></h2><input id="queue-old-name" type="hidden"><div class="form-grid"><label><span data-t="Name"></span><input id="queue-name" maxlength="100" required></label><label><span data-t="Concurrent downloads"></span><input id="queue-concurrency" type="number" min="1" max="128" value="4" required></label><label><span data-t="Start time"></span><input id="queue-start" type="time" step="1"></label><label><span data-t="Stop time"></span><input id="queue-stop" type="time" step="1"></label><label><span data-t="Retry limit (blank: unlimited)"></span><input id="queue-retries" type="number" min="0" max="100000"></label><label><span data-t="Run once on date (blank: recurring)"></span><input id="queue-once" type="date"></label></div><fieldset id="queue-days"><legend data-t="Days"></legend></fieldset><label class="check"><input id="queue-startup" type="checkbox"><span data-t="Start with the server"></span></label><h3 data-t="Downloads in this queue"></h3><div id="queue-members" class="member-list"></div><div class="actions"><button type="button" id="queue-cancel" data-t="Cancel"></button><button type="submit" class="primary" data-t="Save changes"></button></div></form></section>
+
+    <section data-view="categories" hidden><div class="page-heading"><div><h1 data-t="Categories"></h1><p class="muted" data-t="Custom folders stay inside the server downloads directory. Deleting a category keeps its files."></p></div><button id="new-category" data-t="New category"></button></div><div id="category-list" class="surface data-list"></div><form id="category-form" class="surface settings-surface" hidden><h2 data-t="Edit category"></h2><input id="category-id" type="hidden"><div class="form-grid"><label><span data-t="Name"></span><input id="category-name" maxlength="100" required></label><label><span data-t="File extensions"></span><input id="category-types" placeholder="ZIP 7Z ISO" maxlength="8192"></label><label><span data-t="Folder relative to downloads directory"></span><input id="category-folder" dir="ltr" required></label></div><div class="actions"><button type="button" id="category-cancel" data-t="Cancel"></button><button type="submit" class="primary" data-t="Save changes"></button></div></form></section>
+
+    <section data-view="devices" hidden><div class="page-heading"><div><h1 data-t="Browser extensions and devices"></h1><p class="muted" data-t="Pair your extension with this server URL. Device tokens cannot change owner authentication settings."></p></div></div><section class="surface settings-surface"><label for="server-url" data-t="Server URL"></label><input id="server-url" dir="ltr" readonly><form id="device-pair-form"><label for="device-password" data-t="Current password"></label><input id="device-password" type="password" autocomplete="current-password" required><button type="submit" class="primary" data-t="Create extension pairing code"></button></form><p id="pair-code" class="pair-code" role="status"></p></section><div id="device-list" class="surface data-list"></div></section>
+  </main>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<dialog id="remove-dialog"><form method="dialog"><h2 data-t="Remove downloads"></h2><p id="remove-text"></p><label class="check"><input id="remove-files" type="checkbox"><span data-t="Delete the files from disk too"></span></label><div class="actions"><button value="cancel" data-t="Cancel"></button><button value="remove" class="danger" data-t="Remove"></button></div></form></dialog>
+<dialog id="password-dialog"><form method="dialog"><h2 data-t="Confirm device revocation"></h2><label for="revoke-password" data-t="Current password"></label><input id="revoke-password" type="password" autocomplete="current-password" required><div class="actions"><button value="cancel" formnovalidate data-t="Cancel"></button><button value="revoke" class="danger" data-t="Revoke device"></button></div></form></dialog>
+<template id="download-row"><tr><td><input class="select-download" type="checkbox"></td><td class="filename-cell"><button class="filename" dir="auto"></button><span class="state"></span><p class="row-error" hidden></p></td><td><div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill"></div></div><span class="progress-text"></span></td><td class="file-size optional"></td><td class="file-speed"></td><td class="file-eta optional"></td><td class="row-actions"><button class="toggle"></button><button class="remove" data-t="Remove"></button></td></tr></template>
 </body>
 </html>
