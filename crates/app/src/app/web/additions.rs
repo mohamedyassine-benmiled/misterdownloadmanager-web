@@ -20,38 +20,7 @@ pub(crate) struct PendingTorrent {
 pub(crate) fn source_hash(source: &mdm_torrent::Source) -> Option<String> {
     match source {
         mdm_torrent::Source::File(bytes) => mdm_torrent::inspect(bytes).ok().map(|m| m.info_hash),
-        mdm_torrent::Source::Magnet(text) => url::Url::parse(text)
-            .ok()?
-            .query_pairs()
-            .filter(|(k, _)| k == "xt")
-            .find_map(|(_, value)| {
-                let hash = value
-                    .get(..9)
-                    .filter(|prefix| prefix.eq_ignore_ascii_case("urn:btih:"))
-                    .and_then(|_| value.get(9..))?;
-                if hash.len() == 40 && hash.bytes().all(|c| c.is_ascii_hexdigit()) {
-                    return Some(hash.to_ascii_lowercase());
-                }
-                if hash.len() != 32 {
-                    return None;
-                }
-                let mut output = String::new();
-                let mut acc = 0u16;
-                let mut bits = 0u8;
-                for c in hash.bytes() {
-                    let n = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
-                        .iter()
-                        .position(|a| *a == c.to_ascii_uppercase())?;
-                    acc = (acc << 5) | n as u16;
-                    bits += 5;
-                    if bits >= 8 {
-                        bits -= 8;
-                        output.push_str(&format!("{:02x}", (acc >> bits) & 255));
-                        acc &= (1 << bits) - 1;
-                    }
-                }
-                Some(output)
-            }),
+        mdm_torrent::Source::Magnet(text) => mdm_torrent::magnet_info_hash(text),
     }
 }
 

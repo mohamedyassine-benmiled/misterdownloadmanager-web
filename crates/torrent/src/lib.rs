@@ -52,6 +52,79 @@ fn engine(e: impl std::fmt::Display) -> TorrentError {
 /// MB; anything bigger isn't one, and would be read whole into memory.
 pub const MAX_TORRENT_FILE: u64 = 10 << 20;
 
+/// Return the canonical v1 info hash in a magnet, without contacting peers or trackers.
+/// V2-only magnets have no BTIH and are not represented by this function.
+pub fn magnet_info_hash(text: &str) -> Option<String> {
+    let url = url::Url::parse(text).ok()?;
+    if url.scheme() != "magnet" {
+        return None;
+    }
+    url.query_pairs()
+        .filter(|(key, _)| key == "xt")
+        .find_map(|(_, value)| {
+            let hash = value
+                .get(..9)
+                .filter(|p| p.eq_ignore_ascii_case("urn:btih:"))
+                .and_then(|_| value.get(9..))?;
+            if hash.len() == 40 && hash.bytes().all(|c| c.is_ascii_hexdigit()) {
+                return Some(hash.to_ascii_lowercase());
+            }
+            if hash.len() != 32 {
+                return None;
+            }
+            let mut output = String::with_capacity(40);
+            let mut acc = 0u16;
+            let mut bits = 0u8;
+            for c in hash.bytes() {
+                let n = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+                    .iter()
+                    .position(|a| *a == c.to_ascii_uppercase())?;
+                acc = (acc << 5) | n as u16;
+                bits += 5;
+                if bits >= 8 {
+                    bits -= 8;
+                    output.push_str(&format!("{:02x}", (acc >> bits) & 255));
+                    acc &= (1 << bits) - 1;
+                }
+            }
+            Some(output)
+        })
+}
+
+#[cfg(test)]
+mod magnet_hash_tests {
+    use super::magnet_info_hash;
+
+    #[test]
+    fn normalizes_v1_hex_and_base32() {
+        let expected = "0123456789abcdef0123456789abcdef01234567";
+        assert_eq!(
+            magnet_info_hash(&format!("magnet:?xt=urn:btih:{}", expected.to_uppercase()))
+                .as_deref(),
+            Some(expected)
+        );
+        assert_eq!(
+            magnet_info_hash("magnet:?xt=urn:btih:AERUKZ4JVPG66AJDIVTYTK6N54ASGRLH").as_deref(),
+            Some(expected)
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_or_non_magnet_input() {
+        assert_eq!(
+            magnet_info_hash(
+                "https://example.org/?xt=urn:btih:0123456789abcdef0123456789abcdef01234567"
+            ),
+            None
+        );
+        assert_eq!(
+            magnet_info_hash("magnet:?xt=urn:btih:!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"),
+            None
+        );
+        assert_eq!(magnet_info_hash("magnet:?xt=urn:btmh:1220abcdef"), None);
+    }
+}
+
 /// A .torrent file from disk, at most `MAX_TORRENT_FILE` (a bigger one: `InvalidData`).
 pub fn read_file(path: &Path) -> std::io::Result<Vec<u8>> {
     use std::io::Read;
