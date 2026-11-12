@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -84,6 +85,14 @@ class CoordinatedReleaseTests(unittest.TestCase):
                 archive.writestr(name, data)
         with self.assertRaisesRegex(ValueError, "stale"):
             release.inspect_extension(path, "chromium", "1.2.3")
+
+    def test_extension_sources_have_cross_platform_checkout_bytes(self):
+        for file in release.EXTENSION_SOURCES:
+            result = subprocess.run(
+                ["git", "check-attr", "eol", "--", f"extension/{file}"],
+                cwd=release.ROOT, check=True, capture_output=True, text=True,
+            )
+            self.assertTrue(result.stdout.strip().endswith(": eol: lf"), result.stdout)
 
     def test_complete_release_has_correct_checksums_and_no_runtime_state(self):
         self.fixtures()

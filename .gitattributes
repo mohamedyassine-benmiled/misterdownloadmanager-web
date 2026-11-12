@@ -11,3 +11,11 @@ deploy/systemd/* text eol=lf
 docker/.env.example text eol=lf
 # Fork image smoke runs with Bash, including from Windows source checkouts.
 tools/docker/*.sh text eol=lf
+# Release archives are built on Linux and verified byte-for-byte on Windows.
+extension/remote.js text eol=lf
+extension/background.js text eol=lf
+extension/video.js text eol=lf
+extension/page.js text eol=lf
+extension/popup.html text eol=lf
+extension/popup.js text eol=lf
+extension/popup.css text eol=lf
