@@ -137,10 +137,15 @@ restart/resume, certificate trust and extension operation with no native host in
 
 ## Remaining work (not full feature parity)
 
+The target, staged implementation plan and acceptance gate for complete desktop
+functional coverage are in [web-functional-parity-plan.md](web-functional-parity-plan.md).
+
 Linux/Docker/Compose/systemd testing is deferred by request; the later server acceptance
 checklist is [linux-server-testing.md](linux-server-testing.md). Application features come first.
-Keeping this fork mergeable with the official application is a separate future task, planned in
-[upstream-merge-plan.md](upstream-merge-plan.md).
+The initial modular separation pass is now implemented locally; integrating the current
+upstream release remains separate. See [upstream-merge-plan.md](upstream-merge-plan.md)
+for adapter ownership, audits and the safe merge procedure. Server flags and the fork-owned
+Docker/GHCR release workflow are described in [web-releases.md](web-releases.md).
 
 - Advanced media/gallery inspection and jobs; pre-start torrent metadata/file picker, tracker
   removal/replacement and advanced priorities beyond engine-supported selection/piece order.

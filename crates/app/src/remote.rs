@@ -173,30 +173,6 @@ const KNOWN: &[&str] = &[
 /// The units the page writes sizes and speeds with (context "unit"; key `unit:<template>`).
 const UNITS: &[&str] = &["{n} KB", "{n} MB", "{n} GB", "{n} KB/sec", "{n} MB/sec"];
 
-fn web_sources() -> std::collections::BTreeSet<String> {
-    let html = include_str!("../../remote/web/index.html");
-    let js = include_str!("../../remote/web/app.js");
-    let mut sources = std::collections::BTreeSet::new();
-    for attr in ["data-t=\"", "data-ta=\"", "data-tp=\""] {
-        for part in html.split(attr).skip(1) {
-            sources.insert(part.split('"').next().unwrap_or_default().to_owned());
-        }
-    }
-    for call in ["T('", "F('"] {
-        for part in js.split(call).skip(1) {
-            sources.insert(part.split('\'').next().unwrap_or_default().to_owned());
-        }
-    }
-    for field in crate::app::web::specs() {
-        for key in ["label", "section"] {
-            if let Some(text) = field[key].as_str() {
-                sources.insert(text.to_owned());
-            }
-        }
-    }
-    sources
-}
-
 /// The page's texts in the first of `langs` (the browser's languages, most wanted first) that
 /// MDM speaks; else in MDM's own language.
 pub fn page_texts(langs: &str) -> mdm_remote::PageTexts {
@@ -211,7 +187,7 @@ pub fn page_texts(langs: &str) -> mdm_remote::PageTexts {
     for s in PAGE.iter().chain(KNOWN) {
         texts.insert((*s).to_owned(), i.t(lang, s).to_owned());
     }
-    for s in web_sources() {
+    for s in crate::app::web::page_sources() {
         texts.insert(s.clone(), i.t(lang, &s).to_owned());
     }
     for u in UNITS {
@@ -288,6 +264,8 @@ pub type Slot = Arc<Mutex<Option<Result<mdm_torrent::Meta, String>>>>;
 /// A torrent a paired device sent: its files looked up on the runtime, then added as Add
 /// torrent would with everything chosen.
 pub struct Lookup {
+    pub request_id: String,
+    pub queue_name: Option<String>,
     pub slot: Slot,
     pub category: Option<Category>,
     /// The queue it waits in (by index), or None to start now.

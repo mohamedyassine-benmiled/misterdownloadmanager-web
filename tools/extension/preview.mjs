@@ -10,6 +10,7 @@ const assets = new Map([
   ["/popup.js", ["popup.js", "text/javascript"]],
   ["/popup.css", ["popup.css", "text/css"]],
   ["/icons/icon-32.png", ["icons/icon-32.png", "image/png"]],
+  ["/icons/webmister-32.png", ["icons/webmister-32.png", "image/png"]],
 ]);
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://127.0.0.1:8766");

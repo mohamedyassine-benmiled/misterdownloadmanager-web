@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "fork_only": [
+    ".github/workflows/web.yml",
+    "crates/app/src/app/web.rs",
+    "crates/app/src/app/web/**",
+    "crates/app/src/headless/web.rs",
+    "crates/torrent/src/inspection.rs",
+    "crates/ipc/src/web_tests.rs",
+    "crates/remote/src/auth.rs",
+    "crates/remote/src/web_auth.rs",
+    "crates/remote/src/http/web.rs",
+    "extension/remote.js",
+    "tools/extension/remote.test.mjs",
+    "tools/extension/preview.mjs",
+    "tools/i18n/web_sources.py",
+    "tools/upstream/**",
+    "tools/docker/**",
+    "tools/web-release/**",
+    "brand/**",
+    "extension/icons/webmister-*.png",
+    "docs/images/webmister/**",
+    "tools/web/**",
+    "deploy/systemd/**",
+    "docker/web.Dockerfile",
+    "docker/compose.release.yml",
+    ".github/workflows/web-image.yml",
+    ".github/workflows/web-release.yml"
+  ],
+  "overlays": ["crates/remote/web/**", "README.md"],
+  "generated": ["i18n/en.tsv", "docs/automation-api.schema.json", "Cargo.lock"],
+  "bridges": {
+    "crates/app/src/app.rs": "One State slot and adapter calls; shared start/act, add policy and async torrent lifecycle must follow upstream changes.",
+    "crates/app/src/remote.rs": "One page_sources hook, admission correlation fields and page-text regression.",
+    "crates/app/src/headless.rs": "Web CLI alias hooks and owner startup output; retain upstream's runtime lifecycle.",
+    "crates/cli/src/lib.rs": "Local auth recovery and readiness commands; not network owner authentication.",
+    "crates/ipc/src/lib.rs": "Internal-only skipped owner/request fields and reply routing; never deserialize owner authority.",
+    "crates/ipc/src/api.rs": "Additive optional source and request-id fields; regenerate the schema.",
+    "crates/torrent/src/lib.rs": "Additive offline inspection module/export only; preserve upstream torrent engine.",
+    "crates/remote/Cargo.toml": "Web authentication dependencies on the existing upstream remote crate.",
+    "crates/remote/src/lib.rs": "Owner auth modules/state and recovery hooks in the existing upstream server.",
+    "crates/remote/src/http.rs": "Web route/origin/authorization adapter hooks, scoped pairing and shared response visibility; security-sensitive boundary.",
+    "crates/remote/src/devices.rs": "Scope and owner-controlled device management; preserve native device compatibility.",
+    "crates/remote/tests/server.rs": "Authenticated and legacy-device compatibility regressions.",
+    "extension/background.js": "Adapter loading plus transport, status, rules and popup call sites; preserve local capture behavior.",
+    "extension/manifest.firefox.json": "Load remote.js before background.js.",
+    "extension/manifest.json": "Fork name/artwork, stable protocol identity and adapter worker.",
+    "extension/popup.html": "Fork-facing name/artwork; preserve native and remote popup controls.",
+    "extension/popup.js": "Server connection state, destination preservation and Web UI opening.",
+    "extension/popup.css": "Remote popup layout additions.",
+    "tools/extension/test.mjs": "Explicit remote regression harness hook and both browser script loaders.",
+    "tools/extension/pack.ps1": "Include remote.js in every shipped extension variant.",
+    "tools/extension/check-pack.mjs": "Validate adapter inclusion and loading order.",
+    "tools/extension/e2e.mjs": "DevTools fallback while preserving original browser checks.",
+    "tools/i18n/extract.py": "Recursive Rust module discovery plus one fork-owned collector hook.",
+    ".github/workflows/ci.yml": "Build-only cache paths: never cache runtime credentials/profiles under target.",
+    ".gitattributes": "LF for generated catalogs, fork deployment files and Bash smoke scripts.",
+    "docker/compose.yml": "Fork deployment configuration; preserve data and explicit network settings."
+  },
+  "checks": [
+    {
+      "path": "crates/remote/src/http.rs",
+      "required": ["merge\\(web::routes\\(\\)\\)", "web::paired\\(parts, s\\)", "web::browser_origin_allowed\\("],
+      "forbidden": ["async fn desktop_icon", "async fn capture_status", "insufficient-scope"]
+    },
+    {
+      "path": "crates/app/src/headless.rs",
+      "required": ["web::asked\\(args\\)", "web::host\\(&args\\)", "web::enabled\\("],
+      "forbidden": []
+    },
+    {
+      "path": "crates/app/src/app.rs",
+      "required": ["web: web::State", "self\\.web_answer\\(cmd\\)", "self\\.web_begin_torrent\\(&source\\)", "self\\.web_finish_torrent\\("],
+      "forbidden": ["web_checks", "web_additions", "auth_recovery\\(", "fn web_request\\("]
+    },
+    {
+      "path": "crates/app/src/remote.rs",
+      "required": ["crate::app::web::page_sources\\(\\)"],
+      "forbidden": ["fn web_sources\\("]
+    },
+    {
+      "path": "crates/torrent/src/lib.rs",
+      "required": ["mod inspection;", "pub use inspection::inspect;"],
+      "forbidden": ["pub fn inspect\\("]
+    },
+    {
+      "path": "extension/background.js",
+      "required": ["importScripts\\(\"remote\\.js\"\\)", "globalThis\\.MDMRemote\\.create\\(", "remoteClient\\.readRules\\("],
+      "forbidden": ["async function remote(?:Call|Send|Pair|Off|Target|Check)\\(", "const DEFAULT_TYPES", "api/(?:add|pair|forget|status)"]
+    },
+    {
+      "path": "tools/extension/test.mjs",
+      "required": ["import\\(\"\\./remote\\.test\\.mjs\"\\)"],
+      "forbidden": ["const remoteBase", "const remoteToken"]
+    },
+    {
+      "path": "tools/i18n/extract.py",
+      "required": ["collect_web\\(out, ROOT, files, split_args, literal\\)"],
+      "forbidden": ["web interface text", "web settings label"]
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "required": ["target/debug"],
+      "forbidden": ["tools/web/", "docker compose"]
+    }
+  ]
+}

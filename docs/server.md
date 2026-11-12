@@ -13,12 +13,13 @@ computer on your network), the browser extension pointed at it, or its command l
 
 ## With Docker
 
-Build the image from MDM's source (a published image comes later):
+Build the fork image from source, or use the configured GHCR publication workflow
+after its first successful release; see [Web image releases](web-releases.md).
 
 ```sh
 git clone https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web
 cd misterdownloadmanager-web
-docker build -t misterdownloadmanager .
+docker build -f docker/web.Dockerfile -t misterdownloadmanager .
 ```
 
 The first build is long (up to an hour on a small server: the whole program is optimised as
@@ -48,8 +49,9 @@ docker run -d --name mdm --restart unless-stopped \
 
 ### Configurable Docker Compose (web fork)
 
-The fork's Compose template defaults to access from the Docker host only and builds the image
-from this checkout. It does not depend on a pre-published image. From the repository root:
+The fork's Compose template defaults to access from the Docker host only. It can build
+`docker/web.Dockerfile` from this checkout or pull the fork's GHCR image after publication.
+From the repository root:
 
 ```sh
 cp docker/.env.example docker/.env
@@ -76,6 +78,15 @@ docker compose --env-file docker/.env -f docker/compose.yml up -d --build
 docker compose --env-file docker/.env -f docker/compose.yml logs mdm
 docker compose --env-file docker/.env -f docker/compose.yml exec mdm misterdownloadmanager-cli pair
 ```
+
+For a published image instead, use `docker compose ... pull` followed by
+`docker compose ... up -d --no-build`. The `edge` tag tracks tested main-branch
+publications; versioned releases use `web-v*` source tags. Publication and first-run
+package permissions are documented in [web-releases.md](web-releases.md).
+
+The native app also accepts `--web --port 8463 --webhost 127.0.0.1` to run without
+desktop windows; legacy `--headless`/`--listen` remain supported. `--webhost` selects
+a local listener address/adapter, not the advertised URL or allowed HTTP hostname.
 
 Compose reaps helper processes, waits up to 60 seconds for a clean stop, and rotates container
 logs. The image healthcheck runs `misterdownloadmanager-cli health` against the local application

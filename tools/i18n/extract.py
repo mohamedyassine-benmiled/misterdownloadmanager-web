@@ -28,7 +28,7 @@ labels of its self-test.
 """
 
 import json
-import html
+from web_sources import collect as collect_web
 import re
 import sys
 from pathlib import Path
@@ -415,21 +415,7 @@ def collect():
             text = unesc_rust(nm.group(1))
             if notes and any(ch.isalpha() for ch in text):
                 out.add(("", text), "text", f.name, notes)
-        # The web settings schema's field! macro declares its label and section before
-        # forwarding them to the catalog at runtime. Macro arguments are not ordinary calls.
-        for m in re.finditer(r"\bfield!\s*\(", s):
-            spans, _ = split_args(s, m.end() - 1)
-            for index in (1, 2):
-                text = literal(s, spans[index]) if len(spans) > index else None
-                if text:
-                    out.add(("", text), "web settings label", f.name)
-    web = ROOT / "crates" / "remote" / "web"
-    markup = (web / "index.html").read_text(encoding="utf-8")
-    script = (web / "app.js").read_text(encoding="utf-8")
-    for text in re.findall(r'data-t(?:a|p)?="([^"]+)"', markup):
-        out.add(("", html.unescape(text)), "web interface text", "remote/web/index.html")
-    for text in re.findall(r"\b(?:T|F)\('([^'\\]*(?:\\.[^'\\]*)*)'", script):
-        out.add(("", text.replace("\\'", "'").replace("\\n", "\n")), "web interface text", "remote/web/app.js")
+    collect_web(out, ROOT, files, split_args, literal)
     for u in UNITS:
         out.add(("unit", u), "unit after a number", "model.rs")
     for m in json.loads(EXTENSION.read_text(encoding="utf-8")).values():

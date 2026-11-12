@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-12T01:24:22.747Z",
+  "title": "Design System: Webmister Download Manager",
+  "extensions": {
+    "colorMeta": {
+      "navy": {
+        "role": "primary",
+        "displayName": "Deep Navy"
+      },
+      "mint": {
+        "role": "secondary",
+        "displayName": "Download Mint"
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "Letter White"
+      }
+    }
+  },
+  "components": [
+    {
+      "name": "Fork mark",
+      "kind": "custom",
+      "refersTo": "fork-mark",
+      "description": "The static authored brand/webmister.svg at its natural coordinate size; not an app control. Colors and tile radius are owned by ../DESIGN.md frontmatter. No interaction states or expanded palette are established.",
+      "html": "<svg class=\"ds-fork-mark\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\" role=\"img\" aria-labelledby=\"ds-fork-title ds-fork-desc\"><title id=\"ds-fork-title\">Webmister Download Manager</title><desc id=\"ds-fork-desc\">A white W beneath a green download arrow on a deep blue tile.</desc><rect width=\"64\" height=\"64\" rx=\"13\" fill=\"#123565\"/><path d=\"m12 19 9 25 11-15 11 15 9-25\" fill=\"none\" stroke=\"#fff\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M32 9v13m-6-6 6 6 6-6M21 54h22\" fill=\"none\" stroke=\"#69df91\" stroke-width=\"4.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>",
+      "css": ".ds-fork-mark { display: block; width: 64px; height: 64px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Documentation first",
+    "overview": "Webmister Download Manager is an independent, Web-focused fork of Mister Download Manager. The original Mister Download Manager was created by Ahmed Nefzaoui and contributors. Webmister's compact authored mark distinguishes the fork while readable documentation shows the actual browser workspace. The name and mark do not imply upstream endorsement or an official MDM release.\n\nThis is an approved narrow branding extension, not a replacement visual world. GitHub owns README reading typography; the existing Web workspace remains governed by [its incumbent design reference](../crates/remote/web/DESIGN.md), with only its fork name/logo rule extended. The root DESIGN.md describes the upstream marketing site, not this brand. Engine executable names, data paths/formats and protocol IDs remain compatible; original desktop artwork and source attribution remain intact.",
+    "keyCharacteristics": [
+      "Exact fork name, original mark and explicit upstream credit.",
+      "GitHub-native reading structure, not a marketing-site reskin.",
+      "Real shipped controls with clearly labeled synthetic demonstration data.",
+      "Reproducible assets with source provenance, not performance or release claims."
+    ],
+    "rules": [
+      {
+        "name": "The Local Identity Rule",
+        "body": "Apply these tokens to the fork mark, not to inherited workspace controls or the upstream marketing site.",
+        "section": "colors"
+      },
+      {
+        "name": "The Evidence Caption Rule",
+        "body": "Keep synthetic demonstration data explicitly labeled in images and adjacent captions; screenshots are neither live transfers nor speed benchmarks, and must never expose private account or server data.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "**Do** use the exact name Webmister Download Manager and credit Ahmed Nefzaoui and upstream contributors.",
+      "**Do** preserve the authored SVG geometry and regenerate PNGs from its recorded source.",
+      "**Do** retain GitHub-native reading structure, descriptive alt text and selectable setup commands.",
+      "**Do** keep demo-data captions, source provenance and release-availability caveats visible.",
+      "**Do** preserve engine names, data compatibility, protocol IDs and upstream artwork attribution."
+    ],
+    "donts": [
+      "**Don't** present the fork as official MDM or imply upstream endorsement, signing or store publication.",
+      "**Don't** apply logo colors or tile corners as a replacement app palette or radius scale.",
+      "**Don't** invent typography, app components, performance claims or adoption evidence for this brand.",
+      "**Don't** retouch screenshots, conceal fixture data or publish private instance content.",
+      "**Don't** treat the scoped SHIP review as proof of runtime hardening or successful release publication."
+    ]
+  }
+}

@@ -8,6 +8,8 @@ pub mod api;
 pub mod browsers;
 pub mod capture;
 pub mod extension;
+#[cfg(test)]
+mod web_tests;
 
 use std::io::{BufRead, BufReader, Write};
 use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};

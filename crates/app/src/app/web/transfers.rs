@@ -264,13 +264,15 @@ impl App {
                     Some(mdm_engine::verify::Hash::parse(expected).ok_or("invalid-checksum")?)
                 };
                 if self
-                    .web_checks
+                    .web
+                    .checks
                     .values()
                     .filter(|c| c.lock().unwrap()["state"] == "checking")
                     .count()
                     >= 2
                     || self
-                        .web_checks
+                        .web
+                        .checks
                         .get(&id)
                         .is_some_and(|c| c.lock().unwrap()["state"] == "checking")
                 {
@@ -293,21 +295,23 @@ impl App {
                 }
                 self.item(id).unwrap().checksum = hash.clone();
                 self.dirty = true;
-                self.web_checks
+                self.web
+                    .checks
                     .retain(|id, _| self.items.iter().any(|i| i.id == *id));
-                self.web_checks.remove(&id);
-                if self.web_checks.len() >= 64
+                self.web.checks.remove(&id);
+                if self.web.checks.len() >= 64
                     && let Some(old) = self
-                        .web_checks
+                        .web
+                        .checks
                         .iter()
                         .find(|(_, c)| c.lock().unwrap()["state"] != "checking")
                         .map(|(id, _)| *id)
                 {
-                    self.web_checks.remove(&old);
+                    self.web.checks.remove(&old);
                 }
                 if let (Some(file), Some(hash)) = (file, hash) {
                     let result = Arc::new(std::sync::Mutex::new(json!({ "state": "checking" })));
-                    self.web_checks.insert(id, result.clone());
+                    self.web.checks.insert(id, result.clone());
                     std::thread::spawn(move || {
                         let value = match mdm_engine::verify::digest(&file, hash.algo) {
                             Ok(actual) => {

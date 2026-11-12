@@ -4,7 +4,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import vm from "node:vm";
 import assert from "node:assert/strict";
 
-const code = readFileSync(new URL("../../extension/background.js", import.meta.url), "utf8");
+// Static source assertions cover both scripts; load() below executes the actual manifests.
+const code = ["background.js", "remote.js"].map((file) => readFileSync(new URL(`../../extension/${file}`, import.meta.url), "utf8")).join("\n");
 const DEFAULT_TYPES = "3GP 7Z AAC EXE ISO MP3 MP4 MSI PDF R0* RAR ZIP";
 
 // A fake extension API; `firefox` picks which download event exists. `reply` is the app's
@@ -246,7 +247,16 @@ function load(api, firefox, overrides = {}) {
   };
   if (firefox) ctx.browser = api;
   else ctx.chrome = api;
-  vm.runInNewContext(code, ctx);
+  // Mirror both manifest loading models rather than concatenating adapter globals.
+  const context = vm.createContext(ctx);
+  const run = (file) => vm.runInContext(readFileSync(new URL(`../../extension/${file}`, import.meta.url), "utf8"), context, { filename: file });
+  if (firefox) {
+    const manifest = JSON.parse(readFileSync(new URL("../../extension/manifest.firefox.json", import.meta.url), "utf8"));
+    for (const file of manifest.background.scripts) run(file);
+  } else {
+    ctx.importScripts = (...files) => files.forEach(run);
+    run("background.js");
+  }
 }
 
 const settle = () => new Promise((r) => setTimeout(r, 30));
@@ -1528,6 +1538,11 @@ const answer = (url, headers, more = {}) => ({
 // The listener's answer, as a plain object (it is made in the sandbox).
 const held = async (listeners, d) => JSON.parse(JSON.stringify(await listeners.headersReceived(d)));
 const ask = (listeners) => (m, sender) => new Promise((r) => listeners.message(m, sender, r));
+// Fork seam: run beside the stable harness helper, not upstream's frequently appended test tail.
+await (await import("./remote.test.mjs")).run({
+  fakeApi, load, ask, settle, requests, natives, steps, ok, DEFAULT_TYPES,
+  get served() { return served; }, set served(value) { served = value; },
+});
 {
   const { api, calls, listeners } = fakeApi({ firefox: true });
   load(api, true);
@@ -1714,210 +1729,6 @@ const ask = (listeners) => (m, sender) => new Promise((r) => listeners.message(m
   }
   assert.ok(english.status_remote, "status_remote");
   ok("another MDM: the app's file types, every pairing message");
-}
-// Remote mode works without a native host. The configured path, credentials policy and
-// acceptance response are contracts, not just pairing UI details.
-const remoteToken = "a".repeat(64);
-const remoteBase = "https://nas.test/mdm/";
-const remoteSender = { id: "ours", url: "chrome-extension://ours/popup.html" };
-const remoteList = { api_version: 1, connected: true, rules: { types: DEFAULT_TYPES, capture: true } };
-const jsonReply = (body, status = 200) => ({ status, body: JSON.stringify(body) });
-function remoteApi(firefox = true, host = false) {
-  const fake = fakeApi({ firefox, host });
-  fake.store.remote = { url: remoteBase, token: remoteToken };
-  return fake;
-}
-for (const firefox of [true, false]) {
-  const { api, calls, listeners, store } = fakeApi({ firefox, host: false });
-  served = { [`${remoteBase}api/pair`]: jsonReply({ token: remoteToken }), [`${remoteBase}api/status`]: jsonReply(remoteList) };
-  load(api, firefox);
-  await settle();
-  const send = ask(listeners);
-  const start = requests.length;
-  assert.equal((await send({ type: "remote-pair", url: " https://nas.test/mdm ", code: "1234 5678" }, remoteSender)).ok, true);
-  assert.equal(store.remote.url, remoteBase, "preserves a proxy prefix and adds its trailing slash");
-  const state = await send({ type: "state" }, remoteSender);
-  assert.equal(state.connected, true);
-  assert.equal(state.remote, remoteBase);
-  const sent = requests.slice(start);
-  assert.deepEqual(sent.map((r) => [r.url, r.opts.method]), [[`${remoteBase}api/pair`, "POST"], [`${remoteBase}api/status`, "GET"], [`${remoteBase}api/status`, "GET"]]);
-  assert.equal(sent[0].opts.headers.Authorization, undefined, "pairing gets no old token");
-  assert.equal(sent[1].opts.headers.Authorization, `Bearer ${remoteToken}`);
-  for (const r of sent) {
-    assert.equal(r.opts.credentials, "omit");
-    assert.equal(r.opts.redirect, "error");
-    assert.equal(r.opts.signal.aborted, true, "request/body resources released");
-  }
-  assert.deepEqual(natives(calls), [], "no local host needed for server mode");
-  assert.equal(store.rules.opened, false);
-  await send({ type: "remote-open", url: store.remote.url }, remoteSender);
-  await send({ type: "open-app" }, remoteSender);
-  assert.deepEqual(calls.filter((c) => c[0] === "openTab"), [["openTab", remoteBase], ["openTab", remoteBase]]);
-  ok(`remote ${firefox ? "Firefox" : "Chromium"}: URL prefix, pairing, actual connection check and web UI link`);
-}
-{
-  const { api, listeners } = remoteApi();
-  load(api, true);
-  await settle();
-  const send = ask(listeners);
-  const start = requests.length;
-  for (const url of ["bad", "http://nas.test/", "https://user:secret@nas.test/", "https://nas.test/?token=x", "https://nas.test/#pair=1"]) {
-    assert.equal((await send({ type: "remote-pair", url, code: "12345678" }, remoteSender)).why, "address", url);
-    assert.equal((await send({ type: "remote-open", url }, remoteSender)).why, "address", url);
-  }
-  assert.equal(requests.length, start, "invalid destinations never receive a request/token");
-  ok("remote: rejects plaintext, embedded credentials, queries and fragments before any request");
-}
-for (const firefox of [true, false]) {
-  const { api, calls, listeners } = remoteApi(firefox);
-  served = { [`${remoteBase}api/add`]: jsonReply({ id: 51, pending: false }) };
-  load(api, firefox);
-  await settle();
-  const start = requests.length;
-  let suggested = false;
-  const download = { id: 100, url: "https://files.test/archive.zip", filename: "archive.zip" };
-  if (firefox) listeners.created(download); else listeners.determining(download, () => { suggested = true; });
-  await settle();
-  const sent = requests.slice(start).filter((r) => r.url.endsWith("api/add"));
-  assert.equal(sent.length, 1);
-  assert.deepEqual(JSON.parse(sent[0].opts.body), { url: download.url, start: true }, "cookies, auth, proxy and POST body aren't forwarded");
-  assert.ok(steps(calls).includes("cancel"), "accepted by the server before browser cancellation");
-  assert.equal(suggested, false);
-  assert.deepEqual(natives(calls), []);
-  ok(`remote ${firefox ? "Firefox" : "Chromium"}: public download captured with no native host or forwarded secrets`);
-}
-for (const reply of [null, jsonReply({}), { status: 200, body: "<html>Sign in to proxy</html>" }, jsonReply({ error: "unsupported" }), jsonReply({ id: 0 }), jsonReply({ pending: false }), jsonReply({ error: "unavailable" }, 503)]) {
-  const { api, calls, listeners } = remoteApi(false);
-  served = reply ? { [`${remoteBase}api/add`]: reply } : {};
-  load(api, false);
-  await settle();
-  const start = requests.length;
-  let suggested = false;
-  listeners.determining({ id: 101, url: "https://files.test/a.zip", filename: "a.zip" }, () => { suggested = true; });
-  await settle();
-  assert.equal(suggested, true, "browser keeps the file on refusal, offline or malformed reply");
-  assert.deepEqual(steps(calls), []);
-  assert.equal(requests.slice(start).filter((r) => r.url.endsWith("api/add")).length, 1, "no ambiguous automatic retry");
-}
-ok("remote: offline, rejected, HTML and malformed acceptance replies leave the browser download intact");
-{
-  const { api, calls, listeners, store } = remoteApi(true, true);
-  served = { [`${remoteBase}api/status`]: jsonReply({ error: "not paired" }, 401) };
-  load(api, true);
-  const send = ask(listeners);
-  const state = await send({ type: "state" }, remoteSender);
-  assert.equal(state.connected, false);
-  assert.equal(state.why, "not-paired");
-  assert.equal(store.remote.url, remoteBase);
-  assert.equal(store.remote.token, null);
-  listeners.created({ id: 102, url: "https://files.test/a.zip", filename: "a.zip" });
-  await settle();
-  assert.deepEqual(natives(calls), [], "revocation never falls back to the installed local MDM");
-  assert.ok(!steps(calls).includes("cancel"));
-  ok("remote: a revoked token keeps the destination and never falls back to local MDM");
-}
-{
-  const { api, calls, listeners, store } = remoteApi(true, true);
-  served = { [`${remoteBase}api/add`]: jsonReply({}, 401) };
-  load(api, true);
-  await settle();
-  listeners.created({ id: 103, url: "https://files.test/a.zip", filename: "a.zip" });
-  await settle();
-  assert.equal(store.remote.token, null);
-  assert.equal(store.remote.url, remoteBase);
-  assert.deepEqual(steps(calls), ["pause", "resume"]);
-  assert.deepEqual(natives(calls), []);
-  ok("remote: revocation during capture resumes the browser's transfer");
-}
-{
-  const { api, calls, listeners } = remoteApi();
-  served = { [`${remoteBase}api/add`]: jsonReply({ id: 99 }) };
-  load(api, true);
-  await settle();
-  const start = requests.length;
-  listeners.beforeRequest({ method: "POST", url: "https://files.test/report.zip", requestId: "remote-post", requestBody: { formData: { secret: ["value"] } } });
-  listeners.created({ id: 104, url: "https://files.test/report.zip", filename: "report.zip" });
-  await settle();
-  assert.equal(requests.length, start, "POST downloads must not become remote GETs");
-  assert.deepEqual(steps(calls), ["pause", "resume"]);
-  ok("remote: browser-session POST downloads stay with the browser");
-}
-{
-  const { api, listeners, store } = remoteApi();
-  served = {};
-  load(api, true);
-  const state = await ask(listeners)({ type: "state" }, remoteSender);
-  assert.equal(state.connected, false, "a stored token isn't proof of a live server");
-  assert.equal(state.why, "unreachable");
-  assert.equal(store.remote.token, remoteToken, "temporary connectivity failures preserve pairing");
-  served[`${remoteBase}api/status`] = jsonReply(remoteList);
-  assert.equal((await ask(listeners)({ type: "state" }, remoteSender)).connected, true);
-  ok("remote: connection checks distinguish offline from revoked and recover without re-pairing");
-}
-{
-  const { api, listeners, store } = remoteApi();
-  let respond;
-  served = { [`${remoteBase}api/status`]: { respond: () => new Promise((resolve) => { respond = resolve; }) } };
-  load(api, true);
-  const waiting = ask(listeners)({ type: "state" }, remoteSender);
-  await settle();
-  store.remote = { url: "https://other.test/", token: "b".repeat(64) };
-  respond({ status: 401, json: async () => ({}) });
-  await waiting;
-  assert.equal(store.remote.token, "b".repeat(64), "an old response can't revoke a newly selected server");
-  ok("remote: late responses cannot overwrite a different destination");
-}
-{
-  const { api, listeners } = remoteApi();
-  let signal;
-  served = { [`${remoteBase}api/status`]: { respond: async (opts) => { signal = opts.signal; return { status: 200, json: () => new Promise(() => {}) }; } } };
-  load(api, true, { setTimeout: (f, ms) => setTimeout(f, ms === 15000 ? 5 : ms) });
-  const state = await ask(listeners)({ type: "state" }, remoteSender);
-  assert.equal(state.connected, false);
-  assert.equal(signal.aborted, true, "a stalled JSON response is aborted along with its request");
-  ok("remote: the timeout includes the response body and aborts the underlying fetch");
-}
-{
-  const { api, listeners, store } = remoteApi();
-  served = { [`${remoteBase}api/forget`]: jsonReply({}) };
-  load(api, true);
-  await ask(listeners)({ type: "remote-off" }, remoteSender);
-  assert.equal(store.remote, null);
-  assert.equal(store.remoteStatus, null);
-  assert.ok(!store.rules?.source, "returning to local mode doesn't reuse server defaults");
-ok("remote: switching back to this computer clears server state and rules");
-}
-{
-  const { api, listeners, store } = remoteApi();
-  served = { [`${remoteBase}api/status`]: jsonReply({ code: "not-found", error: "not found" }, 404),
-    [`${remoteBase}api/list`]: jsonReply({ downloads: [], queues: [], categories: [] }) };
-  load(api, true);
-  const result = await ask(listeners)({ type: "state" }, remoteSender);
-  assert.equal(result.connected, true);
-  assert.equal(store.remote.token, remoteToken);
-  ok("remote: older servers fall back to the legacy list endpoint only on a missing status route");
-}
-{
-  const { api, listeners, store } = remoteApi();
-  served = { [`${remoteBase}api/status`]: jsonReply({ api_version: 1, connected: true,
-    rules: { types: "ZIP", capture: true, excludedSites: "private.test", excludedAddresses: [], minKb: 512 } }) };
-  const before = requests.length;
-  load(api, true);
-  await ask(listeners)({ type: "state" }, remoteSender);
-  assert.equal(store.rules.types, "ZIP"); assert.equal(store.rules.minKb, 512); assert.equal(store.rules.excludedSites, "private.test");
-  assert.ok(requests.slice(before).every((r) => !r.url.endsWith("api/list")), "capture-scoped clients never read download history");
-  ok("remote: server capture rules are loaded without requesting download-list permissions");
-}
-{
-  const { api, listeners, store } = remoteApi();
-  served = { [`${remoteBase}api/status`]: jsonReply({ api_version: 1, connected: true,
-    rules: { types: "", capture: false, opened: true } }) };
-  load(api, true);
-  await ask(listeners)({ type: "state" }, remoteSender);
-  assert.equal(store.rules.types, "", "an explicitly empty type list must not become the default list");
-  assert.equal(store.rules.capture, false);
-  assert.equal(store.rules.opened, true, "inline capture is opt-in, using the owner's server setting");
-  ok("remote: explicit empty/disabled capture rules and owner inline-capture policy are respected");
 }
 assert.deepEqual(complaints, [], "nothing written to the console as an error or warning");
 

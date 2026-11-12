@@ -53,6 +53,9 @@ pub struct AddAnswer {
     pub id: Option<u64>,
     #[serde(default)]
     pub pending: bool,
+    /// Transient torrent-admission result id (owner Web UI management API).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub request_id: Option<String>,
 }
 
 /// One download of the list.
@@ -64,6 +67,9 @@ pub struct DownloadInfo {
     pub file: String,
     /// Its address (a video's page, a torrent's magnet link).
     pub url: String,
+    /// Transfer source: `web` or `torrent`; absent from older servers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
     /// Where it is saved: the file, or a torrent's folder.
     pub path: String,
     /// `Queued` (added, never started), `Downloading`, `Stopped`, `Complete` or `Error`.

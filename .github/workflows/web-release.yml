@@ -1,0 +1,224 @@
+# All Webmister release assets use one source commit and one publication gate.
+# Upstream's v* desktop/store workflow remains separate and is never invoked here.
+name: Webmister release
+
+on:
+  push:
+    tags: ["web-v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Build-only package version (empty uses Cargo.toml; never publishes)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: webmister-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      publish: ${{ steps.metadata.outputs.publish }}
+      prerelease: ${{ steps.metadata.outputs.prerelease }}
+      tag: ${{ steps.metadata.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Packaging and publication regressions
+        run: python -m unittest discover -s tools/web-release -p 'test_*.py'
+      - name: Pin release identity
+        id: metadata
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
+        run: python tools/web-release/release.py metadata --version "$VERSION_INPUT"
+
+  extension:
+    needs: metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Native and remote compatibility
+        run: node tools/extension/test.mjs
+      - name: Pack both browser variants
+        shell: pwsh
+        run: |
+          ./tools/extension/pack.ps1
+          if ($LASTEXITCODE) { throw 'Extension packing failed.' }
+          node tools/extension/check-pack.mjs
+          if ($LASTEXITCODE) { throw 'Extension package check failed.' }
+      - name: Version and verify the fork packages
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+        run: python tools/web-release/release.py extensions --version "$VERSION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webmister-extensions
+          path: |
+            target/webmister-dist/*-extension-chromium.zip
+            target/webmister-dist/*-extension-firefox.xpi
+          if-no-files-found: error
+
+  native:
+    needs: [metadata, extension]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            executable: misterdownloadmanager.exe
+          - os: ubuntu-22.04
+            platform: linux
+            executable: misterdownloadmanager
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/release
+          key: webmister-release-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: webmister-release-${{ runner.os }}-
+      - name: Linux runtime/build libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake libgtk-3-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev \
+            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+      - name: Build the actual release programs
+        run: cargo build --locked --release -p mdm-app -p mdm-cli -p mdm-nmhost -p mdm-mcp
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix tools/web --no-audit --no-fund
+      - name: Chromium (Linux)
+        if: runner.os == 'Linux'
+        run: npx --prefix tools/web playwright install --with-deps chromium
+      - name: Chromium (Windows)
+        if: runner.os == 'Windows'
+        run: npx --prefix tools/web playwright install chromium
+      - uses: actions/download-artifact@v4
+        with:
+          name: webmister-extensions
+          path: target/webmister-extensions
+      - name: Unpack the actual versioned Chromium release for acceptance
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          python -m zipfile -e "target/webmister-extensions/Webmister-$env:VERSION-extension-chromium.zip" target/webmister-extension-under-test
+          if ($LASTEXITCODE) { throw 'Release extension extraction failed.' }
+      - name: Real-server acceptance against the release binary
+        env:
+          MDM_TEST_APP: ${{ github.workspace }}/target/release/${{ matrix.executable }}
+          MDM_TEST_EXTENSION: ${{ github.workspace }}/target/webmister-extension-under-test
+          MDM_TEST_EXTENSION_VERSION: ${{ needs.metadata.outputs.version }}
+        run: node tools/web/headless.mjs
+      - name: Package only the explicit public release inputs
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          python tools/web-release/release.py package --version "$env:VERSION" --platform "$env:PLATFORM" --source target/webmister-extensions
+          if ($LASTEXITCODE) { throw 'Native package verification failed.' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webmister-${{ matrix.platform }}
+          path: target/webmister-dist/*-${{ matrix.platform }}-x86_64.*
+          if-no-files-found: error
+
+  image:
+    needs: [metadata, extension, native]
+    uses: ./.github/workflows/web-image.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      publish: ${{ needs.metadata.outputs.publish == 'true' }}
+
+  assemble:
+    needs: [metadata, extension, native, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: webmister-*
+          merge-multiple: true
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-image-release
+          path: release
+      - name: Verify completeness, source provenance and SHA-256 inventory
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+          PUBLISH: ${{ needs.metadata.outputs.publish }}
+        run: |
+          args=()
+          if [ "$PUBLISH" = true ]; then args+=(--published); fi
+          python tools/web-release/release.py verify --version "$VERSION" --out release "${args[@]}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coordinated-webmister-release
+          path: release/*
+          if-no-files-found: error
+      - name: Create a draft, attach every required file, then publish
+        if: needs.metadata.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.metadata.outputs.tag }}
+          PRERELEASE: ${{ needs.metadata.outputs.prerelease }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = true ] || { echo 'Release already public; refusing to replace published downloads.' >&2; exit 1; }
+          else
+            flags=()
+            if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
+            gh release create "$TAG" --verify-tag --draft --title "Webmister Download Manager $TAG" --notes-file release/release-notes.md "${flags[@]}"
+          fi
+          gh release upload "$TAG" release/Webmister-*.zip release/Webmister-*.tar.gz release/Webmister-*.xpi release/SHA256SUMS.txt release/RELEASE.json release/image-release.json --clobber
+          if [ "$PRERELEASE" = true ]; then
+            gh release edit "$TAG" --draft=false --prerelease --latest=false
+          else
+            gh release edit "$TAG" --draft=false --prerelease=false --latest
+          fi

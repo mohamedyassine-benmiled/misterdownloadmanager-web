@@ -4,11 +4,19 @@
 const $ = (id) => document.getElementById(id);
 let TX = {}, LANG = 'en', authenticated = false, owner = false, csrf = null, setup = false;
 let data = null, config = null, authConfig = null, page = 'downloads', filter = 'all';
+let sourceFilter = 'all';
+let queueFilter = null;
+let addMode = 'web', queueSubmitting = false, removingCompleted = false, detailSnapshot = null;
+const addDrafts = { web: '', torrent: '' };
+const pendingAdditions = new Map();
+let addDialogGeneration = 0;
+let reviewingAddition = null;
 let timer = null, refreshing = null, failures = 0, chosenFile = null, detailId = null, lastDetails = 0;
 let removing = [], revoking = null, lastActivity = 0;
 let navigationGeneration = 0;
 let loadedDetailId = null, detailLoading = false, detailRequestSequence = 0;
-const rows = new Map(), queueRows = new Map(), selected = new Set(), dirty = new Set();
+const rows = new Map(), selected = new Set(), dirty = new Set();
+const managementCache = new Map();
 const edits = new WeakMap();
 
 function T(s) { return TX[s] || s; }
@@ -23,6 +31,8 @@ function size(n) {
 function speed(n) { const key = n >= 1048576 ? '{n} MB/sec' : '{n} KB/sec'; return (TX['unit:' + key] || key).replace('{n}', num(n / (n >= 1048576 ? 1048576 : 1024), 1)); }
 function eta(x) { if (!x.size || !x.speed || x.status !== 'Downloading') return '—'; const s = Math.max(0, Math.ceil((x.size - x.downloaded) / x.speed)); return `${Math.floor(s / 3600) ? Math.floor(s / 3600) + ':' : ''}${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; }
 function element(tag, text, className) { const node = document.createElement(tag); if (text != null) node.textContent = text; if (className) node.className = className; return node; }
+function desktopIcon(name) { const image = element('img', null, 'desktop-icon'); image.src = `desktop-icons/${name}.png`; image.alt = ''; image.width = image.height = 24; return image; }
+for (const node of document.querySelectorAll('[data-desktop-icon]')) node.prepend(desktopIcon(node.dataset.desktopIcon));
 function translate(root = document) {
   for (const el of root.querySelectorAll('[data-t]')) el.textContent = T(el.dataset.t);
   for (const el of root.querySelectorAll('[data-ta]')) { el.setAttribute('aria-label', T(el.dataset.ta)); el.title = T(el.dataset.ta); }
@@ -71,6 +81,15 @@ function message(error) {
     'torrent-metadata-unavailable': T('Torrent metadata is unavailable. Wait for discovery or restore the saved torrent file.'),
     'invalid-torrent-files': T('Select at least one torrent file. Each file must be selected only once.'),
     'invalid-trackers': T('Enter up to 100 HTTP, HTTPS or UDP tracker addresses, one per line.'),
+    'torrent-files-exist': T('Torrent not added: files already exist in the destination folder. Existing files were not changed. Choose another category folder or inspect the existing files before retrying.'),
+    'torrent-read-failed': T('Torrent not added: metadata could not be read. Check the magnet link, peers or torrent file and the server logs.'),
+    'torrent-save-failed': T('Torrent not added: its metadata could not be saved. Check server storage permissions and the server logs.'),
+    'torrent-add-busy': T('Too many torrents are being checked. Wait for them to finish before adding another.'),
+    'torrent-add-result-unavailable': T('The torrent result is no longer available, possibly because the server restarted. Check the download list and logs before retrying.'),
+    'confirmation-required': T('Confirm that existing torrent files may be reused before continuing.'),
+    'torrent-destination-changed': T('The category folder or queue changed while confirmation was open. Add the torrent again to review the new destination.'),
+    'destination-in-use': T('Another download in the list uses these files. Open that download instead, or choose another category folder.'),
+    'duplicate-changed': T('The existing download was removed while the dialog was open. Review the list before adding it again.'),
   };
   if (problems[error.code]) return problems[error.code];
   if (error.code === 'temporarily-banned') return F('Too many failed logins. Try again in {seconds} seconds, or use local recovery.', { seconds: error.retry || 3600 });
@@ -88,12 +107,14 @@ function message(error) {
   return error.body?.code ? F('The server refused the operation: {reason}', { reason: error.body.code }) : T('The server did not answer. Check the connection and try again.');
 }
 let toastTimer;
-function toast(text, bad = false) { $('toast').textContent = text; $('toast').classList.toggle('bad', bad); $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, bad ? 7000 : 3500); }
+function toast(text, bad = false) { const node = $('toast'); const dialogs = [...document.querySelectorAll('dialog:modal')]; (dialogs.at(-1) || document.body).append(node); node.textContent = text; node.classList.toggle('bad', bad); node.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { node.hidden = true; }, bad ? 7000 : 3500); }
+for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListener('close', () => { if (dialog.contains($('toast'))) ([...document.querySelectorAll('dialog:modal')].at(-1) || document.body).append($('toast')); });
 async function submit(form, operation) {
   const revision = edits.get(form) || 0;
-  const button = form.querySelector('[type="submit"]'); if (button) { button.disabled = true; button.dataset.submitting = 'true'; }
+  const buttons = [...form.elements].filter((el) => el.type === 'submit');
+  for (const button of buttons) { button.disabled = true; button.dataset.submitting = 'true'; }
   try { await operation(); if ((edits.get(form) || 0) === revision) dirty.delete(form.id); } catch (e) { toast(message(e), true); }
-  finally { if (button) { delete button.dataset.submitting; button.disabled = button.dataset.blocked === 'true'; } }
+  finally { for (const button of buttons) { delete button.dataset.submitting; button.disabled = button.dataset.blocked === 'true'; } }
 }
 function button(label, action, className) {
   const b = element('button', label, className); b.type = 'button';
@@ -115,7 +136,7 @@ function showLogin(isSetup = false) {
   $('login-password').minLength = setup ? 12 : 1;
   if (setup) { const m = /^#pair=(\d{8})$/.exec(location.hash); if (m) { $('setup-code').value = m[1]; history.replaceState(null, '', location.pathname); } }
 }
-function signedOut() { csrf = null; owner = false; data = null; config = null; selected.clear(); rows.clear(); $('download-list').replaceChildren(); for (const input of document.querySelectorAll('input[type="password"]')) input.value = ''; dirty.clear(); closeDetails(); showLogin(); }
+function signedOut() { csrf = null; owner = false; data = null; config = null; selected.clear(); rows.clear(); pendingAdditions.clear(); renderAdditionResults(); $('download-list').replaceChildren(); for (const input of document.querySelectorAll('input[type="password"]')) input.value = ''; dirty.clear(); managementCache.clear(); for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close('cancel'); $('add-form').reset(); chosenFile = null; addDrafts.web = addDrafts.torrent = ''; detailSnapshot = null; $('file-name').hidden = true; closeDetails(); showLogin(); }
 async function restoreSession() {
   const s = await api('v1/auth/session');
   if (!s.authenticated) { showLogin(!s.configured); return; }
@@ -145,7 +166,8 @@ function refresh() {
       if (!Array.isArray(next.downloads) || !Array.isArray(next.queues) || !Array.isArray(next.categories)) throw new Error('Invalid snapshot');
       if (!authenticated) return;
       data = next; failures = 0; $('offline').hidden = true; $('loading').hidden = true; render();
-      if (detailId && owner && Date.now() - lastDetails > 5000) loadDetails(detailId, false).catch(() => {});
+      if (owner) await checkAdditionResults();
+      if (detailId && $('details').open && owner && Date.now() - lastDetails > 5000) loadDetails(detailId, false).catch(() => {});
     } catch (e) {
       if (!authenticated) return;
       failures++; $('offline').textContent = data ? T('Connection lost. Showing the last snapshot; changes may not have reached the server.') : T('Waiting for the server. Retrying automatically...'); $('offline').hidden = false;
@@ -155,17 +177,27 @@ function refresh() {
 function byId(id) { return data?.downloads.find((x) => x.id === Number(id)); }
 function visibleDownloads() {
   const search = $('search').value.trim().toLocaleLowerCase(LANG); const category = $('filter-category').value;
-  const list = (data?.downloads || []).filter((x) => (filter === 'all' || x.status === filter) && (!category || x.category === category) && (!search || `${x.file} ${x.url}`.toLocaleLowerCase(LANG).includes(search)));
+  const queue = queueFilter == null ? null : data?.queues.find((q) => q.name === queueFilter);
+  const list = (data?.downloads || []).filter((x) => (filter === 'all' || (filter === 'unfinished' ? x.status !== 'Complete' : x.status === filter)) && (queueFilter == null || queue?.ids.includes(x.id)) && (sourceFilter === 'all' || x.source === sourceFilter) && (!category || x.category === category) && (!search || `${x.file} ${x.url}`.toLocaleLowerCase(LANG).includes(search)));
   const sort = $('sort').value; const collator = new Intl.Collator(LANG, { numeric: true });
   return list.sort((a, b) => sort === 'name' ? collator.compare(a.file, b.file) : sort === 'size' ? (b.size || 0) - (a.size || 0) || b.id - a.id : sort === 'progress' ? (b.size ? b.downloaded / b.size : 0) - (a.size ? a.downloaded / a.size : 0) || b.id - a.id : b.id - a.id);
 }
 function render() {
   if (!data) return;
   $('summary').textContent = speed(data.speed) + (data.free == null ? '' : ' · ' + F('{size} free', { size: size(data.free) }));
-  for (const count of document.querySelectorAll('[data-count]')) count.textContent = num(count.dataset.count === 'all' ? data.downloads.length : data.downloads.filter((x) => x.status === count.dataset.count).length);
+  for (const count of document.querySelectorAll('[data-count]')) count.textContent = num(count.dataset.count === 'all' ? data.downloads.length : data.downloads.filter((x) => count.dataset.count === 'unfinished' ? x.status !== 'Complete' : x.status === count.dataset.count).length);
   const categories = data.categories.map((c) => [c.key, T(c.name)]);
   selectOptions($('add-category'), [['', T('Automatic (by file type)')], ...categories]);
   selectOptions($('filter-category'), [['', T('All categories')], ...categories]);
+  renderFolderTree();
+  if (page === 'downloads') {
+    const category = data.categories.find((c) => c.key === $('filter-category').value);
+    const treeSelection = queueFilter != null || !!category;
+    for (const b of document.querySelectorAll('[data-page="downloads"]')) {
+      if (!treeSelection && b.dataset.filter === filter) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    }
+    $('view-title').textContent = queueFilter ? T(queueFilter) : category ? T(category.name) : filter === 'all' ? T('All downloads') : filter === 'unfinished' ? T('Unfinished') : T(filter);
+  }
   selectOptions($('detail-category'), categories);
   selectOptions($('add-when'), [['', T('Start now')], ...data.queues.map((q) => [q.name, F('Wait in {queue}', { queue: T(q.name) })])]);
   const activeElement = document.activeElement; const shown = visibleDownloads(); const keep = new Set();
@@ -173,12 +205,14 @@ function render() {
     keep.add(x.id); let row = rows.get(x.id);
     if (!row) {
       row = $('download-row').content.firstElementChild.cloneNode(true);
+      row.addEventListener('click', (e) => { if (!e.target.closest('button, input, a, select')) loadDetails(x.id).catch((error) => toast(message(error), true)); });
       row.querySelector('.select-download').addEventListener('change', (e) => { if (e.target.checked) selected.add(x.id); else selected.delete(x.id); renderSelection(); });
       row.querySelector('.filename').addEventListener('click', () => loadDetails(x.id).catch((e) => toast(message(e), true)));
       row.querySelector('.toggle').addEventListener('click', () => runAction(byId(x.id)?.status === 'Downloading' ? 'pause' : 'start', [x.id]));
       row.querySelector('.remove').addEventListener('click', () => askRemove([x.id])); rows.set(x.id, row);
     }
     row.querySelector('.filename').textContent = x.file; row.querySelector('.filename').title = x.file;
+    row.querySelector('.file-source').textContent = T(x.source === 'torrent' ? 'Torrent' : x.source === 'web' ? 'Web' : 'Unknown');
     row.querySelector('.select-download').setAttribute('aria-label', F('Select {name}', { name: x.file }));
     row.querySelector('.state').textContent = T(x.status); row.querySelector('.state').className = 'state s-' + x.status.toLowerCase();
     row.classList.toggle('s-complete-row', x.status === 'Complete');
@@ -188,40 +222,70 @@ function render() {
     row.querySelector('.progress-fill').style.width = pct + '%';
     row.querySelector('.progress-text').textContent = x.size || x.status === 'Complete' ? num(pct, 1) + '%' : size(x.downloaded);
     row.querySelector('.file-size').textContent = size(x.size); row.querySelector('.file-speed').textContent = x.status === 'Downloading' ? speed(x.speed) : '—'; row.querySelector('.file-eta').textContent = eta(x);
-    row.querySelector('.toggle').hidden = x.status === 'Complete'; row.querySelector('.toggle').textContent = x.status === 'Downloading' ? T('Pause') : T('Start');
-    row.querySelector('.remove').textContent = T('Remove'); row.querySelector('.row-error').hidden = !x.error; row.querySelector('.row-error').textContent = x.error || '';
+    const toggle = row.querySelector('.toggle'); const action = T(x.status === 'Downloading' ? 'Pause' : 'Start');
+    toggle.hidden = x.status === 'Complete'; toggle.setAttribute('aria-label', `${action}: ${x.file}`); toggle.title = action;
+    toggle.querySelector('path').setAttribute('d', x.status === 'Downloading' ? 'M8 5v14M16 5v14' : 'M8 4l12 8-12 8z');
+    const remove = row.querySelector('.remove'); remove.setAttribute('aria-label', `${T('Remove')}: ${x.file}`); remove.title = T('Remove');
+    row.querySelector('.row-error').hidden = !x.error; row.querySelector('.row-error').textContent = x.error || '';
     if ($('download-list').children[index] !== row) $('download-list').insertBefore(row, $('download-list').children[index] || null);
   }
   for (const [id, row] of rows) if (!keep.has(id)) { row.remove(); rows.delete(id); }
   for (const id of selected) if (!byId(id)) selected.delete(id);
   $('downloads-table').hidden = !shown.length; $('empty').hidden = !!shown.length;
   renderSelection(); renderQueueControls();
+  if (detailId && byId(detailId)) renderDetailProgress(byId(detailId));
   if (detailId && !byId(detailId)) closeDetails();
   if (activeElement?.isConnected && document.activeElement !== activeElement) activeElement.focus({ preventScroll: true });
+}
+function renderFolderTree() {
+  const update = (root, entries, current, choose) => {
+    const key = JSON.stringify(entries);
+    if (root.dataset.entries !== key) {
+      root.dataset.entries = key;
+      root.replaceChildren(...entries.map(([value, label, count]) => {
+        const b = element('button'); b.type = 'button'; b.dataset.treeValue = value;
+        const categoryIcons = { Compressed: 'cat-compressed', Documents: 'cat-documents', Music: 'cat-music', Programs: 'cat-programs', Video: 'cat-video', Torrents: 'cat-torrents', General: 'cat-all' };
+        const icon = desktopIcon(root.id === 'queue-tree' ? 'cat-queues' : categoryIcons[value] || 'cat-folder');
+        const title = element('span', label, 'tree-label'); const n = element('span', num(count), 'count'); b.append(icon, title, n);
+        b.addEventListener('click', async () => { if (await navigate('downloads', 'all') === false) return; choose(value); render(); });
+        return b;
+      }));
+    }
+    for (const b of root.children) { if (b.dataset.treeValue === current) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); }
+  };
+  update($('category-tree'), data.categories.map((c) => [c.key, T(c.name), data.downloads.filter((d) => d.category === c.key).length]), $('filter-category').value || null, (value) => { $('filter-category').value = value; queueFilter = null; });
+  update($('queue-tree'), data.queues.map((q) => [q.name, T(q.name), q.ids.length]), queueFilter, (value) => { queueFilter = value; $('filter-category').value = ''; });
 }
 function renderSelection() {
   for (const [id, row] of rows) { row.querySelector('.select-download').checked = selected.has(id); row.classList.toggle('selected', selected.has(id)); }
   const shown = visibleDownloads(); const count = shown.filter((x) => selected.has(x.id)).length;
   $('select-all').checked = !!shown.length && count === shown.length; $('select-all').indeterminate = count > 0 && count < shown.length;
   $('bulk').hidden = selected.size === 0; $('selection-count').textContent = F('{n} selected', { n: num(selected.size) });
+  for (const control of document.querySelectorAll('[data-command], #command-remove')) control.disabled = selected.size === 0;
+  $('delete-completed').disabled = !data?.downloads.some((x) => x.status === 'Complete');
 }
 function renderQueueControls() {
-  const keep = new Set();
-  for (const q of data.queues) {
-    keep.add(q.name); let row = queueRows.get(q.name);
-    if (!row) { row = element('div', null, 'queue-control'); row.append(element('span'), button('', () => queueAction(q.name, !data.queues.find((x) => x.name === q.name)?.running))); queueRows.set(q.name, row); $('queue-controls').append(row); }
-    row.firstChild.textContent = `${T(q.name)} · ${num(q.ids.length)}`; row.lastChild.textContent = q.running ? T('Stop') : T('Start');
-  }
-  for (const [name, row] of queueRows) if (!keep.has(name)) { row.remove(); queueRows.delete(name); }
+  selectOptions($('toolbar-queue'), data.queues.map((q) => [q.name, T(q.name)]));
+  const queue = data.queues.find((q) => q.name === $('toolbar-queue').value);
+  $('start-queue').disabled = queueSubmitting || !queue || queue.running;
+  $('stop-queue').disabled = queueSubmitting || !queue || !queue.running;
 }
+$('toolbar-queue').addEventListener('change', renderQueueControls);
+for (const id of ['start-queue', 'stop-queue']) $(id).addEventListener('click', async () => {
+  if (queueSubmitting || !data?.queues.some((q) => q.name === $('toolbar-queue').value)) return;
+  queueSubmitting = true; renderQueueControls();
+  try { await queueAction($('toolbar-queue').value, id === 'start-queue'); }
+  catch (e) { toast(message(e), true); }
+  finally { queueSubmitting = false; renderQueueControls(); }
+});
 async function runAction(action, ids) {
   try { const r = await api('v1/actions', { json: { action, ids } }); if (r.skipped?.length) toast(F('Completed: {done}. Skipped: {skipped}.', { done: r.done.length, skipped: r.skipped.length }), true); await refresh(); }
   catch (e) { toast(message(e), true); }
 }
 async function queueAction(name, start) { await api('v1/queues/action', { json: { name, start } }); await refresh(); }
-function askRemove(ids) { removing = ids.filter((id) => byId(id)); if (!removing.length) return; $('remove-text').textContent = F('Remove {n} downloads from the list?', { n: num(removing.length) }); $('remove-files').checked = false; $('remove-dialog').showModal(); }
+function askRemove(ids, completedOnly = false) { removing = ids.filter((id) => byId(id)); if (!removing.length) return; removingCompleted = completedOnly; $('remove-text').textContent = F('Remove {n} downloads from the list?', { n: num(removing.length) }) + (completedOnly ? ' ' + T('Completed files will stay on disk.') : ''); $('remove-files').checked = false; $('remove-files').disabled = completedOnly; $('remove-files').closest('label').hidden = completedOnly; $('remove-dialog').returnValue = ''; $('remove-dialog').showModal(); }
 $('remove-dialog').addEventListener('close', async () => {
-  const ids = removing; removing = []; if ($('remove-dialog').returnValue !== 'remove') return;
+  const ids = removing.filter((id) => !removingCompleted || byId(id)?.status === 'Complete'); removing = []; if ($('remove-dialog').returnValue !== 'remove') return;
   const running = ids.filter((id) => byId(id)?.status === 'Downloading');
   try { if (running.length) await api('v1/actions', { json: { action: 'pause', ids: running } }); await runAction($('remove-files').checked ? 'delete' : 'remove', ids); }
   catch (e) { toast(message(e), true); }
@@ -230,9 +294,73 @@ $('select-all').addEventListener('change', (e) => { for (const x of visibleDownl
 $('clear-selection').addEventListener('click', () => { selected.clear(); renderSelection(); });
 $('bulk-remove').addEventListener('click', () => askRemove([...selected]));
 for (const b of document.querySelectorAll('[data-bulk]')) b.addEventListener('click', () => runAction(b.dataset.bulk, [...selected]));
+for (const b of document.querySelectorAll('[data-command]')) b.addEventListener('click', () => runAction(b.dataset.command, [...selected]));
+$('command-remove').addEventListener('click', () => askRemove([...selected]));
+$('delete-completed').addEventListener('click', () => askRemove((data?.downloads || []).filter((x) => x.status === 'Complete').map((x) => x.id), true));
 for (const id of ['search', 'filter-category', 'sort']) $(id).addEventListener(id === 'search' ? 'input' : 'change', render);
+for (const b of document.querySelectorAll('[data-source]')) b.addEventListener('click', () => { sourceFilter = b.dataset.source; for (const tab of document.querySelectorAll('[data-source]')) tab.setAttribute('aria-pressed', String(tab === b)); render(); });
 
 async function manage(payload) { return api('v1/manage', { json: payload }); }
+function renderAdditionResults() {
+  $('addition-status').hidden = pendingAdditions.size === 0;
+  $('addition-results').replaceChildren(...[...pendingAdditions].map(([id, job]) => {
+    const text = job.state === 'pending' ? T(owner ? 'Checking torrent metadata and destination. It has not been added yet.' : 'Torrent submitted. Sign in as the owner to check whether it was added.') : job.state === 'confirmation' ? T('Existing files found. Review them before adding this torrent.') : job.state === 'cancelled' ? T('Torrent not added. Existing files were left unchanged.') : job.state === 'added' ? T(job.duplicate ? 'This torrent is already in the download list.' : job.reused ? 'Torrent added. Existing pieces are verified when the transfer starts.' : 'Torrent added to the download list.') : message({ code: job.code });
+    const row = element('li', `${job.name}: ${text}`, job.state === 'error' ? 'error' : '');
+    if (job.state === 'confirmation' && owner) row.append(button(T('Review existing files'), () => openReuseDialog(id)));
+    if (job.state === 'added' && Number.isSafeInteger(job.id)) {
+      row.append(button(T('Open download'), async () => { await refresh(); if (byId(job.id)) await loadDetails(job.id); }));
+      if (['Stopped', 'Queued', 'Error'].includes(byId(job.id)?.status)) row.append(button(T('Resume'), () => runAction('start', [job.id])));
+      if (job.duplicate && owner) row.append(button(T('Recheck'), async () => { await manage({ op: 'torrent.action', id: job.id, action: 'recheck' }); toast(T('Torrent operation requested. Results appear in Activity.')); }));
+    }
+    return row;
+  }));
+}
+async function checkAdditionResults() {
+  await Promise.all([...pendingAdditions].filter(([, job]) => job.state === 'pending').map(async ([request_id, job]) => {
+    try { const result = await manage({ op: 'torrent.add.status', request_id }); if (authenticated && pendingAdditions.get(request_id) === job) Object.assign(job, result); }
+    catch (e) { if (e.code === 'torrent-add-result-unavailable' && pendingAdditions.get(request_id) === job) Object.assign(job, { state: 'error', code: e.code }); }
+  }));
+  renderAdditionResults();
+  if (owner && !document.querySelector('dialog:modal')) {
+    const waiting = [...pendingAdditions].find(([, job]) => job.state === 'confirmation' && !job.reviewed);
+    if (waiting) openReuseDialog(waiting[0]);
+  }
+}
+$('clear-addition-results').addEventListener('click', () => { for (const [id, job] of pendingAdditions) if (!['pending', 'confirmation'].includes(job.state)) pendingAdditions.delete(id); renderAdditionResults(); });
+function openReuseDialog(id) {
+  const job = pendingAdditions.get(id); if (!owner || job?.state !== 'confirmation' || document.querySelector('dialog:modal')) return;
+  reviewingAddition = id; job.reviewed = true; $('reuse-form').reset(); $('reuse-error').textContent = '';
+  $('reuse-summary').textContent = F('{name} — existing files at this destination: {n}.', { name: job.name, n: num(job.existing_count) });
+  $('reuse-destination').textContent = job.destination || '';
+  $('reuse-files').replaceChildren(...(job.files || []).map((file) => element('li', file)));
+  $('reuse-more').hidden = job.existing_count <= (job.files || []).length;
+  $('reuse-dialog').showModal();
+}
+$('reuse-close').addEventListener('click', () => $('reuse-dialog').close());
+$('reuse-dialog').addEventListener('close', () => { if (!$('reuse-dialog').open) reviewingAddition = null; });
+function reuseFailure(id, error) {
+  if (error.code === 'torrent-add-result-unavailable') {
+    const job = pendingAdditions.get(id); if (job) Object.assign(job, { state: 'error', code: error.code });
+    if (reviewingAddition === id) $('reuse-dialog').close(); renderAdditionResults(); toast(message(error), true);
+  } else if (reviewingAddition === id) $('reuse-error').textContent = message(error);
+  else toast(message(error), true);
+}
+$('reuse-cancel').addEventListener('click', async () => {
+  const id = reviewingAddition; if (!id) return;
+  try { const result = await manage({ op: 'torrent.add.cancel', request_id: id }); const job = pendingAdditions.get(id); if (job) Object.assign(job, result); if (reviewingAddition === id) $('reuse-dialog').close(); renderAdditionResults(); }
+  catch (e) { reuseFailure(id, e); }
+});
+$('reuse-form').addEventListener('submit', async (e) => {
+  e.preventDefault(); const id = reviewingAddition; if (!id || !$('reuse-approved').checked) return;
+  const control = $('reuse-form').querySelector('[type="submit"]'); control.disabled = true; $('reuse-cancel').disabled = true; $('reuse-error').textContent = '';
+  try { const result = await manage({ op: 'torrent.add.confirm', request_id: id, approve_existing: true }); const job = pendingAdditions.get(id); if (job) Object.assign(job, result); if (reviewingAddition === id) $('reuse-dialog').close(); renderAdditionResults(); await refresh(); }
+  catch (error) { reuseFailure(id, error); }
+  finally { control.disabled = false; $('reuse-cancel').disabled = false; }
+});
+function askDuplicate(result) {
+  $('duplicate-file').textContent = result.file; $('duplicate-dialog').returnValue = 'cancel'; $('duplicate-dialog').showModal();
+  return new Promise((resolve) => $('duplicate-dialog').addEventListener('close', () => resolve($('duplicate-dialog').returnValue), { once: true }));
+}
 async function loadDetails(id, full = true) {
   const changing = detailId !== id;
   if (!changing && detailLoading) return;
@@ -240,33 +368,95 @@ async function loadDetails(id, full = true) {
   if (changing && detailId !== null && detailForms.some((form) => dirty.has(form)) && !confirm(T('Discard unsaved changes?'))) return;
   const x = byId(id); if (!x) return;
   if (changing) {
+    selectDetailTab('status');
+    for (const tab of ['files', 'torrent', 'trackers', 'peers', 'general']) $('detail-tab-' + tab).hidden = true;
     resetDetailDrafts(); loadedDetailId = null;
+    detailSnapshot = null; selectInspectTab('connections');
     $('detail-form').hidden = $('file-tools').hidden = $('torrent-tools').hidden = true;
     $('detail-info').replaceChildren(element('p', T('Loading download details...'), 'muted'));
-    $('detail-connections').replaceChildren(); $('detail-log').replaceChildren();
+    $('detail-connections').replaceChildren(); $('detail-log').replaceChildren(); $('detail-segments').replaceChildren();
   }
-  detailId = id; lastDetails = Date.now(); $('details').hidden = false; $('transfer-layout').classList.add('with-details'); $('detail-name').textContent = x.file;
+  detailId = id; lastDetails = Date.now(); if (!$('details').open) $('details').showModal(); $('detail-name').textContent = x.file; renderDetailProgress(x);
   const sequence = ++detailRequestSequence; detailLoading = true;
   let d;
   try { d = owner ? await manage({ op: 'details', id }) : { url: x.url, path: T('Owner login required'), connections: [], log: [] }; }
   finally { if (sequence === detailRequestSequence) detailLoading = false; }
   if (detailId !== id || sequence !== detailRequestSequence) return;
   loadedDetailId = id;
-  const info = [[T('Address'), d.url], [T('Destination'), d.path], [T('Status'), T(byId(id)?.status || x.status)]];
-  if (d.torrent) info.push([T('Torrent info hash'), d.torrent.hash], [T('Uploaded'), size(d.torrent.uploaded)]);
-  $('detail-info').replaceChildren(...info.flatMap(([key, value]) => [element('dt', key), element('dd', value)]));
+  detailSnapshot = d; renderDetailProgress(byId(id) || x);
+  $('detail-destination').textContent = `${T('Destination')}: ${d.path}`;
   $('detail-form').hidden = !owner;
   renderFileTools(d, byId(id) || x, full);
   renderTorrent(d.torrent, full);
+  $('torrent-speed').hidden = !owner || !d.torrent;
+  $('detail-tab-properties').hidden = !owner;
+  $('detail-tab-speed').hidden = !owner;
+  $('detail-tab-files').hidden = !owner || !d.plain_file;
+  for (const tab of ['torrent', 'trackers', 'peers', 'general']) $('detail-tab-' + tab).hidden = !owner || !d.torrent;
+  $('detail-tab-connections').hidden = !!d.torrent;
+  if (d.torrent && $('detail-tab-connections').getAttribute('aria-selected') === 'true') selectInspectTab('torrent');
   if (full && owner) { $('detail-description').value = d.description || ''; $('detail-limit').value = d.limit_kb || 0; $('detail-category').value = d.category || x.category; dirty.delete('detail-form'); }
-  $('detail-connections').replaceChildren(...(d.connections?.length ? d.connections.map((c) => element('p', `${c.id} · ${speed(c.speed)} · ${c.status}`)) : [element('p', T('No active connection details.'), 'muted')]));
+  $('detail-connections').replaceChildren(...(d.connections?.length ? d.connections.map((c) => { const row = element('tr'); row.append(element('td', num(c.id)), element('td', size(c.downloaded)), element('td', T(c.status))); return row; }) : [(() => { const row = element('tr'); const cell = element('td', T('No active connection details.'), 'muted'); cell.colSpan = 3; row.append(cell); return row; })()]));
+  $('detail-segments').replaceChildren(...(x.size ? (d.segments || []).map((segment) => { const bar = element('span', null, 'connection-segment'); bar.style.insetInlineStart = Math.max(0, Math.min(100, segment.start / x.size * 100)) + '%'; bar.style.width = Math.max(0, Math.min(100, (segment.end - segment.start) / x.size * 100)) + '%'; const received = element('span'); received.style.width = Math.max(0, Math.min(100, (segment.cursor - segment.start) / Math.max(1, segment.end - segment.start) * 100)) + '%'; bar.append(received); return bar; }) : []));
   $('detail-log').replaceChildren(...(d.log || []).slice().reverse().map(([at, text]) => element('li', new Date(at * 1000).toLocaleTimeString(LANG) + ' · ' + text)));
 }
 const detailForms = ['detail-form', 'move-form', 'source-form', 'checksum-form', 'torrent-form', 'trackers-form'];
+function selectDetailTab(name) {
+  for (const tab of document.querySelectorAll('[data-detail-tab]')) {
+    const active = tab.dataset.detailTab === name;
+    tab.setAttribute('aria-selected', String(active)); tab.tabIndex = active ? 0 : -1;
+    $('detail-' + tab.dataset.detailTab).hidden = !active;
+  }
+  $('detail-status-tools').hidden = name !== 'status';
+}
+function selectInspectTab(name) {
+  for (const tab of document.querySelectorAll('[data-inspect-tab]')) { const active = tab.dataset.inspectTab === name; tab.setAttribute('aria-selected', String(active)); tab.tabIndex = active ? 0 : -1; $(tab.getAttribute('aria-controls')).hidden = !active; }
+}
+for (const tab of document.querySelectorAll('[data-inspect-tab]')) {
+  tab.addEventListener('click', () => selectInspectTab(tab.dataset.inspectTab));
+  tab.addEventListener('keydown', (e) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+    const tabs = [...document.querySelectorAll('[data-inspect-tab]')].filter((item) => !item.hidden);
+    const direction = (document.documentElement.dir === 'rtl' ? -1 : 1) * (e.key === 'ArrowRight' ? 1 : -1);
+    const index = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (tabs.indexOf(tab) + direction + tabs.length) % tabs.length;
+    e.preventDefault(); selectInspectTab(tabs[index].dataset.inspectTab); tabs[index].focus();
+  });
+}
+$('toggle-inspector').addEventListener('click', () => { const hidden = !$('detail-inspector').hidden; $('detail-inspector').hidden = hidden; $('toggle-inspector').setAttribute('aria-expanded', String(!hidden)); $('toggle-inspector').textContent = T(hidden ? 'Show details' : 'Hide details'); });
+for (const tab of document.querySelectorAll('[data-detail-tab]')) {
+  tab.addEventListener('click', () => selectDetailTab(tab.dataset.detailTab));
+  tab.addEventListener('keydown', (e) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+    const tabs = [...document.querySelectorAll('[data-detail-tab]')].filter((item) => !item.hidden);
+    const direction = (document.documentElement.dir === 'rtl' ? -1 : 1) * (e.key === 'ArrowRight' ? 1 : -1);
+    const index = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (tabs.indexOf(tab) + direction + tabs.length) % tabs.length;
+    e.preventDefault(); selectDetailTab(tabs[index].dataset.detailTab); tabs[index].focus();
+  });
+}
+function renderDetailProgress(x) {
+  const known = !!x.size || x.status === 'Complete';
+  const pct = x.status === 'Complete' ? 100 : x.size ? Math.max(0, Math.min(100, 100 * x.downloaded / x.size)) : 0;
+  $('detail-name').textContent = (known ? `${num(pct)}% ` : '') + x.file;
+  $('detail-address').textContent = detailSnapshot?.url || x.url;
+  let host = '—'; try { host = new URL(detailSnapshot?.url || x.url).hostname || '—'; } catch { /* Unknown source. */ }
+  const info = [[T('Status'), T(x.status)], [T('File size'), size(x.size)], [T('Downloaded'), `${size(x.downloaded)}${known ? ` (${num(pct, 1)}%)` : ''}`], [T('Transfer rate'), x.status === 'Downloading' ? speed(x.speed) : '—'], [T('Time left'), eta(x)], [T('Resume capability'), detailSnapshot?.resumable == null ? T('Unknown') : T(detailSnapshot.resumable ? 'Yes' : 'No')], [T('Server'), host]];
+  $('detail-info').replaceChildren(...info.flatMap(([key, value], index) => [element('dt', key), element('dd', value, index === 0 ? 'transfer-status s-' + x.status.toLowerCase() : '')]));
+  const bar = $('detail-progress'); bar.querySelector('.progress-fill').style.width = pct + '%';
+  if (known) bar.setAttribute('aria-valuenow', String(Math.round(pct))); else bar.removeAttribute('aria-valuenow');
+  bar.setAttribute('aria-label', F('Progress for {name}', { name: x.file }));
+  $('detail-progress-text').textContent = known ? `${num(pct, 1)}% · ${size(x.downloaded)} / ${size(x.size)}` : size(x.downloaded);
+  const toggle = $('detail-toggle'); const action = T(x.status === 'Downloading' ? 'Pause' : 'Start');
+  toggle.hidden = x.status === 'Complete'; toggle.setAttribute('aria-label', action); toggle.title = action; toggle.querySelector('span').textContent = action;
+  toggle.querySelector('path').setAttribute('d', x.status === 'Downloading' ? 'M8 5v14M16 5v14' : 'M8 4l12 8-12 8z');
+}
+$('detail-toggle').addEventListener('click', () => { const x = byId(detailId); if (x) runAction(x.status === 'Downloading' ? 'pause' : 'start', [x.id]); });
 function resetDetailDrafts() { for (const form of detailForms) { const node = $(form); node.reset(); edits.set(node, (edits.get(node) || 0) + 1); dirty.delete(form); } }
-function closeDetails() { detailId = loadedDetailId = null; detailLoading = false; detailRequestSequence++; $('details').hidden = true; $('transfer-layout').classList.remove('with-details'); resetDetailDrafts(); }
-$('close-details').addEventListener('click', () => { if (!detailForms.some((form) => dirty.has(form)) || confirm(T('Discard unsaved changes?'))) closeDetails(); });
+function closeDetails() { detailId = loadedDetailId = null; detailLoading = false; detailRequestSequence++; if ($('details').open) $('details').close(); resetDetailDrafts(); }
+$('close-details').addEventListener('click', () => $('details').close());
+$('detail-dismiss').addEventListener('click', () => $('details').close());
+$('details').addEventListener('close', () => { if (!$('details').open) { detailRequestSequence++; detailLoading = false; } });
 $('detail-form').addEventListener('submit', (e) => { e.preventDefault(); submit(e.target, async () => { await manage({ op: 'download.update', id: detailId, category: $('detail-category').value, limit_kb: Number($('detail-limit').value), description: $('detail-description').value }); toast(T('Changes saved.')); await refresh(); }); });
+for (const id of ['detail-limit', 'torrent-order', 'torrent-ends', 'torrent-upload']) $(id).addEventListener('input', () => { const form = $(id).form; dirty.add(form.id); edits.set(form, (edits.get(form) || 0) + 1); });
 
 function renderFileTools(d, x, full) {
   $('file-tools').hidden = !owner || !d.plain_file;
@@ -286,17 +476,20 @@ function renderFileTools(d, x, full) {
   $('checksum-result').classList.toggle('error', state === 'mismatch' || state === 'error');
   $('checksum-actual').hidden = !d.checksum_result?.actual; $('checksum-actual').textContent = d.checksum_result?.actual || '';
 }
-function blockSubmit(form, blocked) { const b = $(form).querySelector('[type="submit"]'); b.dataset.blocked = String(!!blocked); b.disabled = !!blocked || b.dataset.submitting === 'true'; }
+function blockSubmit(form, blocked) { for (const b of [...$(form).elements].filter((el) => el.type === 'submit')) { b.dataset.blocked = String(!!blocked); b.disabled = !!blocked || b.dataset.submitting === 'true'; } }
 function renderTorrent(t, full) {
   $('torrent-tools').hidden = !owner || !t;
   if (!owner || !t) return;
   $('torrent-health').textContent = !t.metadata_available ? T('Torrent metadata is unavailable. Wait for discovery or restore the saved torrent file.') : t.files_truncated ? T('This torrent has too many files to edit here. File selection is read-only.') : t.busy ? T('A torrent operation is running. Wait for its result in Activity.') : t.pieces_total == null ? T('Peer and piece information appears while the torrent session is available.') : F('{complete} of {total} pieces verified', { complete: num(t.pieces_complete), total: num(t.pieces_total) });
+  $('torrent-info').replaceChildren(...[[T('Torrent info hash'), t.hash], [T('Uploaded'), size(t.uploaded)]].flatMap(([key, value]) => [element('dt', key), element('dd', value)]));
   if (full || (!dirty.has('torrent-form') && !$('torrent-form').contains(document.activeElement))) {
     $('torrent-order').checked = t.in_order; $('torrent-ends').checked = t.ends_first; $('torrent-upload').value = t.upload_limit_kb || 0;
-    $('torrent-files').replaceChildren(...(t.files || []).map((file) => {
+    const table = element('table', null, 'torrent-file-table'); const head = element('thead'); const headings = element('tr'); headings.append(...['File', 'Size', 'Done'].map((label) => element('th', T(label)))); head.append(headings); const body = element('tbody');
+    body.append(...(t.files || []).map((file) => {
       const label = element('label', null, 'check torrent-file'); const input = element('input'); input.type = 'checkbox'; input.value = String(file.index); input.checked = file.selected;
-      const text = element('span', file.path); text.dir = 'auto'; text.append(element('small', file.downloaded == null ? size(file.size) : F('{received} of {total}', { received: size(file.downloaded), total: size(file.size) }))); label.append(input, text); return label;
+      const text = element('span', file.path); text.dir = 'auto'; label.append(input, text); const row = element('tr'); const name = element('td'); name.append(label); row.append(name, element('td', size(file.size)), element('td', file.downloaded == null ? '—' : file.size ? num(Math.min(100, Math.max(0, 100 * file.downloaded / file.size)), 1) + '%' : '—')); return row;
     }));
+    table.append(head, body); $('torrent-files').replaceChildren(table);
   }
   blockSubmit('torrent-form', t.busy || !t.metadata_available || t.files_truncated);
   for (const action of document.querySelectorAll('[data-torrent-action]')) { action.dataset.blocked = String(!!t.busy); action.disabled = !!t.busy; }
@@ -313,51 +506,110 @@ for (const [form, payload, feedback] of [
 ]) $(form).addEventListener('submit', (e) => { e.preventDefault(); const id = detailId, revision = edits.get(e.target) || 0; submit(e.target, async () => {
   await manage({ ...payload(), id }); toast(feedback());
   if (form === 'trackers-form' && detailId === id && (edits.get(e.target) || 0) === revision) $('tracker-addresses').value = '';
-  await refresh(); if (detailId === id) await loadDetails(id, false);
+   await refresh(); if (detailId === id && $('details').open) await loadDetails(id, false);
 }); });
 for (const b of document.querySelectorAll('[data-torrent-action]')) b.addEventListener('click', async () => {
   b.disabled = true; const id = detailId;
-  try { await manage({ op: 'torrent.action', id, action: b.dataset.torrentAction }); toast(T('Torrent operation requested. Results appear in Activity.')); if (detailId === id) await loadDetails(id, false); }
+  try { await manage({ op: 'torrent.action', id, action: b.dataset.torrentAction }); toast(T('Torrent operation requested. Results appear in Activity.')); if (detailId === id && $('details').open) await loadDetails(id, false); }
   catch (e) { toast(message(e), true); } finally { b.disabled = b.dataset.blocked === 'true'; }
 });
 
-$('show-add').addEventListener('click', () => { $('add-panel').hidden = !$('add-panel').hidden; if (!$('add-panel').hidden) $('url').focus(); });
-$('close-add').addEventListener('click', () => { $('add-panel').hidden = true; });
+// A backdrop click dismisses only when the pointer both starts and ends outside.
+function dismissOnBackdrop(dialog) {
+  let outside = false;
+  const isOutside = (e) => { const r = dialog.getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom; };
+  dialog.addEventListener('pointerdown', (e) => { outside = e.target === dialog && isOutside(e); });
+  dialog.addEventListener('click', (e) => { if (outside && e.target === dialog && isOutside(e)) dialog.close('cancel'); outside = false; });
+  dialog.addEventListener('pointercancel', () => { outside = false; });
+}
+dismissOnBackdrop($('add-panel'));
+dismissOnBackdrop($('details'));
+dismissOnBackdrop($('management-dialog'));
+dismissOnBackdrop($('remove-dialog'));
+dismissOnBackdrop($('password-dialog'));
+dismissOnBackdrop($('reuse-dialog'));
+dismissOnBackdrop($('duplicate-dialog'));
+$('close-management').addEventListener('click', () => $('management-dialog').close());
+$('management-dialog').addEventListener('close', () => {
+  if ($('management-dialog').open) return;
+  navigationGeneration++;
+  if (page !== 'downloads' && authenticated) managementCache.set(page, { config, authConfig });
+  for (const input of $('management-dialog').querySelectorAll('input[type="password"]')) input.value = '';
+  $('pair-code').textContent = '';
+  page = 'downloads'; $('section-loading').hidden = true;
+  for (const b of document.querySelectorAll('[data-page]')) { if (b.dataset.page === 'downloads' && b.dataset.filter === filter) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); }
+});
+$('show-add').addEventListener('click', () => { if (!$('add-panel').open) { addDialogGeneration++; $('add-panel').showModal(); } $('url').focus(); });
+$('add-panel').addEventListener('close', () => { if (!$('add-panel').open) addDialogGeneration++; });
+function selectAddMode(mode) {
+  addDrafts[addMode] = $('url').value; addMode = mode; $('url').value = addDrafts[mode];
+  $('torrent-picker').hidden = mode !== 'torrent'; $('file-name').hidden = mode !== 'torrent' || !chosenFile;
+  $('url-label').textContent = T(mode === 'torrent' ? 'Address or magnet link' : 'Address');
+  $('url').placeholder = mode === 'torrent' ? 'magnet:… / https://…' : 'https://…';
+  $('add-source').setAttribute('aria-labelledby', `add-tab-${mode}`);
+  for (const tab of document.querySelectorAll('[data-add-mode]')) { const active = tab.dataset.addMode === mode; tab.setAttribute('aria-selected', String(active)); tab.tabIndex = active ? 0 : -1; }
+  edits.set($('add-form'), (edits.get($('add-form')) || 0) + 1);
+}
+for (const tab of document.querySelectorAll('[data-add-mode]')) {
+  tab.addEventListener('click', () => selectAddMode(tab.dataset.addMode));
+  tab.addEventListener('keydown', (e) => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) { e.preventDefault(); const mode = e.key === 'Home' ? 'web' : e.key === 'End' ? 'torrent' : addMode === 'web' ? 'torrent' : 'web'; selectAddMode(mode); $('add-tab-' + mode).focus(); } });
+}
+for (const id of ['close-add', 'dismiss-add']) $(id).addEventListener('click', () => $('add-panel').close());
 $('torrent-file').addEventListener('change', () => {
   const file = $('torrent-file').files[0]; chosenFile = null; $('file-name').hidden = true;
   if (!file) return; if (file.size > 10 * 1024 * 1024) { toast(T('This file is too large to be a torrent.'), true); $('torrent-file').value = ''; return; }
   chosenFile = file; $('url').value = ''; $('file-name').textContent = file.name; $('file-name').hidden = false;
 });
-$('url').addEventListener('input', () => { if ($('url').value) { chosenFile = null; $('torrent-file').value = ''; $('file-name').hidden = true; } });
+$('url').addEventListener('input', () => { if (addMode === 'torrent' && $('url').value) { chosenFile = null; $('torrent-file').value = ''; $('file-name').hidden = true; } });
 document.querySelector('label.file').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('torrent-file').click(); } });
 $('add-form').addEventListener('submit', (e) => { e.preventDefault(); submit(e.target, async () => {
+  const revision = edits.get(e.target) || 0;
+  const generation = addDialogGeneration;
   const category = $('add-category').value, queue = $('add-when').value, start = queue === '', url = $('url').value.trim();
-  if (!url && !chosenFile) { $('url').focus(); return; }
-  const result = chosenFile ? await api('v1/torrent?' + new URLSearchParams({ category, queue, start: String(start) }), { body: await chosenFile.arrayBuffer(), headers: { 'Content-Type': 'application/x-bittorrent' } }) : await api('v1/downloads', { json: { url, category, queue, start } });
+  const file = addMode === 'torrent' ? chosenFile : null;
+  if (!url && !file) { $('url').focus(); return; }
+  if (addMode === 'web' && /^magnet:/i.test(url)) { selectAddMode('torrent'); $('url').value = url; $('url').focus(); toast(T('Use the Torrent tab to add a magnet link.'), true); return; }
+  let result = file ? await api('v1/torrent?' + new URLSearchParams({ category, queue, start: String(start) }), { body: await file.arrayBuffer(), headers: { 'Content-Type': 'application/x-bittorrent' } }) : owner ? await manage({ op: 'download.add', url, category, queue, start }) : await api('v1/downloads', { json: { url, category, queue, start } });
+  while (result.confirmation === 'duplicate') {
+    const choice = await askDuplicate(result); if (!['new', 'existing'].includes(choice)) return;
+    result = await manage({ op: 'download.add', url, category, queue, start, existing_id: result.id, duplicate_choice: choice });
+  }
   if (!Number.isSafeInteger(result.id) && result.pending !== true) throw new Error('No acceptance');
-  toast(result.pending ? T('Added. MDM is reading the torrent: it joins the list in a moment.') : T('Added.'));
-  $('url').value = ''; chosenFile = null; $('torrent-file').value = ''; $('file-name').hidden = true; await refresh();
+  if (result.pending && result.request_id) { pendingAdditions.set(result.request_id, { name: file?.name || T('Torrent'), state: 'pending' }); renderAdditionResults(); }
+  if ((edits.get(e.target) || 0) === revision) { $('url').value = ''; addDrafts[addMode] = ''; if (addMode === 'torrent') { chosenFile = null; $('torrent-file').value = ''; $('file-name').hidden = true; } if (generation === addDialogGeneration && $('add-panel').open) $('add-panel').close(); }
+  toast(result.pending ? T(!owner ? 'Torrent submitted. Sign in as the owner to check whether it was added.' : result.request_id ? 'Torrent submitted for validation. Check Torrent additions for the result.' : 'Torrent submitted, but this server cannot report its admission result. Check the download list and server logs before retrying.') : T(result.duplicate ? 'Using the existing download.' : 'Added.'));
+  await refresh();
+  if (result.duplicate && Number.isSafeInteger(result.id) && authenticated && !document.querySelector('dialog:modal')) await loadDetails(result.id);
 }); });
+$('add-form').addEventListener('input', () => edits.set($('add-form'), (edits.get($('add-form')) || 0) + 1));
 
 async function navigate(next, nextFilter = 'all', force = false) {
-  if (!force && dirty.size && !confirm(T('Discard unsaved changes?'))) return;
+  if (!force && detailForms.some((form) => dirty.has(form)) && !confirm(T('Discard unsaved changes?'))) return false;
   if (next !== 'downloads' && !owner) { showLogin(); return; }
   if (detailForms.some((form) => dirty.has(form))) closeDetails();
-  dirty.clear(); page = next; filter = nextFilter; const generation = ++navigationGeneration;
-  for (const section of document.querySelectorAll('[data-view]')) section.hidden = page !== 'downloads' || section.dataset.view !== page;
-  $('section-loading').hidden = page === 'downloads'; $('section-loading').textContent = T('Loading settings...');
+  page = next; if (next === 'downloads') filter = nextFilter; const generation = ++navigationGeneration;
+  for (const section of document.querySelectorAll('[data-view]')) section.hidden = section.dataset.view !== 'downloads' && section.dataset.view !== page;
+  $('section-loading').hidden = true;
   for (const b of document.querySelectorAll('[data-page]')) { if (b.dataset.page === page && (!b.dataset.filter || b.dataset.filter === filter)) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); }
-  $('view-title').textContent = filter === 'all' ? T('All downloads') : T(filter);
-  if (page === 'downloads') { if (data) render(); return; }
+  if (page === 'downloads') $('view-title').textContent = filter === 'all' ? T('All downloads') : T(filter);
+  if (page === 'downloads') { if (data) render(); return true; }
+  const section = document.querySelector(`[data-view="${page}"]`);
+  const titles = { settings: 'Application settings', security: 'Web UI authentication', devices: 'Browser extensions and devices', queues: 'Queues and scheduler', categories: 'Categories' };
+  $('management-title').textContent = T(titles[page]);
+  const hasDraft = [...section.querySelectorAll('form[id]')].some((form) => dirty.has(form.id));
+  const cached = managementCache.get(page);
+  if (!$('management-dialog').open) $('management-dialog').showModal();
+  if (hasDraft && cached) { config = cached.config; authConfig = cached.authConfig; $('management-loading').hidden = true; return; }
+  section.hidden = true; $('management-loading').hidden = false; $('management-loading').textContent = T('Loading settings...');
   try {
     if (page === 'security') { const result = await api('v1/auth/settings'); if (generation !== navigationGeneration) return; authConfig = result; renderAuth(); }
     else if (page === 'devices') await renderDevices();
     else { const result = await api('v1/manage'); if (generation !== navigationGeneration) return; config = result; if (page === 'settings') renderSettings(); if (page === 'queues') renderQueues(); if (page === 'categories') renderCategories(); }
     if (generation !== navigationGeneration) return;
-    $('section-loading').hidden = true; document.querySelector(`[data-view="${page}"]`).hidden = false;
-  } catch (e) { if (generation === navigationGeneration) $('section-loading').textContent = message(e); throw e; }
+    $('management-loading').hidden = true; section.hidden = false;
+  } catch (e) { if (generation === navigationGeneration) $('management-loading').textContent = message(e); throw e; }
 }
-for (const b of document.querySelectorAll('[data-page]')) b.addEventListener('click', () => navigate(b.dataset.page, b.dataset.filter).catch((e) => toast(message(e), true)));
+for (const b of document.querySelectorAll('[data-page]')) b.addEventListener('click', async () => { try { if (await navigate(b.dataset.page, b.dataset.filter) !== false && b.dataset.page === 'downloads') { queueFilter = null; if (b.dataset.filter === 'all') $('filter-category').value = ''; render(); } } catch (e) { toast(message(e), true); } });
 
 function renderSettings() {
   const root = $('settings-fields'); root.replaceChildren(); const groups = new Map();
@@ -439,10 +691,10 @@ async function renderDevices() {
   $('device-list').replaceChildren(...result.devices.map((d) => dataRow(d.name, F('Last seen: {time}', { time: new Date(d.seen * 1000).toLocaleString(LANG) }), [button(T('Revoke device'), () => { revoking = d.id; $('revoke-password').value = ''; $('password-dialog').showModal(); })])));
   if (!result.devices.length) $('device-list').append(element('p', T('No paired extension devices.'), 'muted'));
 }
-$('device-pair-form').addEventListener('submit', (e) => { e.preventDefault(); submit(e.target, async () => { const result = await api('v1/devices/pair', { json: { current_password: $('device-password').value } }); $('device-password').value = ''; $('pair-code').textContent = result.code.slice(0, 4) + ' ' + result.code.slice(4); toast(T('Pairing code created. It is single-use and expires in 10 minutes.')); }); });
+$('device-pair-form').addEventListener('submit', (e) => { e.preventDefault(); submit(e.target, async () => { const result = await api('v1/devices/pair', { json: { current_password: $('device-password').value } }); $('device-password').value = ''; if ($('management-dialog').open && page === 'devices') { $('pair-code').textContent = result.code.slice(0, 4) + ' ' + result.code.slice(4); toast(T('Pairing code created. It is single-use and expires in 10 minutes.')); } }); });
 $('password-dialog').addEventListener('close', async () => { const id = revoking; revoking = null; const password = $('revoke-password').value; $('revoke-password').value = ''; if ($('password-dialog').returnValue !== 'revoke') return; try { await api('v1/devices/revoke', { json: { id, current_password: password } }); await renderDevices(); } catch (e) { toast(message(e), true); } });
 
-for (const form of document.querySelectorAll('form')) if (!['login-form', 'add-form', 'device-pair-form'].includes(form.id)) form.addEventListener('input', () => { if (form.id) { dirty.add(form.id); edits.set(form, (edits.get(form) || 0) + 1); } });
+for (const form of document.querySelectorAll('form')) if (!['login-form', 'add-form', 'device-pair-form', 'reuse-form'].includes(form.id)) form.addEventListener('input', () => { if (form.id) { dirty.add(form.id); edits.set(form, (edits.get(form) || 0) + 1); } });
 window.addEventListener('beforeunload', (e) => { if (dirty.size) { e.preventDefault(); e.returnValue = ''; } });
 for (const name of ['pointerdown', 'keydown']) document.addEventListener(name, (e) => {
   if (!e.isTrusted || !authenticated || Date.now() - lastActivity < 30000) return;

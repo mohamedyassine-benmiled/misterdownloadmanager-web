@@ -1,6 +1,6 @@
 # Desktop-style web UI redesign
 
-Status: **approved plan; implementation not started.**
+Status: **implementation in progress; local review build available.**
 
 Approved on 2026-11-11. This document records the agreed redesign of the
 self-hosted web workspace, not the marketing website.
@@ -28,11 +28,27 @@ Reference screenshots:
 These screenshots establish structure and visual character. Check current desktop
 code when implementing behavior; screenshots may show an older application version.
 
+### Owner corrections after the first local review
+
+- Use the real desktop category/status artwork, not generic folder outlines. Every
+  Manage entry in the sidebar needs an icon as well.
+- Keep application settings and scheduler in the sidebar **only**; remove their
+  shortcuts from the top toolbar.
+- Put a configured-queue selector and Start queue / Stop queue in the toolbar;
+  remove the old bottom queue strip. Include Delete completed, which removes
+  completed history entries without deleting their files, after confirmation.
+- Add Download has two source tabs: Web and Torrent, with separate address drafts.
+- The progress dialog must visually follow the desktop reference: compact title
+  bar, native-looking tabs, gray status sheet, green meter, Hide details/Pause/Close
+  controls and a connection table. Torrent Files/Peers/Trackers/General are lower
+  inspector tabs. Retain web-only properties and file tools without inventing
+  unavailable desktop completion actions or network latency data.
+
 ## Main workspace
 
 ```text
 Product header                                  Theme / Account
-Persistent toolbar: Add / Torrent / Start / Pause / Remove / Settings / Scheduler
+Persistent toolbar: Add / Start / Pause / Remove / Delete completed / Queue / Start queue / Stop queue
 -------------------------------------------------------------------------------
 Folder sidebar       | All / Web / Torrents                         Search
                      | Source | Filename | Progress | Size | Speed | Remaining
@@ -121,7 +137,7 @@ Replace the inline add panel with a compact desktop-inspired dialog containing:
 - Start now, add paused or queue selection.
 - Clear Add and Cancel actions, validation and submission feedback.
 
-The toolbar's Add Torrent shortcut opens the same dialog in torrent mode.
+The dialog's Torrent tab switches to torrent mode and reveals the file picker.
 Preserve the existing URL/torrent mutual-exclusion behavior and file validation.
 
 The desktop Add URL dialog also has authorization fields. Check server support
@@ -230,5 +246,35 @@ Upstream integration remains a separate task in
       `tools/web/headless.mjs` for affected real-server flows; verify embedded
       asset delivery if the asset structure changes.
 
-Implementation and verification results should be recorded separately from these
-planned acceptance criteria.
+## Local implementation evidence
+
+The current build has the persistent toolbar, category/queue tree, source column
+and filters, source-tabbed add dialog, tabbed desktop-style progress window and
+modal management screens. Desktop icons are embedded directly from the existing
+MDM Aero assets; their origin/license is in
+`crates/app/assets/themes/aero/icons/SOURCES.txt`.
+
+Validation for the corrected review build:
+
+- 29 Chromium fixture groups pass, including selected-queue controls, icon labels,
+  source tabs/drafts, safe Delete completed behavior, automatic add-dialog closure
+  and asynchronous torrent rejection/success reporting.
+- 11 real-headless integration groups pass, including cancellation/consent,
+  good-versus-damaged piece verification, idempotent reuse and duplicate Web links.
+- The targeted Rust HTTPS test `pair_then_control` passes, including desktop icon
+  MIME/signature checks and rejection of unknown icon names.
+- Reference and fixture images were compared locally. This is a browser rendering
+  of the desktop layout, not a claim of pixel-identical Windows native chrome.
+
+Follow-up correction: the torrent upload limit is under **Speed Limiter**, rather
+than General. Accepted submissions close the Add dialog; pending torrent admissions
+are tracked separately instead of displaying a premature "Added" confirmation.
+
+Existing torrent files now lead to an owner-confirmed reuse flow instead of an
+unconditional rejection. The prompt explains replacement of nonmatching data and
+requires unchecked-by-default consent. Already-listed torrents open their current
+entry; repeated Web links offer the existing entry or a separate numbered copy.
+See [web-download-tools.md](web-download-tools.md) for API contracts and limits.
+
+The acceptance checklist above remains the full target; passing these suites is
+not a claim that every planned edge case or deferred Linux deployment is validated.

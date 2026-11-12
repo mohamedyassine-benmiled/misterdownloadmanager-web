@@ -6,9 +6,10 @@
 #   docker compose -f docker/compose.yml exec mdm misterdownloadmanager-cli pair
 services:
   mdm:
-    image: "${MDM_IMAGE:-misterdownloadmanager-web:local}"
+    image: "${MDM_IMAGE:-ghcr.io/mohamedyassine-benmiled/misterdownloadmanager-web:edge}"
     build:
       context: ..
+      dockerfile: docker/web.Dockerfile
       args:
         PROFILE: "${MDM_BUILD_PROFILE:-release}"
     restart: unless-stopped

@@ -81,6 +81,14 @@ fn pair_then_control() {
         assert!(csp.contains("frame-ancestors 'none'") && csp.contains("script-src 'self'"));
         assert_eq!(page.headers()["x-frame-options"], "DENY");
         assert!(page.text().await.unwrap().contains("app.js"));
+        // Desktop artwork is embedded, same-origin and explicitly allowlisted.
+        for icon in ["cat-compressed", "cat-finished", "tb-start-queue", "tb-delete-completed"] {
+            let image = c.get(format!("{base}desktop-icons/{icon}.png")).send().await.unwrap();
+            assert_eq!(image.status(), 200);
+            assert_eq!(image.headers()["content-type"], "image/png");
+            assert!(image.bytes().await.unwrap().starts_with(b"\x89PNG"));
+        }
+        assert_eq!(c.get(format!("{base}desktop-icons/unknown.png")).send().await.unwrap().status(), 404);
         // Texts in the browser's language.
         let t: serde_json::Value = c
             .get(format!("{base}api/texts?lang=de-DE,de"))

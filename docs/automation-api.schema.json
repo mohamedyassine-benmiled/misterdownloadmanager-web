@@ -38,6 +38,13 @@
         "pending": {
           "default": false,
           "type": "boolean"
+        },
+        "request_id": {
+          "description": "Transient torrent-admission result id (owner Web UI management API).",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "type": "object"
@@ -162,6 +169,13 @@
           "minimum": 0,
           "type": [
             "integer",
+            "null"
+          ]
+        },
+        "source": {
+          "description": "Transfer source: `web` or `torrent`; absent from older servers.",
+          "type": [
+            "string",
             "null"
           ]
         },

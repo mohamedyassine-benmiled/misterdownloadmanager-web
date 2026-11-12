@@ -421,8 +421,8 @@ pub struct App {
     properties: Vec<crate::properties::Properties>,
     /// Verify checksum windows, one per download.
     checksums: Vec<crate::checksum::ChecksumDialog>,
-    /// Bounded web checksum tasks; digest reads never block the application loop.
-    web_checks: web::Checks,
+    /// Fork-owned state; keep Web features behind this single adapter slot.
+    web: web::State,
     batch: Option<crate::batch::Batch>,
     video_dlg: Option<crate::videodlg::VideoDialog>,
     /// Download a gallery (#58).
@@ -947,7 +947,7 @@ impl App {
             confirm_category_delete: None,
             properties: Vec::new(),
             checksums: Vec::new(),
-            web_checks: Default::default(),
+            web: Default::default(),
             batch: None,
             video_dlg: None,
             gallery_dlg: None,
@@ -2260,7 +2260,7 @@ impl App {
 
     /// Start or resume a download; `show` opens its progress dialog (IDM's default).
     fn start(&mut self, id: u64, show: bool) {
-        if self.moving.iter().any(|(moving, _, _)| *moving == id) {
+        if self.web_busy(id) {
             return;
         }
         let rt = self.rt.clone();
@@ -3995,50 +3995,8 @@ impl App {
     /// is on, whatever the automation API's switch: it may list, add and act, nothing else.
     fn answer(&mut self, cmd: &ipc::Command) -> String {
         use ipc::api::{ApiAnswer, DownloadInfo, ErrorAnswer, ListAnswer, line};
-        if !cmd.remote && cmd.query.as_deref() == Some("web-health") {
-            let ready = self.remote.as_ref().is_some_and(|r| {
-                matches!(r.status(), mdm_remote::Status::Listening(_))
-                    && r.auth_recovery("status").is_ok()
-            });
-            return if ready {
-                serde_json::json!({ "ready": true }).to_string()
-            } else {
-                line(&ErrorAnswer {
-                    error: "web server is not ready".into(),
-                    code: Some("not-ready".into()),
-                })
-            };
-        }
-        if !cmd.remote
-            && let Some(operation) = cmd
-                .query
-                .as_deref()
-                .and_then(|q| q.strip_prefix("web-auth:"))
-        {
-            return match self
-                .remote
-                .as_ref()
-                .ok_or_else(|| "remote-off".to_owned())
-                .and_then(|r| r.auth_recovery(operation))
-            {
-                Ok(value) => value.to_string(),
-                Err(code) => line(&ErrorAnswer {
-                    error: code.clone(),
-                    code: Some(code),
-                }),
-            };
-        }
-        if let Some(request) = &cmd.web_request {
-            return if cmd.remote && cmd.web_owner && self.settings.remote_on {
-                self.web_request(request)
-                    .unwrap_or_else(|code| serde_json::json!({ "error": code, "code": code }))
-                    .to_string()
-            } else {
-                line(&ErrorAnswer {
-                    error: "owner required".into(),
-                    code: Some("owner-required".into()),
-                })
-            };
+        if let Some(answer) = self.web_answer(cmd) {
+            return answer;
         }
         if cmd.pair && !cmd.remote {
             return self.pair_answer();
@@ -4089,12 +4047,7 @@ impl App {
             };
         }
         match cmd.query.as_deref() {
-            Some("capture") => serde_json::json!({
-                "api_version": 1, "connected": true,
-                "rules": { "types": self.settings.auto_types, "capture": true,
-                    "excludedSites": self.settings.excluded_sites, "excludedAddresses": self.settings.excluded_addresses,
-                    "opened": self.settings.capture_opened, "minKb": self.settings.capture_min_kb }
-            }).to_string(),
+            Some("capture") => self.web_capture(),
             Some("list") => {
                 let downloads = self
                     .items
@@ -4111,6 +4064,14 @@ impl App {
                         } else {
                             i.url.to_string()
                         },
+                        source: Some(
+                            if i.torrent.is_some() {
+                                "torrent"
+                            } else {
+                                "web"
+                            }
+                            .into(),
+                        ),
                         path: if cmd.remote {
                             String::new()
                         } else {
@@ -4218,7 +4179,11 @@ impl App {
     /// or a magnet link or .torrent file as Add torrent's Download Now with every file, in the
     /// category and queue it chose (by file type, and started now, when it chose none). No
     /// window opens. Answered with its id, or `pending` while a torrent's files are looked up.
-    fn remote_add(&mut self, mut cmd: ipc::Command) -> String {
+    fn remote_add(&mut self, cmd: ipc::Command) -> String {
+        self.remote_add_policy(cmd, None)
+    }
+
+    fn remote_add_policy(&mut self, mut cmd: ipc::Command, duplicate_policy: Option<u8>) -> String {
         use ipc::api::{AddAnswer, ErrorAnswer, line};
         let fail = |code: &str, error: &str| {
             line(&ErrorAnswer {
@@ -4248,6 +4213,10 @@ impl App {
             None => mdm_torrent::Source::magnet(text.trim()).map(|m| (m, true)),
         };
         if let Some((source, from_magnet)) = torrent {
+            let request_id = match self.web_begin_torrent(&source) {
+                Ok(id) => id,
+                Err(answer) => return answer,
+            };
             let slot: crate::remote::Slot = Default::default();
             let (out, host, known) = (
                 slot.clone(),
@@ -4265,6 +4234,8 @@ impl App {
                 *out.lock().unwrap() = Some(res);
             });
             self.remote_torrents.push(crate::remote::Lookup {
+                request_id: request_id.clone(),
+                queue_name: queue.and_then(|q| self.queues.get(q).map(|q| q.name.clone())),
                 slot,
                 category,
                 queue,
@@ -4273,6 +4244,7 @@ impl App {
             return line(&AddAnswer {
                 id: None,
                 pending: true,
+                request_id: Some(request_id),
             });
         }
         let Some(url) = url::Url::parse(text.trim())
@@ -4284,12 +4256,16 @@ impl App {
         // Already in the list: no one at the computer to ask, so Options' choice, with "ask"
         // taken as "add it again" (under a numbered name).
         if let Some(dup) = self.items.iter().find(|i| i.url == url).map(|i| i.id) {
-            match self.settings.duplicate_action {
+            match duplicate_policy
+                .map(u32::from)
+                .unwrap_or(self.settings.duplicate_action as u32)
+            {
                 2 => self.overwrite(dup),
                 3 => {
                     return line(&AddAnswer {
                         id: Some(dup),
                         pending: false,
+                        request_id: None,
                     });
                 }
                 _ => {}
@@ -4298,7 +4274,11 @@ impl App {
         let name = mdm_engine::naming::sanitize(&mdm_engine::naming::file_name(None, &url));
         let category = category.unwrap_or_else(|| Category::of(&name));
         let dir = self.settings.category_dir(category, &self.downloads);
-        let dest = mdm_engine::naming::destination(&dir, &name);
+        let dest = if duplicate_policy.is_some() {
+            self.web_new_destination(&dir, &name)
+        } else {
+            mdm_engine::naming::destination(&dir, &name)
+        };
         cmd.remote = false;
         let id = self.push_item(
             url,
@@ -4320,6 +4300,7 @@ impl App {
         line(&AddAnswer {
             id: Some(id),
             pending: false,
+            request_id: None,
         })
     }
 
@@ -4330,47 +4311,20 @@ impl App {
         self.remote_torrents
             .retain(|l| match l.slot.lock().unwrap().take() {
                 Some(res) => {
-                    ready.push((res, l.category, l.queue, l.from_magnet));
+                    ready.push((
+                        res,
+                        l.category,
+                        l.queue,
+                        l.from_magnet,
+                        l.request_id.clone(),
+                        l.queue_name.clone(),
+                    ));
                     false
                 }
                 None => true,
             });
-        for (res, category, queue, from_magnet) in ready {
-            let meta = match res {
-                Ok(meta) => meta,
-                Err(e) => {
-                    tracing::warn!("remote control: a torrent could not be read: {e}");
-                    continue;
-                }
-            };
-            if self.torrent_hashes().contains(&meta.info_hash) {
-                continue;
-            }
-            let category = category.unwrap_or_else(|| crate::torrentdlg::category_of(&meta));
-            let dir = crate::model::category_folder(
-                category,
-                &self.downloads,
-                &self.settings.category_dirs,
-            );
-            if !meta.existing_in(&dir).is_empty() {
-                tracing::warn!(
-                    "remote control: {}: its files are already in {}",
-                    meta.name,
-                    dir.display()
-                );
-                continue;
-            }
-            self.add_torrent(crate::torrentdlg::TorrentAdd {
-                meta,
-                dir,
-                files: None,
-                category,
-                start_now: queue.is_none(),
-                from_magnet,
-                in_order: false,
-                queue,
-                quiet: true,
-            });
+        for (res, category, queue, from_magnet, request_id, queue_name) in ready {
+            self.web_finish_torrent(res, category, queue, from_magnet, &request_id, queue_name);
         }
     }
 
@@ -4390,7 +4344,7 @@ impl App {
         }
         let mut answer = ipc::api::ActAnswer::default();
         for &id in ids {
-            if self.moving.iter().any(|(moving, _, _)| *moving == id) {
+            if self.web_busy(id) {
                 answer.skipped.push(ipc::api::Skipped {
                     id,
                     why: "file move in progress".into(),

@@ -1,0 +1,94 @@
+# Fork-owned checks. Keep Web/server additions out of upstream's desktop CI jobs.
+name: Web and server
+
+on:
+  # web-image.yml owns push/PR/tag triggers and calls these gates once per run.
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  boundaries:
+    name: fork integration boundaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s tools/upstream -p 'test_*.py'
+      - run: python3 -m unittest discover -s tools/docker -p 'test_*.py'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tools/web-release -p 'test_*.py'
+      - run: python3 tools/upstream/audit.py --check
+
+  web:
+    name: web workspace interactions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix tools/web --no-audit --no-fund
+      - run: npx --prefix tools/web playwright install --with-deps chromium
+      - run: node tools/web/test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-workspace-screenshots
+          path: target/web-shots/*.png
+          if-no-files-found: ignore
+
+  headless:
+    name: real headless HTTPS and browser integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: actions/cache@v4
+        with:
+          # Never cache target/headless-tests, owner state or browser profiles.
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/debug
+          key: ${{ runner.os }}-web-cargo-build-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-web-cargo-build-
+      - name: Linux libraries
+        timeout-minutes: 10
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev \
+            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: cargo build --locked -p mdm-app -p mdm-cli
+      - run: npm ci --prefix tools/web --no-audit --no-fund
+      - run: npx --prefix tools/web playwright install --with-deps chromium
+      - run: node tools/web/headless.mjs
+
+  deployment-config:
+    name: deployment configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compose defaults and documented environment example
+        run: |
+          docker compose -f docker/compose.yml config --quiet
+          docker compose --env-file docker/.env.example -f docker/compose.yml config --quiet
+          docker compose -f docker/compose.release.yml config --quiet

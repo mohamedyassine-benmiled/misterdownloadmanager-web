@@ -33,9 +33,14 @@ Implementation was subsequently authorized. Completed source changes:
 - Full Windows workspace tests and Clippy pass (non-ignored tests); Rust binaries build with locked dependencies. Linux-specific tests and runtime validation remain pending.
 - CLI readiness command and Docker healthcheck. CI includes web fixture checks and real Linux headless integration (new CI jobs still require a runner execution).
 
-The development host now has a project-local Rust toolchain and Chromium. Per the latest user instruction, Linux/Docker/Compose/systemd runtime testing is deferred until application features are finished; `docs/linux-server-testing.md` is the later server acceptance checklist. Merging the official application's later releases is a separate future task: the scan, conflict list and split plan are in `docs/upstream-merge-plan.md`. Advanced parity is not complete: media/gallery workflows, pre-start torrent selection, accounts/secrets, durable capture jobs/idempotency, backup/restore and SSE remain open. See `docs/web-development.md` for exact verification results and commands.
+The development host now has a project-local Rust toolchain and Chromium. Broad Linux/Docker/Compose/systemd acceptance remains deferred until application features are finished; `docs/linux-server-testing.md` is the later server acceptance checklist. The initial upstream-friendly module/workflow separation is implemented locally; the official upstream release has not been merged. Ownership, refreshed scan and the update procedure are in `docs/upstream-merge-plan.md`. The app's `--web`/`--port`/`--webhost` parameters and Docker/GHCR publication workflow are documented in `docs/web-releases.md`; actual image execution/publication still needs GitHub or a Docker host. Advanced parity is not complete: media/gallery workflows, pre-start torrent selection, accounts/secrets, durable capture jobs/idempotency, backup/restore and SSE remain open. See `docs/web-development.md` for exact verification results and commands.
 
 ## 2. Repository findings: extend what already exists
+
+The complete desktop-to-Web parity work is planned separately in
+[docs/web-functional-parity-plan.md](docs/web-functional-parity-plan.md), including
+the required feature ledger, implementation phases and evidence needed for a 100%
+claim. Shutdown after downloads finish is the user-approved exclusion.
 
 The cloned repository already contains important foundations:
 

@@ -4,8 +4,18 @@ use super::*;
 use serde_json::{Value, json};
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
+mod bridge;
+mod texts;
 mod transfers;
-pub(super) type Checks = HashMap<u64, Arc<std::sync::Mutex<Value>>>;
+pub(crate) use texts::page_sources;
+type Checks = HashMap<u64, Arc<std::sync::Mutex<Value>>>;
+
+/// One fork-owned state slot in App: new Web features must not add desktop struct fields.
+#[derive(Default)]
+pub(super) struct State {
+    checks: Checks,
+    additions: additions::Additions,
+}
 
 pub(crate) fn specs() -> Vec<Value> {
     let mut out = Vec::new();
@@ -435,6 +445,8 @@ fn safe_folder(root: &std::path::Path, relative: &str) -> Result<PathBuf, &'stat
     Ok(dest)
 }
 
+pub(crate) mod additions;
+
 impl App {
     fn web_config(&self) -> Value {
         let full = serde_json::to_value(&self.settings).unwrap_or(Value::Null);
@@ -464,6 +476,15 @@ impl App {
 
     pub(super) fn web_request(&mut self, v: &Value) -> Result<Value, &'static str> {
         let op = text(v, "op")?;
+        if op == "torrent.add.status" {
+            return self.web.additions.status(text(v, "request_id")?);
+        }
+        if matches!(
+            op,
+            "torrent.add.confirm" | "torrent.add.cancel" | "download.add"
+        ) {
+            return self.web_addition_request(v);
+        }
         if matches!(
             op,
             "download.move"
@@ -504,7 +525,7 @@ impl App {
                 "moving": self.moving.iter().any(|(id, _, _)| *id == i.id),
                 "relative_folder": i.dest.parent().and_then(|p| transfers::relative_folder(&self.downloads, p)),
                 "expected_checksum": i.checksum.as_ref().map(mdm_engine::verify::Hash::display),
-                "checksum_result": self.web_checks.get(&i.id).map(|c| c.lock().unwrap().clone()),
+                "checksum_result": self.web.checks.get(&i.id).map(|c| c.lock().unwrap().clone()),
                 "plain_file": i.torrent.is_none() && i.video.is_none() && i.gallery.is_none() && i.remote.is_none(),
                 "torrent": i.torrent.as_ref().map(|t| self.web_torrent(t)) }),
             );

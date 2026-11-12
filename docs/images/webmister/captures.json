@@ -1,0 +1,56 @@
+{
+  "command": "node tools/web/readme-shots.mjs",
+  "sources": {
+    "crates/remote/web/index.html": "9011cd0c66a60e056c7b9af15161f7c2b8bd608c00706e182906b3ade0acb47f",
+    "crates/remote/web/app.css": "d968bbf1254e1248be0e614ea0f002123e601083f7601e43d91c7bba5c28748c",
+    "crates/remote/web/app.js": "203dda83313175b20b9969cc2122d8f94e6c8b8d51110a8eebc6facee26153a7",
+    "tools/web/preview.mjs": "5b2a75498d8a6c9309b20bcf12e4708eb9a2cca19ec8baefaa295ba60821ed1d"
+  },
+  "captures": [
+    {
+      "file": "workspace-light.png",
+      "subject": "Downloads, categories and persistent queue toolbar, light theme",
+      "viewport": {
+        "width": 1440,
+        "height": 940
+      },
+      "origin": "Unretouched Chromium screenshot of the shipped Web UI against tools/web/preview.mjs. All transfers are synthetic, as labeled in the image."
+    },
+    {
+      "file": "workspace-dark.png",
+      "subject": "Same workspace, dark theme",
+      "viewport": {
+        "width": 1440,
+        "height": 940
+      },
+      "origin": "Unretouched Chromium screenshot of the shipped Web UI against tools/web/preview.mjs. All transfers are synthetic, as labeled in the image."
+    },
+    {
+      "file": "download-details.png",
+      "subject": "Desktop-familiar progress dialog with connection details",
+      "viewport": {
+        "width": 1440,
+        "height": 940
+      },
+      "origin": "Unretouched Chromium screenshot of the shipped Web UI against tools/web/preview.mjs. All transfers are synthetic, as labeled in the image."
+    },
+    {
+      "file": "torrent-files.png",
+      "subject": "Post-add torrent file selection and verification details",
+      "viewport": {
+        "width": 1440,
+        "height": 940
+      },
+      "origin": "Unretouched Chromium screenshot of the shipped Web UI against tools/web/preview.mjs. All transfers are synthetic, as labeled in the image."
+    },
+    {
+      "file": "workspace-mobile.png",
+      "subject": "Downloads workspace on a narrow mobile viewport",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "origin": "Unretouched Chromium screenshot of the shipped Web UI against tools/web/preview.mjs. All transfers are synthetic, as labeled in the image."
+    }
+  ]
+}

@@ -33,6 +33,9 @@ for (const kind of ["chromium", "chrome-store", "firefox"]) {
     ...m.content_scripts.flatMap((c) => c.js),
   ].filter(Boolean);
   for (const f of files) assert.ok(existsSync(new URL(f, dir)), `${kind}: ${f} is there`);
+  assert.equal(readFileSync(new URL("remote.js", dir), "utf8"), readFileSync(new URL("extension/remote.js", root), "utf8"), `${kind}: server adapter packaged unchanged`);
+  if (kind === "firefox") assert.deepEqual(m.background.scripts.slice(0, 2), ["remote.js", "background.js"], "Firefox: adapter before background");
+  else assert.match(readFileSync(new URL(m.background.service_worker, dir), "utf8"), /importScripts\("remote\.js"\)/, `${kind}: worker imports adapter`);
   assert.ok(existsSync(new URL("_locales/en/messages.json", dir)), `${kind}: English texts`);
   if (kind === "chromium") assert.equal(idOf(m.key), unpackedId, "the key gives the ID the host serves");
   if (kind === "chrome-store") {

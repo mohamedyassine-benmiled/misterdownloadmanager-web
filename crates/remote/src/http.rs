@@ -18,6 +18,7 @@ use serde::Deserialize;
 
 use crate::Inner;
 use crate::pairing::Check;
+mod web;
 
 /// The largest .torrent file taken (as the app's own limit, mdm_torrent::MAX_TORRENT_FILE).
 const MAX_TORRENT: usize = 10 << 20;
@@ -83,7 +84,6 @@ pub fn router(state: Arc<State>) -> Router {
         .route("/api/texts", get(texts))
         .route("/api/pair", post(pair))
         .route("/api/list", get(list))
-        .route("/api/status", get(capture_status))
         .route("/api/add", post(add))
         .route(
             "/api/torrent",
@@ -92,14 +92,7 @@ pub fn router(state: Arc<State>) -> Router {
         .route("/api/act", post(act))
         .route("/api/queue", post(queue))
         .route("/api/forget", post(forget))
-        .merge(crate::web_auth::routes())
-        .route("/api/v1/downloads", get(list).post(add))
-        .route("/api/v1/actions", post(act))
-        .route("/api/v1/queues/action", post(queue))
-        .route(
-            "/api/v1/torrent",
-            post(torrent).layer(DefaultBodyLimit::max(MAX_TORRENT)),
-        )
+        .merge(web::routes())
         .layer(DefaultBodyLimit::max(MAX_BODY))
         .layer(axum::middleware::from_fn_with_state(state.clone(), guard))
         .with_state(state)
@@ -108,8 +101,8 @@ pub fn router(state: Arc<State>) -> Router {
 static PAGE: &str = include_str!("../web/index.html");
 static SCRIPT: &str = include_str!("../web/app.js");
 static STYLE: &str = include_str!("../web/app.css");
-/// The app's icon (art/), for the page's tab and a phone's home screen.
-static ICON: &[u8] = include_bytes!("../../app/assets/icons/app/mdm-256.png");
+/// Fork icon; the desktop application's original artwork is unchanged.
+static ICON: &[u8] = include_bytes!("../../../extension/icons/webmister-256.png");
 static MANIFEST: &str = include_str!("../web/manifest.webmanifest");
 
 fn asset(kind: &'static str, body: &'static str) -> Response {
@@ -150,14 +143,7 @@ async fn guard(s: S, req: Request, next: Next) -> Response {
     if req.uri().path().starts_with("/api/") && !same_origin(headers, &host) {
         return error(StatusCode::FORBIDDEN, "other-origin");
     }
-    // Browser administration is not the legacy extension-token surface. An extension origin
-    // can capture through /api/add but must never obtain browser sessions or owner settings.
-    if req.uri().path().starts_with("/api/v1/")
-        && headers
-            .get(header::ORIGIN)
-            .and_then(|o| o.to_str().ok())
-            .is_some_and(|o| !o.eq_ignore_ascii_case(&format!("https://{host}")))
-    {
+    if !web::browser_origin_allowed(req.uri().path(), headers, &host) {
         return error(StatusCode::FORBIDDEN, "other-origin");
     }
     let mut res = next.run(req).await;
@@ -222,34 +208,7 @@ impl FromRequestParts<Arc<State>> for Paired {
     type Rejection = Response;
 
     async fn from_request_parts(parts: &mut Parts, s: &Arc<State>) -> Result<Self, Response> {
-        let token = parts
-            .headers
-            .get(header::AUTHORIZATION)
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.strip_prefix("Bearer "))
-            .map(str::trim)
-            .filter(|t| !t.is_empty() && t.len() <= 128);
-        let device = token.and_then(|t| s.inner.devices.lock().unwrap().check(t));
-        match device {
-            Some(d) => {
-                if d.scope == crate::devices::Scope::Capture
-                    && !matches!(
-                        parts.uri.path(),
-                        "/api/status" | "/api/add" | "/api/torrent" | "/api/forget"
-                    )
-                {
-                    return Err(error(StatusCode::FORBIDDEN, "insufficient-scope"));
-                }
-                Ok(Paired(d.id))
-            }
-            None if token.is_some() => Err(error(StatusCode::UNAUTHORIZED, "not-paired")),
-            None => {
-                crate::web_auth::identity(parts, s, false)
-                    .await
-                    .map_err(crate::web_auth::failure)?;
-                Ok(Paired(String::new()))
-            }
-        }
+        web::paired(parts, s).await.map(Paired).map_err(|r| *r)
     }
 }
 
@@ -284,12 +243,8 @@ struct PairBody {
     code: String,
     #[serde(default)]
     name: String,
-    #[serde(default = "capture_scope")]
+    #[serde(default = "web::capture_scope")]
     scope: crate::devices::Scope,
-}
-
-fn capture_scope() -> crate::devices::Scope {
-    crate::devices::Scope::Capture
 }
 
 async fn pair(
@@ -332,17 +287,6 @@ async fn list(s: S, _: Paired) -> Response {
         &s,
         mdm_ipc::Command {
             query: Some("list".into()),
-            ..Default::default()
-        },
-    )
-    .await
-}
-
-async fn capture_status(s: S, _: Paired) -> Response {
-    ask(
-        &s,
-        mdm_ipc::Command {
-            query: Some("capture".into()),
             ..Default::default()
         },
     )

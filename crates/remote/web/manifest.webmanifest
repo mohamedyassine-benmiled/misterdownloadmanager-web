@@ -1,6 +1,6 @@
 {
-  "name": "Mister Download Manager",
-  "short_name": "MDM",
+  "name": "Webmister Download Manager",
+  "short_name": "Webmister",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -24,10 +24,11 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
+mod web;
 
 /// Is this run headless (`--headless` among the arguments)?
 pub fn asked(args: &[String]) -> bool {
-    args.iter().any(|a| a == "--headless")
+    args.iter().any(|a| a == "--headless") || web::asked(args)
 }
 
 /// The value of `--name <value>` or `--name=<value>`, else the environment's `var`.
@@ -49,6 +50,13 @@ pub fn main(args: Vec<String>) -> ExitCode {
     // A Windows server has no console for a windowed program: the one it was started from.
     #[cfg(windows)]
     crate::win32::cli_console(None);
+    let webhost = match web::host(&args) {
+        Ok(host) => host,
+        Err(error) => {
+            eprintln!("{error}");
+            return ExitCode::FAILURE;
+        }
+    };
     if let Some(dir) = setting(&args, "data", "MDM_DATA_DIR") {
         mdm_ipc::set_data_dir(PathBuf::from(dir));
     }
@@ -94,7 +102,7 @@ pub fn main(args: Vec<String>) -> ExitCode {
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     let mut loaded = crate::store::load();
     let s = &mut loaded.settings;
-    s.remote_on = !std::env::var("MDM_REMOTE").is_ok_and(|v| v.eq_ignore_ascii_case("off"));
+    s.remote_on = web::enabled(&args, std::env::var("MDM_REMOTE").ok().as_deref());
     if let Some(p) = setting(&args, "port", "MDM_REMOTE_PORT") {
         match p.trim().parse::<u16>() {
             Ok(p) if p > 0 => s.remote_port = p,
@@ -104,7 +112,7 @@ pub fn main(args: Vec<String>) -> ExitCode {
             }
         }
     }
-    if let Some(l) = setting(&args, "listen", "MDM_REMOTE_LISTEN") {
+    if let Some(l) = webhost.or_else(|| setting(&args, "listen", "MDM_REMOTE_LISTEN")) {
         s.remote_listen = l.trim().to_owned();
     }
     // No one to ask: the language is the system's, and nothing opens a window.

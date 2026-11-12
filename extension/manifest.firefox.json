@@ -1,9 +1,10 @@
 {
     "manifest_version": 3,
     "default_locale": "en",
-    "name": "__MSG_name__",
+    "name": "Webmister Download Manager",
+    "homepage_url": "https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web",
     "version": "0.1.0",
-    "description": "__MSG_description__",
+    "description": "Independent Mister Download Manager fork: capture downloads locally or send them to your self-hosted Webmister server.",
     "browser_specific_settings": {
         "gecko": {
             "id": "integration@misterdownloadmanager.com",
@@ -33,15 +34,16 @@
     ],
     "background": {
         "scripts": [
+            "remote.js",
             "background.js"
         ]
     },
     "action": {
         "default_popup": "popup.html",
-        "default_title": "__MSG_name__",
+        "default_title": "Webmister Download Manager",
         "default_icon": {
-            "16": "icons/icon-16.png",
-            "32": "icons/icon-32.png"
+            "16": "icons/webmister-16.png",
+            "32": "icons/webmister-32.png"
         }
     },
     "content_scripts": [
@@ -67,9 +69,9 @@
         }
     ],
     "icons": {
-        "16": "icons/icon-16.png",
-        "32": "icons/icon-32.png",
-        "48": "icons/icon-48.png",
-        "128": "icons/icon-128.png"
+        "16": "icons/webmister-16.png",
+        "32": "icons/webmister-32.png",
+        "48": "icons/webmister-48.png",
+        "128": "icons/webmister-128.png"
     }
 }

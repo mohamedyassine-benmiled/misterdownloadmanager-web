@@ -23,7 +23,7 @@ foreach ($kind in "chromium", "firefox") {
   New-Item -ItemType Directory -Force $dir | Out-Null
   # The background part; the download button over videos and the Alt-click watcher (content
   # scripts in every page); the toolbar button's popup.
-  foreach ($f in "background.js", "video.js", "page.js", "popup.html", "popup.css", "popup.js") {
+    foreach ($f in "background.js", "remote.js", "video.js", "page.js", "popup.html", "popup.css", "popup.js") {
     Copy-Item (Join-Path $src $f) $dir
   }
   Copy-Item (Join-Path $src "icons") (Join-Path $dir "icons") -Recurse

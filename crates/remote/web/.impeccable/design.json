@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-11T00:00:00Z",
+  "title": "Design System: MDM web workspace",
+  "extensions": {
+    "shadows": [
+      { "name": "progress-dialog", "value": "0 12px 40px -10px #0007", "purpose": "Desktop-style progress window over the retained workspace." }
+    ],
+    "motion": [
+      { "name": "transfer-progress", "value": "width .4s ease-out", "purpose": "Real transfer progress only; disabled for reduced motion." }
+    ],
+    "breakpoints": [
+      { "name": "phone", "value": "700px" },
+      { "name": "compact-rail", "value": "950px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Native progress meter",
+      "kind": "custom",
+      "description": "Green, linear meter from the desktop progress window; progress comes from received/total bytes.",
+      "html": "<div class=\"ds-meter\" role=\"progressbar\" aria-label=\"Example progress\" aria-valuemin=\"0\" aria-valuemax=\"100\" aria-valuenow=\"60\"><span style=\"width:60%\"></span></div>",
+      "css": ".ds-meter { height:16px; border:1px solid var(--dialog-line,#c8c8c8); border-radius:2px; background:var(--dialog-sheet,#f8f8f8); overflow:hidden; } .ds-meter span { display:block; height:100%; background:#098609; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "MDM desktop familiarity without losing web management capabilities",
+    "overview": "The download list remains the operating surface. Sidebar administration opens dialogs. The progress window follows the owner's desktop visual reference rather than the previous wide web details panel.",
+    "keyCharacteristics": ["Original MDM category artwork", "Persistent queue-scoped commands", "Compact native-style progress dialog", "Light, dark and RTL support"],
+    "rules": [
+      { "name": "Evidence before decoration", "body": "Connection segments and statistics use real server metadata. Never invent ping or unsupported completion controls.", "section": "components" }
+    ],
+    "dos": ["Keep settings and scheduler in the sidebar", "Keep files on disk when clearing completed history", "Preserve keyboard navigation and draft-race protection"],
+    "donts": ["Replace desktop icons with generic folders", "Reintroduce the bottom queue strip", "Claim pixel-identical operating-system chrome"]
+  }
+}

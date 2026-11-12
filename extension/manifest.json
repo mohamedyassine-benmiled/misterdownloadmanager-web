@@ -1,9 +1,10 @@
 {
     "manifest_version": 3,
     "default_locale": "en",
-    "name": "__MSG_name__",
+    "name": "Webmister Download Manager",
+    "homepage_url": "https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web",
     "version": "0.1.0",
-    "description": "__MSG_description__",
+    "description": "Independent Mister Download Manager fork: capture downloads locally or send them to your self-hosted Webmister server.",
     "minimum_chrome_version": "116",
     "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7cH/G9UJ3dVEuG290lFBuVoSaGysWGwchytUKOb3EQAgRyV8AOF7HkzfHZnEtppceD+7E8DrEhn8n5SsC5oEOzSJEo3fd3bL8NtKOaJhso5FfIA4jsp5xBQl1mghJQqQcZuJe5H2atrf64dIJHN1FUEFXrY/vOmOdG7AYntdUmOd6eUJwA+jCvPdQCwOd3IeJ0gJl6exg2xAZeCgB/Ps0mqrApspnuLwpEllaiApMbQOrYh3SeYpI2cfJnHaYWYrSNl7i8Wu8mtNA1nKyKnQxZlOktU4mDtvtSRWdfSCm7rApzKByGbBLqbX+DB3dqxaWFnSb43Aa+hscVvlRhSuLwIDAQAB",
     "permissions": [
@@ -25,10 +26,10 @@
     },
     "action": {
         "default_popup": "popup.html",
-        "default_title": "__MSG_name__",
+        "default_title": "Webmister Download Manager",
         "default_icon": {
-            "16": "icons/icon-16.png",
-            "32": "icons/icon-32.png"
+            "16": "icons/webmister-16.png",
+            "32": "icons/webmister-32.png"
         }
     },
     "content_scripts": [
@@ -54,9 +55,9 @@
         }
     ],
     "icons": {
-        "16": "icons/icon-16.png",
-        "32": "icons/icon-32.png",
-        "48": "icons/icon-48.png",
-        "128": "icons/icon-128.png"
+        "16": "icons/webmister-16.png",
+        "32": "icons/webmister-32.png",
+        "48": "icons/webmister-48.png",
+        "128": "icons/webmister-128.png"
     }
 }

@@ -20,6 +20,7 @@ const dir = await mkdtemp(path.join(scratch, 'run-'));
 const downloads = path.join(dir, 'downloads');
 const env = { ...process.env, MDM_DATA_DIR: path.join(dir, 'config'), MDM_REMOTE_URL: '', MDM_REMOTE: 'on', MDM_OFFSCREEN: '1' };
 let child, extensionContext, output = '', checks = 0;
+let starts = 0;
 const ok = (name) => { checks++; console.log('ok - ' + name); };
 async function command(args) {
   const process = spawn(app, args, { env, windowsHide: true });
@@ -90,7 +91,9 @@ const request = async (endpoint, body, client = context.request) => {
   return result;
 };
 async function start() {
-  child = spawn(app, ['--headless', '--data', env.MDM_DATA_DIR, '--downloads', downloads, '--listen', '127.0.0.1', '--port', String(port)], { env, windowsHide: true });
+  // Exercise new flags on initial startup and legacy aliases when verifying persistence.
+  const mode = starts++ === 0 ? ['--web', '--webhost=127.0.0.1'] : ['--headless', '--listen', '127.0.0.1'];
+  child = spawn(app, [...mode, '--data', env.MDM_DATA_DIR, '--downloads', downloads, '--port', String(port)], { env, windowsHide: true });
   child.stdout.on('data', (b) => { output += b; });
   child.stderr.on('data', (b) => { output += b; });
   await waitFor(async () => (await anonymous.request.get(base + 'api/v1/auth/session', { timeout: 1000 })).ok(), 'HTTPS server did not start');
@@ -177,8 +180,10 @@ try {
   const reservedName = ['win32', 'darwin'].includes(process.platform) ? 'RESERVED.ZIP' : 'reserved.zip';
   const reserved = await context.request.post(base + 'api/v1/manage', { headers: { 'x-csrf-token': csrf }, data: { op: 'download.move', id: transfer.id, folder: '', name: reservedName } });
   assert.equal((await reserved.json()).code, 'destination-exists', 'canonical and case aliases cannot replace queued download destinations');
+  await page.locator('#close-management').click();
   await page.locator('[data-page="downloads"]').first().click();
   await page.locator('.filename').filter({ hasText: 'headless-test.zip' }).click();
+  await page.locator('#detail-tab-files').click();
   await page.locator('#file-tools summary').filter({ hasText: 'Move or rename' }).click();
   assert.equal(await page.locator('#move-folder').inputValue(), 'Integration');
   await page.locator('#move-name').fill('renamed-test.bin'); await page.locator('#move-folder').fill('Moved');
@@ -191,6 +196,7 @@ try {
   await request('v1/actions', { action: 'start', ids: [queued.id] });
   await waitFor(async () => (await request('v1/downloads')).downloads.some((d) => d.id === queued.id && d.status === 'Complete'), 'replacement source did not download');
   ok('real checksum match/mismatch, non-overwriting move/rename and replacement download source');
+  await page.locator('#close-details').click();
 
   config = await request('v1/manage');
   config = await request('v1/manage', { op: 'settings.save', revision: config.revision, values: { torrent_dht: false, torrent_lsd: false, torrent_upnp: false, torrent_incoming: false } });
@@ -204,7 +210,73 @@ try {
   const torrentHash = createHash('sha1').update(encode(torrentInfo)).digest('hex');
   const torrentAdded = await context.request.post(base + 'api/v1/torrent?start=false', { headers: { 'x-csrf-token': csrf, 'content-type': 'application/x-bittorrent' }, data: encode({ info: torrentInfo }) });
   assert.equal(torrentAdded.status(), 200);
+  const torrentAdmission = await torrentAdded.json();
+  assert.ok(torrentAdmission.request_id);
   const torrentItem = await waitFor(async () => (await request('v1/downloads')).downloads.find((d) => d.url.includes(torrentHash)), 'torrent metadata did not join the list');
+  const admission = await request('v1/manage', { op: 'torrent.add.status', request_id: torrentAdmission.request_id });
+  assert.equal(admission.state, 'added'); assert.equal(admission.id, torrentItem.id);
+  const blockedDir = path.join(downloads, 'Integration', 'blocked-admission');
+  await mkdir(blockedDir, { recursive: true }); await writeFile(path.join(blockedDir, 'readme.txt'), 'keep existing contents');
+  const blockedInfo = { ...torrentInfo, name: 'blocked-admission' };
+  const blockedAdd = await context.request.post(base + 'api/v1/torrent?' + new URLSearchParams({ start: 'false', category: categoryName }), { headers: { 'x-csrf-token': csrf, 'content-type': 'application/x-bittorrent' }, data: encode({ info: blockedInfo }) });
+  assert.equal(blockedAdd.status(), 200); const blockedJob = await blockedAdd.json();
+  const blockedResult = await waitFor(async () => { const result = await request('v1/manage', { op: 'torrent.add.status', request_id: blockedJob.request_id }); return result.state === 'pending' ? null : result; }, 'torrent admission failure was not reported');
+  assert.equal(blockedResult.state, 'confirmation'); assert.equal(blockedResult.code, 'torrent-files-exist');
+  assert.equal(await readFile(path.join(blockedDir, 'readme.txt'), 'utf8'), 'keep existing contents');
+  const noConsent = await context.request.post(base + 'api/v1/manage', { headers: { 'x-csrf-token': csrf }, data: { op: 'torrent.add.confirm', request_id: blockedJob.request_id } });
+  assert.equal((await noConsent.json()).code, 'confirmation-required');
+  const tokenConsent = await anonymous.request.post(base + 'api/v1/manage', { headers: { authorization: 'Bearer ' + device.token }, data: { op: 'torrent.add.confirm', request_id: blockedJob.request_id, approve_existing: true } });
+  assert.equal(tokenConsent.status(), 401, 'an extension token is not an owner browser session');
+  const cancelled = await request('v1/manage', { op: 'torrent.add.cancel', request_id: blockedJob.request_id }); assert.equal(cancelled.state, 'cancelled');
+  assert.equal(await readFile(path.join(blockedDir, 'readme.txt'), 'utf8'), 'keep existing contents');
+  const firstPiece = Buffer.alloc(16384, 97), secondPiece = Buffer.alloc(16384, 98);
+  const reuseInfo = { files: [{ length: firstPiece.length, path: ['first.bin'] }, { length: secondPiece.length, path: ['second.bin'] }], name: 'reuse-verified', 'piece length': 16384, pieces: Buffer.concat([createHash('sha1').update(firstPiece).digest(), createHash('sha1').update(secondPiece).digest()]) };
+  const reuseDir = path.join(downloads, 'Integration', 'reuse-verified'); await mkdir(reuseDir, { recursive: true });
+  await writeFile(path.join(reuseDir, 'first.bin'), firstPiece); await writeFile(path.join(reuseDir, 'second.bin'), Buffer.alloc(16384));
+  const reuseResponse = await context.request.post(base + 'api/v1/torrent?' + new URLSearchParams({ start: 'true', category: categoryName }), { headers: { 'x-csrf-token': csrf, 'content-type': 'application/x-bittorrent' }, data: encode({ info: reuseInfo }) });
+  const reuseJob = await reuseResponse.json();
+  await waitFor(async () => (await request('v1/manage', { op: 'torrent.add.status', request_id: reuseJob.request_id })).state === 'confirmation', 'existing-data confirmation did not appear');
+  assert.deepEqual(await readFile(path.join(reuseDir, 'first.bin')), firstPiece);
+  const reuseResult = await request('v1/manage', { op: 'torrent.add.confirm', request_id: reuseJob.request_id, approve_existing: true });
+  assert.equal(reuseResult.state, 'added'); assert.equal(reuseResult.reused, true);
+  assert.equal((await request('v1/manage', { op: 'torrent.add.confirm', request_id: reuseJob.request_id, approve_existing: true })).id, reuseResult.id);
+  const verified = await waitFor(async () => { const details = await request('v1/manage', { op: 'details', id: reuseResult.id }); return details.torrent.pieces_complete === 1 ? details : null; }, 'existing matching piece was not verified');
+  assert.equal(verified.torrent.pieces_total, 2);
+  assert.deepEqual(await readFile(path.join(reuseDir, 'first.bin')), firstPiece);
+  await request('v1/actions', { action: 'pause', ids: [reuseResult.id] });
+  const duplicateTorrent = await context.request.post(base + 'api/v1/torrent?start=false', { headers: { 'x-csrf-token': csrf, 'content-type': 'application/x-bittorrent' }, data: encode({ info: reuseInfo }) });
+  const duplicateTorrentResult = await duplicateTorrent.json();
+  assert.equal(duplicateTorrentResult.id, reuseResult.id); assert.equal(duplicateTorrentResult.duplicate, true);
+  const duplicateReview = await request('v1/manage', { op: 'download.add', url: sourceURL, start: false, category: categoryName });
+  assert.equal(duplicateReview.confirmation, 'duplicate');
+  const staleDuplicate = await request('v1/manage', { op: 'download.add', url: sourceURL, start: false, category: categoryName, existing_id: 999999, duplicate_choice: 'new' });
+  assert.equal(staleDuplicate.confirmation, 'duplicate');
+  const useExisting = await request('v1/manage', { op: 'download.add', url: sourceURL, start: false, existing_id: duplicateReview.id, duplicate_choice: 'existing' });
+  assert.equal(useExisting.id, duplicateReview.id); assert.equal(useExisting.duplicate, true);
+  const separateCopy = await request('v1/manage', { op: 'download.add', url: sourceURL, start: false, category: categoryName, existing_id: duplicateReview.id, duplicate_choice: 'new' });
+  assert.notEqual(separateCopy.id, duplicateReview.id);
+  assert.deepEqual(await readFile(path.join(downloads, 'Moved', 'renamed-test.bin')), content);
+  const queuedUrl = sourceURL + '?separate-queued-copies=1';
+  const queuedFirst = await request('v1/manage', { op: 'download.add', url: queuedUrl, start: false, category: categoryName });
+  const queuedQuestion = await request('v1/manage', { op: 'download.add', url: queuedUrl, start: false, category: categoryName });
+  assert.equal(queuedQuestion.confirmation, 'duplicate');
+  const queuedSecond = await request('v1/manage', { op: 'download.add', url: queuedUrl, start: false, category: categoryName, existing_id: queuedFirst.id, duplicate_choice: 'new' });
+  const firstPath = (await request('v1/manage', { op: 'details', id: queuedFirst.id })).path;
+  const secondPath = (await request('v1/manage', { op: 'details', id: queuedSecond.id })).path;
+  assert.notEqual(firstPath, secondPath, 'queued copies must reserve distinct destinations before any files exist');
+  for (const id of [queuedFirst.id, queuedSecond.id]) {
+    await request('v1/actions', { action: 'start', ids: [id] });
+    await waitFor(async () => (await request('v1/downloads')).downloads.some((d) => d.id === id && d.status === 'Complete'), 'separate queued copy did not finish');
+  }
+  const completedFirstPath = (await request('v1/manage', { op: 'details', id: queuedFirst.id })).path;
+  const completedSecondPath = (await request('v1/manage', { op: 'details', id: queuedSecond.id })).path;
+  assert.notEqual(completedFirstPath, completedSecondPath, 'completed numbered copies must not converge on one file');
+  assert.deepEqual(await readFile(completedFirstPath), content); assert.deepEqual(await readFile(completedSecondPath), content);
+  ok('owner-confirmed torrent reuse verifies good pieces, rejects bad pieces, cancels safely and handles duplicate Web links');
+  const invalidAdd = await context.request.post(base + 'api/v1/torrent?start=false', { headers: { 'x-csrf-token': csrf, 'content-type': 'application/x-bittorrent' }, data: Buffer.from('dnot-valid-bencode') });
+  assert.equal(invalidAdd.status(), 200); const invalidJob = await invalidAdd.json();
+  const invalidResult = await waitFor(async () => { const result = await request('v1/manage', { op: 'torrent.add.status', request_id: invalidJob.request_id }); return result.state === 'pending' ? null : result; }, 'invalid torrent metadata failure was not reported');
+  assert.equal(invalidResult.state, 'error'); assert.equal(invalidResult.code, 'torrent-read-failed');
   let torrentDetails = await request('v1/manage', { op: 'details', id: torrentItem.id });
   assert.equal(torrentDetails.torrent.files.length, 2);
   await request('v1/manage', { op: 'torrent.update', id: torrentItem.id, files: [1], in_order: true, ends_first: false, upload_limit_kb: 128 });
@@ -225,7 +297,12 @@ try {
   const profile = path.join(dir, 'chromium-profile');
   const browserDownloads = path.join(dir, 'browser-downloads');
   const extensionPath = path.join(dir, 'extension');
-  await cp(path.join(root, 'extension'), extensionPath, { recursive: true });
+  await cp(process.env.MDM_TEST_EXTENSION ? path.resolve(process.env.MDM_TEST_EXTENSION) : path.join(root, 'extension'), extensionPath, { recursive: true });
+  if (process.env.MDM_TEST_EXTENSION_VERSION) {
+    const packaged = JSON.parse(await readFile(path.join(extensionPath, 'manifest.json'), 'utf8'));
+    assert.equal(packaged.name, 'Webmister Download Manager');
+    assert.equal(packaged.version, process.env.MDM_TEST_EXTENSION_VERSION.split('-')[0], 'test the versioned release extension, not a stale source package');
+  }
   // The only test substitution: a deliberately unregistered native-host name. Startup must
   // never launch or talk to a user's installed MDM, even if its normal host is registered.
   const background = await readFile(path.join(extensionPath, 'background.js'), 'utf8');

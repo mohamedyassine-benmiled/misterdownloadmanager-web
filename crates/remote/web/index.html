@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <meta name="referrer" content="no-referrer">
-  <title>Mister Download Manager</title>
+  <title>Webmister Download Manager</title>
   <link rel="icon" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -15,7 +15,7 @@
 <body>
 <a href="#content" class="skip" data-t="Skip to content"></a>
 <header class="appbar">
-  <a class="brand" href="#downloads"><img src="icon.png" alt="" width="34" height="34"><span>Mister Download Manager<small data-t="Web workspace"></small></span></a>
+  <a class="brand" href="#downloads"><img src="icon.png" alt="" width="34" height="34"><span>Webmister Download Manager<small data-t="Web workspace"></small></span></a>
   <span id="summary" class="summary"></span>
   <label class="theme-label"><span class="sr-only" data-t="Appearance"></span><select id="theme"><option value="system" data-t="System theme"></option><option value="light" data-t="Light"></option><option value="dark" data-t="Dark"></option></select></label>
   <button id="logout" hidden data-t="Sign out"></button>
@@ -35,21 +35,36 @@
 </section>
 
 <div id="workspace" class="shell" hidden>
+  <div class="command-bar" role="toolbar" data-ta="Download actions">
+    <button id="show-add" type="button" data-desktop-icon="tb-add-url"><span data-t="Add download"></span></button>
+    <span class="command-divider" aria-hidden="true"></span>
+    <button type="button" data-command="start" disabled data-ta="Start selected downloads"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l12 8-12 8z"/></svg><span data-t="Start"></span></button>
+    <button type="button" data-command="pause" disabled data-ta="Pause selected downloads"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg><span data-t="Pause"></span></button>
+    <button type="button" id="command-remove" disabled data-ta="Remove selected downloads"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7M14 10v7"/></svg><span data-t="Remove"></span></button>
+    <button type="button" id="delete-completed" disabled data-desktop-icon="tb-delete-completed"><span data-t="Delete completed"></span></button>
+    <span class="command-divider" aria-hidden="true"></span>
+    <label class="toolbar-queue"><span class="sr-only" data-t="Queue"></span><select id="toolbar-queue" data-ta="Queue"></select></label>
+    <button type="button" id="start-queue" disabled data-desktop-icon="tb-start-queue"><span data-t="Start queue"></span></button>
+    <button type="button" id="stop-queue" disabled data-desktop-icon="tb-stop-queue"><span data-t="Stop queue"></span></button>
+  </div>
   <aside class="navigation" data-ta="Navigation">
     <nav>
       <h2 data-t="Downloads"></h2>
-      <button data-page="downloads" data-filter="all" aria-current="page"><span data-t="All downloads"></span><span class="count" data-count="all">0</span></button>
-      <button data-page="downloads" data-filter="Downloading"><span data-t="Downloading"></span><span class="count" data-count="Downloading">0</span></button>
-      <button data-page="downloads" data-filter="Queued"><span data-t="Queued"></span><span class="count" data-count="Queued">0</span></button>
-      <button data-page="downloads" data-filter="Stopped"><span data-t="Stopped"></span><span class="count" data-count="Stopped">0</span></button>
-      <button data-page="downloads" data-filter="Complete"><span data-t="Complete"></span><span class="count" data-count="Complete">0</span></button>
-      <button data-page="downloads" data-filter="Error"><span data-t="Error"></span><span class="count" data-count="Error">0</span></button>
+      <button data-page="downloads" data-filter="all" data-desktop-icon="cat-all" aria-current="page"><span data-t="All downloads"></span><span class="count" data-count="all">0</span></button>
+      <details class="folder-tree" open><summary data-desktop-icon="cat-folder"><span data-t="Categories"></span></summary><div id="category-tree"></div></details>
+      <button data-page="downloads" data-filter="unfinished" data-desktop-icon="cat-unfinished"><span data-t="Unfinished"></span><span class="count" data-count="unfinished">0</span></button>
+      <button data-page="downloads" data-filter="Downloading" data-desktop-icon="st-downloading"><span data-t="Downloading"></span><span class="count" data-count="Downloading">0</span></button>
+      <button data-page="downloads" data-filter="Queued" data-desktop-icon="st-queued"><span data-t="Queued"></span><span class="count" data-count="Queued">0</span></button>
+      <button data-page="downloads" data-filter="Stopped" data-desktop-icon="st-paused"><span data-t="Stopped"></span><span class="count" data-count="Stopped">0</span></button>
+      <button data-page="downloads" data-filter="Complete" data-desktop-icon="cat-finished"><span data-t="Finished"></span><span class="count" data-count="Complete">0</span></button>
+      <button data-page="downloads" data-filter="Error" data-desktop-icon="st-error"><span data-t="Error"></span><span class="count" data-count="Error">0</span></button>
+      <details class="folder-tree" open><summary data-desktop-icon="cat-queues"><span data-t="Queues"></span></summary><div id="queue-tree"></div></details>
       <h2 data-t="Manage"></h2>
-      <button data-page="queues" data-t="Queues and scheduler"></button>
-      <button data-page="categories" data-t="Categories"></button>
-      <button data-page="settings" data-t="Application settings"></button>
-      <button data-page="security" data-t="Web UI authentication"></button>
-      <button data-page="devices" data-t="Browser extensions and devices"></button>
+      <button data-page="queues" data-desktop-icon="tb-scheduler"><span data-t="Queues and scheduler"></span></button>
+      <button data-page="categories" data-desktop-icon="cat-folder"><span data-t="Categories"></span></button>
+      <button data-page="settings" data-desktop-icon="tb-options"><span data-t="Application settings"></span></button>
+      <button data-page="security"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10h14v11H5zM8 10V7a4 4 0 018 0v3M12 14v3"/></svg><span data-t="Web UI authentication"></span></button>
+      <button data-page="devices"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v15H3zM3 8h18M7 6h.1M10 6h.1M9 12h6v4H9z"/></svg><span data-t="Browser extensions and devices"></span></button>
     </nav>
     <p class="nav-note" data-t="Files are downloaded to the server, not this browser."></p>
   </aside>
@@ -57,48 +72,96 @@
     <p id="section-loading" class="notice" role="status" hidden></p>
     <p id="offline" class="banner" role="status" hidden></p>
     <p id="bypass-note" class="notice" hidden><span data-t="Connected through an authentication bypass rule."></span> <button id="owner-login" data-t="Sign in to manage settings"></button></p>
+    <section id="addition-status" class="notice" role="status" hidden><div class="section-heading"><h2 data-t="Torrent additions"></h2><button id="clear-addition-results" type="button" data-t="Clear finished results"></button></div><ul id="addition-results"></ul></section>
 
     <section id="page-downloads" data-view="downloads">
-      <div class="page-heading"><div><h1 id="view-title" data-t="All downloads"></h1><p class="muted" data-t="Your transfers, live from the server."></p></div><button id="show-add" class="primary" data-t="Add download"></button></div>
-      <section id="add-panel" class="surface add-panel" hidden>
+      <div class="page-heading"><div><h1 id="view-title" data-t="All downloads"></h1><p class="muted" data-t="Your transfers, live from the server."></p></div></div>
+      <dialog id="add-panel" class="add-panel" aria-labelledby="add-title">
+        <div class="section-heading"><h2 id="add-title" data-t="Add download"></h2><button type="button" id="dismiss-add" data-t="Close"></button></div>
+        <div class="add-tabs" role="tablist" data-ta="Download source"><button id="add-tab-web" type="button" role="tab" aria-selected="true" aria-controls="add-source" data-add-mode="web" data-desktop-icon="tb-add-url"><span data-t="Web"></span></button><button id="add-tab-torrent" type="button" role="tab" aria-selected="false" aria-controls="add-source" data-add-mode="torrent" data-desktop-icon="tb-add-torrent" tabindex="-1"><span data-t="Torrent"></span></button></div>
         <form id="add-form">
-          <label for="url" data-t="Address or magnet link"></label>
-          <div class="inline"><input id="url" type="url" inputmode="url" dir="ltr" placeholder="https://…"><label class="button file" for="torrent-file" tabindex="0" role="button" data-ta="Choose a .torrent file"><span data-t="Torrent file"></span><input id="torrent-file" type="file" accept=".torrent,application/x-bittorrent"></label></div>
+          <div id="add-source" role="tabpanel" aria-labelledby="add-tab-web">
+          <label id="url-label" for="url" data-t="Address"></label>
+          <div class="inline"><input id="url" type="url" inputmode="url" dir="ltr" placeholder="https://…"><label id="torrent-picker" class="button file" for="torrent-file" tabindex="0" role="button" data-ta="Choose a .torrent file" hidden><span data-t="Torrent file"></span><input id="torrent-file" type="file" accept=".torrent,application/x-bittorrent"></label></div>
           <p id="file-name" class="muted" hidden></p>
+          </div>
           <div class="form-grid"><label><span data-t="Category"></span><select id="add-category"></select></label><label><span data-t="When"></span><select id="add-when"></select></label></div>
           <div class="actions"><button type="button" id="close-add" data-t="Cancel"></button><button type="submit" class="primary" data-t="Add download"></button></div>
         </form>
-      </section>
+      </dialog>
+      <div class="source-filters" role="group" data-ta="Filter by source"><button type="button" data-source="all" aria-pressed="true" data-t="All"></button><button type="button" data-source="web" aria-pressed="false" data-t="Web"></button><button type="button" data-source="torrent" aria-pressed="false" data-t="Torrents"></button></div>
       <div class="filters"><label class="search"><span class="sr-only" data-t="Search downloads"></span><input id="search" type="search" data-tp="Search by name or address"></label><label><span class="sr-only" data-t="Category"></span><select id="filter-category"></select></label><label><span class="sr-only" data-t="Sort downloads"></span><select id="sort"><option value="newest" data-t="Newest first"></option><option value="name" data-t="Name"></option><option value="size" data-t="Size"></option><option value="progress" data-t="Progress"></option></select></label></div>
       <div id="bulk" class="bulk" hidden><strong id="selection-count"></strong><button data-bulk="start" data-t="Start"></button><button data-bulk="pause" data-t="Pause"></button><button id="bulk-remove" data-t="Remove"></button><button id="clear-selection" data-t="Clear selection"></button></div>
       <div class="transfer-layout" id="transfer-layout">
         <div class="surface transfers">
           <p id="loading" class="empty" role="status" data-t="Loading downloads..."></p>
-          <table id="downloads-table" hidden><thead><tr><th class="select-column"><input id="select-all" type="checkbox" data-ta="Select visible downloads"></th><th data-t="Name"></th><th data-t="Progress"></th><th class="optional" data-t="Size"></th><th data-t="Speed"></th><th class="optional" data-t="Remaining"></th><th class="actions-column"><span class="sr-only" data-t="Actions"></span></th></tr></thead><tbody id="download-list"></tbody></table>
+          <table id="downloads-table" hidden><thead><tr><th class="select-column"><input id="select-all" type="checkbox" data-ta="Select visible downloads"></th><th data-t="Source"></th><th data-t="Name"></th><th data-t="Progress"></th><th class="optional" data-t="Size"></th><th class="speed-column" data-t="Speed"></th><th class="optional" data-t="Remaining"></th><th class="actions-column"><span class="sr-only" data-t="Actions"></span></th></tr></thead><tbody id="download-list"></tbody></table>
           <div id="empty" class="empty" hidden><h2 data-t="No downloads here."></h2><p class="muted" data-t="Add a link, send a download from your extension, or change the filters."></p></div>
         </div>
-        <aside id="details" class="surface detail-panel" hidden>
-          <div class="section-heading"><h2 data-t="Download details"></h2><button id="close-details" data-t="Close"></button></div>
-          <h3 id="detail-name" dir="auto"></h3><dl id="detail-info"></dl>
-           <form id="detail-form" hidden><label for="detail-description" data-t="Description"></label><textarea id="detail-description" maxlength="4096" rows="2"></textarea><label for="detail-category" data-t="Category"></label><select id="detail-category"></select><label for="detail-limit" data-t="Speed limit (KB/sec, 0: unlimited)"></label><input id="detail-limit" type="number" min="0" max="1073741824" required><button type="submit" class="primary" data-t="Save changes"></button></form>
+        <dialog id="details" class="detail-panel" aria-labelledby="detail-name">
+          <div class="detail-dialog-header"><img src="icon.png" width="16" height="16" alt=""><h2 id="detail-name" dir="auto"></h2><button id="close-details" type="button" data-ta="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+          <div class="desktop-dialog-body">
+          <div class="detail-tabs" role="tablist" data-ta="Download details">
+            <button id="detail-tab-status" type="button" role="tab" aria-selected="true" aria-controls="detail-status" data-detail-tab="status" data-t="Download status"></button>
+            <button id="detail-tab-speed" type="button" role="tab" aria-selected="false" aria-controls="detail-speed" data-detail-tab="speed" data-t="Speed Limiter" tabindex="-1"></button>
+            <button id="detail-tab-properties" type="button" role="tab" aria-selected="false" aria-controls="detail-properties" data-detail-tab="properties" data-t="Properties"></button>
+            <button id="detail-tab-files" type="button" role="tab" aria-selected="false" aria-controls="detail-files" data-detail-tab="files" data-t="File tools" hidden></button>
+          </div>
+          <section id="detail-status" role="tabpanel" aria-labelledby="detail-tab-status">
+            <p id="detail-address" dir="ltr"></p>
+            <dl id="detail-info"></dl>
+          </section>
+          <section id="detail-speed" role="tabpanel" aria-labelledby="detail-tab-speed" hidden>
+            <label for="detail-limit" data-t="Speed limit (KB/sec, 0: unlimited)"></label><input form="detail-form" id="detail-limit" type="number" min="0" max="1073741824" required>
+            <button type="submit" form="detail-form" data-t="Save changes"></button>
+            <div id="torrent-speed" hidden><label for="torrent-upload" data-t="Upload limit (KB/sec, 0: unlimited)"></label><input form="torrent-form" id="torrent-upload" type="number" min="0" max="1073741824" required><button type="submit" form="torrent-form" data-t="Save torrent changes"></button></div>
+          </section>
+          <div id="detail-status-tools">
+            <div id="detail-progress" class="progress-track detail-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill"></div></div>
+            <p id="detail-progress-text" class="sr-only"></p>
+            <div class="desktop-progress-actions"><button id="toggle-inspector" type="button" aria-expanded="true" aria-controls="detail-inspector" data-t="Hide details"></button><button id="detail-toggle" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path></path></svg><span></span></button><button id="detail-dismiss" type="button" data-t="Close"></button></div>
+            <div id="detail-inspector">
+              <div class="inspect-tabs" role="tablist" data-ta="Transfer details">
+                <button id="detail-tab-connections" type="button" role="tab" aria-selected="true" aria-controls="detail-connection-panel" data-inspect-tab="connections" data-t="Connections"></button>
+                <button id="detail-tab-torrent" type="button" role="tab" aria-selected="false" aria-controls="detail-torrent" data-inspect-tab="torrent" data-t="Files" hidden tabindex="-1"></button>
+                <button id="detail-tab-peers" type="button" role="tab" aria-selected="false" aria-controls="detail-peers" data-inspect-tab="peers" data-t="Peers" hidden tabindex="-1"></button>
+                <button id="detail-tab-trackers" type="button" role="tab" aria-selected="false" aria-controls="detail-trackers" data-inspect-tab="trackers" data-t="Trackers" hidden tabindex="-1"></button>
+                <button id="detail-tab-general" type="button" role="tab" aria-selected="false" aria-controls="detail-general" data-inspect-tab="general" data-t="General" hidden tabindex="-1"></button>
+                <button id="detail-tab-activity" type="button" role="tab" aria-selected="false" aria-controls="detail-activity" data-inspect-tab="activity" data-t="Activity" tabindex="-1"></button>
+              </div>
+              <section id="detail-connection-panel" role="tabpanel" aria-labelledby="detail-tab-connections">
+                <p class="connection-caption" data-t="Start positions and download progress by connections"></p><div id="detail-segments" class="segment-map" data-ta="Connection progress"></div>
+                <div class="connection-table"><table><thead><tr><th data-t="N"></th><th data-t="Downloaded"></th><th data-t="Info"></th></tr></thead><tbody id="detail-connections"></tbody></table></div>
+              </section>
+              <section id="detail-activity" role="tabpanel" aria-labelledby="detail-tab-activity" hidden><ol id="detail-log" class="activity-list"></ol></section>
+          <section id="detail-torrent" role="tabpanel" aria-labelledby="detail-tab-torrent" hidden>
+           <section id="torrent-tools" hidden>
+              <form id="torrent-form"><div id="torrent-files" class="torrent-files"></div><button type="submit" data-t="Save torrent changes"></button></form>
+             </section>
+           </section>
+           <section id="detail-trackers" role="tabpanel" aria-labelledby="detail-tab-trackers" hidden><h3 data-t="Trackers"></h3><ul id="torrent-trackers" class="activity-list"></ul><form id="trackers-form"><label for="tracker-addresses" data-t="Add tracker addresses (one per line)"></label><textarea id="tracker-addresses" dir="ltr" rows="3" maxlength="16384" required></textarea><button type="submit" data-t="Add trackers"></button></form></section>
+            <section id="detail-peers" role="tabpanel" aria-labelledby="detail-tab-peers" hidden><h3 data-t="Peers"></h3><div id="torrent-peers" class="data-list"></div></section>
+            <section id="detail-general" role="tabpanel" aria-labelledby="detail-tab-general" hidden><p id="torrent-health" class="field-help" role="status"></p><dl id="torrent-info"></dl><label class="check"><input form="torrent-form" id="torrent-order" type="checkbox"><span data-t="Download in order"></span></label><label class="check"><input form="torrent-form" id="torrent-ends" type="checkbox"><span data-t="First and last pieces first"></span></label><button type="submit" form="torrent-form" data-t="Save torrent changes"></button><div class="actions torrent-actions"><button type="button" data-torrent-action="recheck" data-t="Recheck"></button><button type="button" data-torrent-action="reannounce" data-t="Reannounce"></button></div></section>
+            </div>
+          </div>
+          <section id="detail-properties" role="tabpanel" aria-labelledby="detail-tab-properties" hidden>
+            <form id="detail-form" hidden><label for="detail-description" data-t="Description"></label><textarea id="detail-description" maxlength="4096" rows="2"></textarea><label for="detail-category" data-t="Category"></label><select id="detail-category"></select><p id="detail-destination" class="field-help"></p><button type="submit" data-t="Save changes"></button></form>
+          </section>
+          <section id="detail-files" role="tabpanel" aria-labelledby="detail-tab-files" hidden>
            <div id="file-tools" hidden>
              <details class="detail-tool"><summary data-t="Move or rename"></summary><p class="field-help" data-t="Move a completed file or change a destination before downloading starts. Existing files are never replaced."></p><form id="move-form"><label for="move-name" data-t="File name"></label><input id="move-name" maxlength="255" required dir="auto"><label for="move-folder" data-t="Folder relative to downloads directory"></label><input id="move-folder" dir="ltr" maxlength="2048"><button type="submit" data-t="Move or rename"></button><p id="move-result" role="status" class="field-help"></p></form></details>
              <details class="detail-tool"><summary data-t="Replace expired link"></summary><p class="field-help" data-t="Pause an unfinished download first. Existing data is kept and checked when it resumes. Stored request credentials are cleared."></p><form id="source-form"><label for="source-url" data-t="New download address"></label><input id="source-url" type="url" dir="ltr" maxlength="8192" required><button type="submit" data-t="Replace address"></button><p id="source-result" role="status" class="field-help"></p></form></details>
              <details class="detail-tool"><summary data-t="Verify checksum"></summary><p class="field-help" data-t="Completed files are checked now. Pause unfinished downloads to set the checksum for their next run. Leave blank to clear it."></p><form id="checksum-form"><label for="checksum-expected" data-t="Expected checksum (MD5, SHA-1, SHA-256, SHA-512 or CRC32):"></label><input id="checksum-expected" dir="ltr" maxlength="256"><button type="submit" data-t="Save and verify"></button></form><p id="checksum-result" role="status" class="field-help"></p><code id="checksum-actual" class="checksum-value" hidden></code></details>
-           </div>
-           <section id="torrent-tools" hidden>
-             <h3 data-t="Torrent controls"></h3><p id="torrent-health" class="field-help" role="status"></p>
-             <form id="torrent-form"><label class="check"><input id="torrent-order" type="checkbox"><span data-t="Download in order"></span></label><label class="check"><input id="torrent-ends" type="checkbox"><span data-t="First and last pieces first"></span></label><label for="torrent-upload" data-t="Upload limit (KB/sec, 0: unlimited)"></label><input id="torrent-upload" type="number" min="0" max="1073741824" required><h3 data-t="Files to download"></h3><div id="torrent-files" class="torrent-files"></div><button type="submit" class="primary" data-t="Save torrent changes"></button></form>
-             <div class="actions torrent-actions"><button type="button" data-torrent-action="recheck" data-t="Recheck"></button><button type="button" data-torrent-action="reannounce" data-t="Reannounce"></button></div>
-             <details class="detail-tool"><summary data-t="Trackers"></summary><ul id="torrent-trackers" class="activity-list"></ul><form id="trackers-form"><label for="tracker-addresses" data-t="Add tracker addresses (one per line)"></label><textarea id="tracker-addresses" dir="ltr" rows="3" maxlength="16384" required></textarea><button type="submit" data-t="Add trackers"></button></form></details>
-             <details class="detail-tool"><summary data-t="Peers"></summary><div id="torrent-peers" class="data-list"></div></details>
-           </section>
-           <h3 data-t="Connections"></h3><div id="detail-connections" class="data-list"></div><h3 data-t="Activity"></h3><ol id="detail-log" class="activity-list"></ol>
-        </aside>
+            </div>
+          </section>
+          </div>
+         </dialog>
       </div>
-      <section class="queue-strip"><h2 data-t="Queues"></h2><div id="queue-controls"></div></section>
     </section>
 
+    <dialog id="management-dialog" class="management-dialog" aria-labelledby="management-title">
+    <div class="management-header"><h2 id="management-title"></h2><button type="button" id="close-management" data-t="Close"></button></div>
+    <p id="management-loading" class="notice" role="status" hidden></p>
     <section data-view="settings" hidden><div class="page-heading"><div><h1 data-t="Application settings"></h1><p class="muted" data-t="Validated server settings. Existing transfers keep their current connection options until restarted."></p></div></div><form id="settings-form" class="surface settings-surface"><div id="settings-fields"></div><div class="save-bar"><button type="submit" class="primary" data-t="Save changes"></button><span id="settings-result" role="status"></span></div></form></section>
 
     <section data-view="security" hidden>
@@ -130,11 +193,14 @@
     <section data-view="categories" hidden><div class="page-heading"><div><h1 data-t="Categories"></h1><p class="muted" data-t="Custom folders stay inside the server downloads directory. Deleting a category keeps its files."></p></div><button id="new-category" data-t="New category"></button></div><div id="category-list" class="surface data-list"></div><form id="category-form" class="surface settings-surface" hidden><h2 data-t="Edit category"></h2><input id="category-id" type="hidden"><div class="form-grid"><label><span data-t="Name"></span><input id="category-name" maxlength="100" required></label><label><span data-t="File extensions"></span><input id="category-types" placeholder="ZIP 7Z ISO" maxlength="8192"></label><label><span data-t="Folder relative to downloads directory"></span><input id="category-folder" dir="ltr" required></label></div><div class="actions"><button type="button" id="category-cancel" data-t="Cancel"></button><button type="submit" class="primary" data-t="Save changes"></button></div></form></section>
 
     <section data-view="devices" hidden><div class="page-heading"><div><h1 data-t="Browser extensions and devices"></h1><p class="muted" data-t="Pair your extension with this server URL. Device tokens cannot change owner authentication settings."></p></div></div><section class="surface settings-surface"><label for="server-url" data-t="Server URL"></label><input id="server-url" dir="ltr" readonly><form id="device-pair-form"><label for="device-password" data-t="Current password"></label><input id="device-password" type="password" autocomplete="current-password" required><button type="submit" class="primary" data-t="Create extension pairing code"></button></form><p id="pair-code" class="pair-code" role="status"></p></section><div id="device-list" class="surface data-list"></div></section>
+    </dialog>
   </main>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <dialog id="remove-dialog"><form method="dialog"><h2 data-t="Remove downloads"></h2><p id="remove-text"></p><label class="check"><input id="remove-files" type="checkbox"><span data-t="Delete the files from disk too"></span></label><div class="actions"><button value="cancel" data-t="Cancel"></button><button value="remove" class="danger" data-t="Remove"></button></div></form></dialog>
 <dialog id="password-dialog"><form method="dialog"><h2 data-t="Confirm device revocation"></h2><label for="revoke-password" data-t="Current password"></label><input id="revoke-password" type="password" autocomplete="current-password" required><div class="actions"><button value="cancel" formnovalidate data-t="Cancel"></button><button value="revoke" class="danger" data-t="Revoke device"></button></div></form></dialog>
-<template id="download-row"><tr><td><input class="select-download" type="checkbox"></td><td class="filename-cell"><button class="filename" dir="auto"></button><span class="state"></span><p class="row-error" hidden></p></td><td><div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill"></div></div><span class="progress-text"></span></td><td class="file-size optional"></td><td class="file-speed"></td><td class="file-eta optional"></td><td class="row-actions"><button class="toggle"></button><button class="remove" data-t="Remove"></button></td></tr></template>
+<dialog id="reuse-dialog" aria-labelledby="reuse-title"><form id="reuse-form"><div class="section-heading"><h2 id="reuse-title" data-t="Files already there"></h2><button type="button" id="reuse-close" data-t="Close"></button></div><p id="reuse-summary"></p><p id="reuse-destination" class="checksum-value" dir="auto"></p><ul id="reuse-files" class="activity-list"></ul><p id="reuse-more" class="field-help" data-t="Only the first 20 existing files are shown. Confirmation applies to all file paths in this torrent." hidden></p><p class="field-help" data-t="MDM will verify the pieces already on disk, keep matching data and download missing or damaged pieces. Nonmatching data at these torrent file paths may be replaced. Unrelated files outside these paths are not part of this operation."></p><label class="check"><input id="reuse-approved" type="checkbox" required><span data-t="I understand that nonmatching data at these paths may be replaced."></span></label><p id="reuse-error" class="error" role="alert"></p><div class="actions"><button type="button" id="reuse-cancel" data-t="Do not add"></button><button type="submit" class="primary" data-t="Verify and use existing files"></button></div></form></dialog>
+<dialog id="duplicate-dialog" aria-labelledby="duplicate-title"><form method="dialog"><h2 id="duplicate-title" data-t="Duplicate download link"></h2><p data-t="This address is already in the list of downloads:"></p><p id="duplicate-file" dir="auto"></p><p class="field-help" data-t="Open the existing download to inspect or resume it, or add a separate copy with a numbered name. Existing files will not be replaced."></p><div class="actions"><button value="cancel" data-t="Cancel"></button><button value="new" data-t="Add numbered copy"></button><button value="existing" class="primary" data-t="Open existing download"></button></div></form></dialog>
+<template id="download-row"><tr><td><input class="select-download" type="checkbox"></td><td class="file-source"></td><td class="filename-cell"><button class="filename" dir="auto"></button><span class="state"></span><p class="row-error" hidden></p></td><td><div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill"></div></div><span class="progress-text"></span></td><td class="file-size optional"></td><td class="file-speed"></td><td class="file-eta optional"></td><td class="row-actions"><button class="toggle" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path></path></svg></button><button class="remove" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7M14 10v7"></path></svg></button></td></tr></template>
 </body>
 </html>

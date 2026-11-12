@@ -9,3 +9,5 @@ tools/lab/wsl/*.sh text eol=lf
 # Deployment files are copied from Windows checkouts onto Linux hosts.
 deploy/systemd/* text eol=lf
 docker/.env.example text eol=lf
+# Fork image smoke runs with Bash, including from Windows source checkouts.
+tools/docker/*.sh text eol=lf
