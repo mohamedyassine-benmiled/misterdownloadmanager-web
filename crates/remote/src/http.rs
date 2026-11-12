@@ -34,15 +34,29 @@ pub struct State {
     pub hosts: Vec<String>,
     generation: u64,
     pub(crate) secure: bool,
+    pub(crate) qbittorrent: bool,
+    pub(crate) qbittorrent_allowlist: crate::qbittorrent::Allowlist,
+    pub(crate) qbittorrent_auth_bypass: bool,
 }
 
 impl State {
-    pub fn new(inner: Arc<Inner>, hosts: Vec<String>, generation: u64, secure: bool) -> Arc<State> {
+    pub fn new(
+        inner: Arc<Inner>,
+        hosts: Vec<String>,
+        generation: u64,
+        secure: bool,
+        qbittorrent: bool,
+        qbittorrent_allowlist: crate::qbittorrent::Allowlist,
+        qbittorrent_auth_bypass: bool,
+    ) -> Arc<State> {
         Arc::new(State {
             inner,
             hosts,
             generation,
             secure,
+            qbittorrent,
+            qbittorrent_allowlist,
+            qbittorrent_auth_bypass,
         })
     }
 }
@@ -104,6 +118,7 @@ pub fn router(state: Arc<State>) -> Router {
         .route("/api/queue", post(queue))
         .route("/api/forget", post(forget))
         .merge(web::routes())
+        .merge(crate::qbittorrent::routes())
         .layer(DefaultBodyLimit::max(MAX_BODY))
         .layer(axum::middleware::from_fn_with_state(state.clone(), guard))
         .with_state(state)
@@ -138,6 +153,27 @@ async fn guard(s: S, req: Request, next: Next) -> Response {
     // A connection opened before the remote control was turned off or moved.
     if s.inner.state.lock().unwrap().generation != s.generation {
         return error(StatusCode::SERVICE_UNAVAILABLE, "stopped");
+    }
+    if req.uri().path().starts_with("/api/v2/") {
+        if !s.qbittorrent {
+            return StatusCode::NOT_FOUND.into_response();
+        }
+        let peer = req
+            .extensions()
+            .get::<ConnectInfo<Peer>>()
+            .map(|p| p.0.0.ip());
+        if !peer.is_some_and(|ip| s.qbittorrent_allowlist.allows(ip))
+            || [
+                "forwarded",
+                "x-forwarded-for",
+                "x-real-ip",
+                "x-forwarded-host",
+            ]
+            .iter()
+            .any(|name| req.headers().contains_key(*name))
+        {
+            return StatusCode::FORBIDDEN.into_response();
+        }
     }
     let headers = req.headers();
     let host = headers

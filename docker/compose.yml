@@ -27,6 +27,10 @@ services:
       MDM_REMOTE_TLS: "${MDM_REMOTE_TLS:-0}"
       # Names besides the server's address you open the page with (comma-separated).
       MDM_REMOTE_HOSTS: "${MDM_REMOTE_HOSTS:-localhost}"
+      # Experimental qBittorrent API: disabled and loopback-only unless explicitly configured.
+      MDM_QBIT_API: "${MDM_QBIT_API:-0}"
+      MDM_QBIT_ALLOWED_SUBNETS: "${MDM_QBIT_ALLOWED_SUBNETS:-127.0.0.1/32,::1/128}"
+      MDM_QBIT_AUTH_BYPASS: "${MDM_QBIT_AUTH_BYPASS:-0}"
       MDM_DATA_DIR: /config
       MDM_DOWNLOADS: /downloads
       MDM_REMOTE_PORT: "8463"

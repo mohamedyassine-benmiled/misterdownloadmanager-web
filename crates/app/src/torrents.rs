@@ -44,6 +44,15 @@ pub struct TorrentSpec {
     /// Its own upload limit, bytes/s (None: only Torrent settings' limit for all torrents).
     #[serde(default)]
     pub upload_limit: Option<u64>,
+    /// Per-torrent seeding overrides; false uses MDM's global setting, true with None is unlimited.
+    #[serde(default)]
+    pub ratio_override: bool,
+    #[serde(default)]
+    pub ratio_limit: Option<f64>,
+    #[serde(default)]
+    pub seed_time_override: bool,
+    #[serde(default)]
+    pub seed_time_limit: Option<u64>,
     /// Downloaded in order (#39): its files' start first, to watch a video while it
     /// downloads. Off: the rarest pieces first, as BitTorrent clients usually do (better for
     /// the swarm, and no slower). Torrents kept from before have it off.
@@ -96,6 +105,18 @@ pub fn sharing_limit_reached(
     done: u64,
     limits: SharingLimits,
 ) -> Option<Reached> {
+    let limits = SharingLimits {
+        ratio: if spec.ratio_override {
+            spec.ratio_limit
+        } else {
+            limits.ratio
+        },
+        secs: if spec.seed_time_override {
+            spec.seed_time_limit
+        } else {
+            limits.secs
+        },
+    };
     let ratio = share_ratio(spec.uploaded, done);
     if let Some(r) = limits.ratio
         && done > 0
@@ -1201,6 +1222,10 @@ mod tests {
             peers: 0,
             up_speed: 0.0,
             upload_limit: None,
+            ratio_override: false,
+            ratio_limit: None,
+            seed_time_override: false,
+            seed_time_limit: None,
             in_order: false,
             ends_first: true,
         }
@@ -1314,6 +1339,10 @@ mod tests {
             peers: 0,
             up_speed: 0.0,
             upload_limit: None,
+            ratio_override: false,
+            ratio_limit: None,
+            seed_time_override: false,
+            seed_time_limit: None,
             in_order: false,
             ends_first: true,
         };
@@ -1350,6 +1379,32 @@ mod tests {
             None,
             "nothing there yet"
         );
+    }
+
+    #[test]
+    fn torrent_share_overrides_reuse_global_seeding_logic() {
+        let mut spec = a_spec();
+        spec.uploaded = 150;
+        spec.seeded_secs = 60;
+        let global = SharingLimits {
+            ratio: Some(1.0),
+            secs: Some(30),
+        };
+        assert!(sharing_limit_reached(&spec, 100, global).is_some());
+        spec.ratio_override = true;
+        spec.ratio_limit = None;
+        spec.seed_time_override = true;
+        spec.seed_time_limit = None;
+        assert_eq!(sharing_limit_reached(&spec, 100, global), None);
+        spec.ratio_limit = Some(1.5);
+        assert_eq!(
+            sharing_limit_reached(&spec, 100, global),
+            Some(Reached::Ratio(1.5))
+        );
+        let saved = serde_json::to_string(&spec).unwrap();
+        let restored: TorrentSpec = serde_json::from_str(&saved).unwrap();
+        assert_eq!(restored.ratio_limit, Some(1.5));
+        assert!(restored.seed_time_override);
     }
 
     /// #39: a .torrent's web address, by its path, the name the browser gave or its type.

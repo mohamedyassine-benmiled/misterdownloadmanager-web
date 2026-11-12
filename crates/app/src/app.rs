@@ -5002,6 +5002,10 @@ impl App {
                 peers: 0,
                 up_speed: 0.0,
                 upload_limit: None,
+                ratio_override: false,
+                ratio_limit: None,
+                seed_time_override: false,
+                seed_time_limit: None,
                 in_order: add.in_order,
                 ends_first: true,
             });
@@ -11275,6 +11279,10 @@ mod deferred_rename_guard_tests {
             peers: 0,
             up_speed: 0.0,
             upload_limit: None,
+            ratio_override: false,
+            ratio_limit: None,
+            seed_time_override: false,
+            seed_time_limit: None,
             in_order: false,
             ends_first: false,
         });
@@ -11291,6 +11299,10 @@ mod deferred_rename_guard_tests {
             peers: 0,
             up_speed: 0.0,
             upload_limit: None,
+            ratio_override: false,
+            ratio_limit: None,
+            seed_time_override: false,
+            seed_time_limit: None,
             in_order: false,
             ends_first: false,
         });

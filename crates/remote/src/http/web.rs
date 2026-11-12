@@ -22,7 +22,7 @@ pub(super) fn browser_origin_allowed(
     secure: bool,
 ) -> bool {
     // Extension origins may capture through the legacy API, never administer browser sessions.
-    !(path.starts_with("/api/v1/")
+    !((path.starts_with("/api/v1/") || path.starts_with("/api/v2/"))
         && headers
             .get(header::ORIGIN)
             .and_then(|o| o.to_str().ok())

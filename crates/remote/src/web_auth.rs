@@ -73,7 +73,7 @@ fn cookie(headers: &HeaderMap, secure: bool) -> Option<String> {
     (all.len() == 1).then(|| all[0].clone())
 }
 
-fn client(a: &Auth, headers: &HeaderMap, peer: Peer) -> Result<Client, Error> {
+pub(crate) fn client(a: &Auth, headers: &HeaderMap, peer: Peer) -> Result<Client, Error> {
     let forwarded = headers.get("x-forwarded-for").and_then(|h| h.to_str().ok());
     let has_forwarding = [
         "x-forwarded-for",

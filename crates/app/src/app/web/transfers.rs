@@ -90,7 +90,9 @@ fn move_exclusive(from: &Path, to: &Path, url: &str) -> Result<(), String> {
     })
 }
 
-fn metadata(spec: &crate::torrents::TorrentSpec) -> Result<mdm_torrent::Meta, &'static str> {
+pub(super) fn metadata(
+    spec: &crate::torrents::TorrentSpec,
+) -> Result<mdm_torrent::Meta, &'static str> {
     let file = crate::torrents::torrent_file(&spec.hash).ok_or("torrent-metadata-unavailable")?;
     let bytes = mdm_torrent::read_file(&file).map_err(|_| "torrent-metadata-unavailable")?;
     let meta = mdm_torrent::inspect(&bytes).map_err(|_| "torrent-metadata-unavailable")?;

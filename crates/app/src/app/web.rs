@@ -5,6 +5,7 @@ use serde_json::{Value, json};
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 mod bridge;
+mod qbittorrent;
 mod texts;
 mod transfers;
 pub(crate) use texts::page_sources;
@@ -476,6 +477,173 @@ impl App {
 
     pub(super) fn web_request(&mut self, v: &Value) -> Result<Value, &'static str> {
         let op = text(v, "op")?;
+        if op == "qbittorrent.snapshot" {
+            return Ok(qbittorrent::snapshot(&self.items));
+        }
+        if op == "qbittorrent.info" {
+            let hashes = v["hashes"].as_str().unwrap_or("all");
+            let ids: std::collections::HashSet<_> = qbittorrent::torrent_ids(&self.items, hashes)?.into_iter().collect();
+            let category = v["category"].as_str();
+            let mut result = Vec::new();
+            let session = self.torrent_host.get();
+            for item in self.items.iter().filter(|item| ids.contains(&item.id)) {
+                if category.is_some_and(|category| category != item.category.key().as_ref()) {
+                    continue;
+                }
+                let mut facts = qbittorrent::torrent_snapshot(item).ok_or("unknown-torrent")?;
+                let phase = item.torrent.as_ref().and_then(|torrent| session.as_ref().and_then(|session| session.seen(&torrent.hash)));
+                facts["seeding"] = json!(phase.as_ref().is_some_and(|stats| stats.phase == mdm_torrent::Phase::Finished));
+                facts["paths"] = qbittorrent::import_paths(item).ok_or("torrent-metadata-unavailable")?;
+                result.push(facts);
+            }
+            return Ok(json!(result));
+        }
+        if op == "qbittorrent.import_paths" {
+            let id = v["id"].as_u64().ok_or("invalid-id")?;
+            let item = self.items.iter().find(|item| item.id == id).ok_or("unknown-download")?;
+            return qbittorrent::import_paths(item).ok_or("torrent-metadata-unavailable");
+        }
+        if op == "qbittorrent.files" {
+            let hashes = text(v, "hash")?;
+            let ids = qbittorrent::torrent_ids(&self.items, hashes)?;
+            if !matches!(mdm_remote::qbittorrent::parse_hashes(hashes), Ok(mdm_remote::qbittorrent::TorrentSelection::Hashes(ref h)) if h.len() == 1) {
+                return Err("invalid-hashes");
+            }
+            let id = *ids.first().ok_or("unknown-torrent")?;
+            let item = self.items.iter().find(|item| item.id == id).ok_or("unknown-torrent")?;
+            let torrent = item.torrent.as_ref().ok_or("unknown-torrent")?;
+            let paths = qbittorrent::import_paths(item).ok_or("torrent-metadata-unavailable")?;
+            return Ok(json!({ "details": self.web_torrent(torrent), "paths": paths,
+                "complete": item.status == Status::Complete }));
+        }
+        if op == "qbittorrent.control" {
+            let action = match text(v, "action")? {
+                "pause" => "pause",
+                "resume" => "start",
+                "remove" => "remove",
+                "delete" => "delete",
+                _ => return Err("unsupported-operation"),
+            };
+            let ids = qbittorrent::torrent_ids(&self.items, text(v, "hashes")?)?;
+            if action == "pause" {
+                let session = self.torrent_host.get();
+                if self.items.iter().filter(|item| ids.contains(&item.id)).any(|item| {
+                    item.live.is_none() && item.torrent.as_ref().is_some_and(|torrent| {
+                        session.as_ref().and_then(|session| session.seen(&torrent.hash))
+                            .is_some_and(|stats| stats.phase == mdm_torrent::Phase::Finished)
+                    })
+                }) {
+                    // A completed torrent can continue seeding without an MDM live download.
+                    // `act("pause")` would otherwise report it already stopped while it shares.
+                    return Err("seeding-pause-unsupported");
+                }
+            }
+            if action == "delete" && !ids.is_empty() {
+                // MDM's existing file deletion is performed by the active torrent session.
+                // Without the torrent in that session it would remove the list entry but leave
+                // the files, so refuse the request instead of silently changing its meaning.
+                let session = self.torrent_host.get().ok_or("torrent-session-unavailable")?;
+                let hashes = session.hashes();
+                if self.items.iter().filter(|item| ids.contains(&item.id)).any(|item| {
+                    item.torrent.as_ref().is_none_or(|torrent| !hashes.iter().any(|hash| hash.eq_ignore_ascii_case(&torrent.hash)))
+                }) {
+                    return Err("torrent-session-unavailable");
+                }
+            }
+            let result = self.act(action, &ids).map_err(|_| "torrent-action-failed")?;
+            return serde_json::to_value(result).map_err(|_| "torrent-action-failed");
+        }
+        if op == "qbittorrent.removal_status" {
+            let ids: std::collections::HashSet<_> = qbittorrent::torrent_ids(&self.items, text(v, "hashes")?)?
+                .into_iter().collect();
+            let ready = self.items.iter().filter(|item| ids.contains(&item.id))
+                .all(|item| item.live.is_none() && !self.web_busy(item.id));
+            return Ok(json!({ "ready": ready }));
+        }
+        if op == "qbittorrent.set_category" {
+            let key = text(v, "category")?;
+            let category = Category::all().into_iter().find(|category| category.key() == key)
+                .ok_or("unknown-category")?;
+            let ids: std::collections::HashSet<_> = qbittorrent::torrent_ids(&self.items, text(v, "hashes")?)?
+                .into_iter().collect();
+            for item in self.items.iter_mut().filter(|item| ids.contains(&item.id)) {
+                // As with MDM's normal category edit, this updates the label only. It does not
+                // move files or change the actual torrent output folder.
+                item.category = category;
+            }
+            if !ids.is_empty() { self.dirty = true; }
+            return Ok(json!({ "ok": true }));
+        }
+        if op == "qbittorrent.share_limits" {
+            let ratio = v["ratio"].as_f64().filter(|n| n.is_finite() && (*n == -2.0 || *n == -1.0 || (0.0..=1_000_000.0).contains(n)))
+                .ok_or("invalid-ratio-limit")?;
+            let minutes = v["minutes"].as_i64().filter(|n| *n >= -2 && *n <= 10_000_000)
+                .ok_or("invalid-seeding-time")?;
+            let ids: std::collections::HashSet<_> = qbittorrent::torrent_ids(&self.items, text(v, "hashes")?)?
+                .into_iter().collect();
+            for torrent in self.items.iter_mut().filter(|item| ids.contains(&item.id)).filter_map(|item| item.torrent.as_mut()) {
+                torrent.ratio_override = ratio != -2.0;
+                torrent.ratio_limit = (ratio >= 0.0).then_some(ratio);
+                torrent.seed_time_override = minutes != -2;
+                torrent.seed_time_limit = (minutes >= 0).then(|| minutes as u64 * 60);
+            }
+            if !ids.is_empty() { self.dirty = true; }
+            return Ok(json!({ "ok": true }));
+        }
+        if op == "qbittorrent.categories" {
+            let categories = Category::all().into_iter().map(|category| {
+                json!({ "name": category.key(), "folder": self.settings.category_dir(category, &self.downloads) })
+            }).collect::<Vec<_>>();
+            return Ok(json!(categories));
+        }
+        if op == "qbittorrent.create_category" {
+            let category = text(v, "category")?;
+            if category != category.trim() || !mdm_remote::qbittorrent::valid_category(category) {
+                return Err("invalid-category-name");
+            }
+            let folder = mdm_remote::qbittorrent::category_folder_name(category).ok_or("invalid-category-name")?;
+            return self.web_request(&json!({ "op": "qbittorrent.category.save", "name": category,
+                "types": "", "folder": format!("webmister-qbit-categories/{folder}"),
+                "revision": self.web_config()["revision"] }));
+        }
+        if op == "qbittorrent.add" {
+            // Debrid torrents are a different MDM job type and cannot provide the torrent
+            // lifecycle and seeding semantics this API reports.
+            if self.torrent_account().is_some() { return Err("direct-torrent-required"); }
+            let category = v["category"].as_str().filter(|name| !name.is_empty()).map(str::to_owned);
+            let magnet = v["magnet"].as_str();
+            let file = v.get("torrent_file").filter(|value| !value.is_null());
+            if magnet.is_some() == file.is_some() { return Err("invalid-torrent-source"); }
+            let torrent_file = if let Some(file) = file {
+                let bytes: Vec<u8> = serde_json::from_value(file.clone()).map_err(|_| "invalid-torrent-source")?;
+                if bytes.len() as u64 > mdm_torrent::MAX_TORRENT_FILE || mdm_torrent::inspect(&bytes).is_err() {
+                    return Err("invalid-torrent-source");
+                }
+                Some(bytes)
+            } else { None };
+            if let Some(magnet) = magnet {
+                if magnet.len() > 8192 || mdm_torrent::Source::magnet(magnet).is_none() || mdm_torrent::magnet_info_hash(magnet).is_none() {
+                    return Err("invalid-torrent-source");
+                }
+            }
+            let cmd = mdm_ipc::Command { url: magnet.map(str::to_owned), torrent_file, category,
+                later: !v["start"].as_bool().unwrap_or(true), silent: true, ..Default::default() };
+            return serde_json::from_str(&self.remote_add_policy(cmd, None)).map_err(|_| "invalid-add-result");
+        }
+        if op == "qbittorrent.preferences" {
+            return Ok(json!({ "save_path": self.settings.category_dir(Category::General, &self.downloads),
+                "dht": self.settings.torrent_dht,
+                "max_ratio_enabled": self.settings.torrent_stop_ratio_on,
+                "max_ratio": self.settings.torrent_stop_ratio as f64 / 100.0,
+                "max_seeding_time_enabled": self.settings.torrent_stop_minutes_on,
+                "max_seeding_time": self.settings.torrent_stop_minutes,
+                "max_ratio_act": 0, "queueing_enabled": false }));
+        }
+        if op == "qbittorrent.prepare_category" {
+            // Path-based preparation can race with directory replacement. Do not expose it
+            // until creation and subsequent torrent writes are safely anchored to the root.
+            return Err("not-ready");
+        }
         if op == "torrent.add.status" {
             return self.web.additions.status(text(v, "request_id")?);
         }
@@ -717,9 +885,9 @@ impl App {
                 }
                 self.delete_queue(at);
             }
-            "category.save" => {
+            "category.save" | "qbittorrent.category.save" => {
                 let name = text(v, "name")?.trim();
-                if !clean_name(name) {
+                if !(if op == "qbittorrent.category.save" { mdm_remote::qbittorrent::valid_category(name) } else { clean_name(name) }) {
                     return Err("invalid-category-name");
                 }
                 let id = v["id"]

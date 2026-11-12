@@ -28,20 +28,120 @@ fn start_mode(
     Arc<Mutex<Vec<mdm_ipc::Command>>>,
     tempfile::TempDir,
 ) {
+    start_with_qbit(rt, tls, false, false)
+}
+
+fn start_with_qbit(
+    rt: &tokio::runtime::Runtime,
+    tls: bool,
+    qbittorrent: bool,
+    bypass: bool,
+) -> (
+    Remote,
+    String,
+    Arc<Mutex<Vec<mdm_ipc::Command>>>,
+    tempfile::TempDir,
+) {
     let dir = tempfile::tempdir().unwrap();
     let (tx, rx) = std::sync::mpsc::channel::<mdm_ipc::Incoming>();
     let seen = Arc::new(Mutex::new(Vec::new()));
     let log = seen.clone();
     std::thread::spawn(move || {
         while let Ok(inc) = rx.recv() {
-            let answer = serde_json::json!({
+            let mut answer = serde_json::json!({
                 "seen": inc.cmd.query.clone().or(inc.cmd.action.clone()).or(inc.cmd.url.clone()),
                 "remote": inc.cmd.remote,
-            })
-            .to_string();
+            });
+            if inc
+                .cmd
+                .web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.control")
+            {
+                answer = serde_json::json!({"done": [7], "skipped": []});
+            }
+            if inc
+                .cmd
+                .web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.categories")
+            {
+                answer = serde_json::json!([{ "name": "tv-sonarr", "folder": "/downloads/tv" }]);
+            }
+            if inc
+                .cmd
+                .web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.files")
+            {
+                answer = serde_json::json!({"paths": {"root_path": "Show"}, "details": {
+                    "metadata_available": true, "files_truncated": false,
+                    "files": [{"index": 0, "path": "episode.mkv", "size": 100, "downloaded": 50, "selected": true}]
+                }});
+            }
+            if inc
+                .cmd
+                .web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.info")
+            {
+                answer = serde_json::json!([{ "hash": "0123456789abcdef0123456789abcdef01234567",
+                    "name": "episode.mkv", "category_key": "tv", "status": "Downloading", "live": true, "seeding": false,
+                    "size": 100, "downloaded": 50, "uploaded": 20, "download_speed": 10,
+                    "upload_speed": 2, "seeded_seconds": 0, "ratio_limit": -2.0, "seeding_time_limit": -2, "paths": {"save_path": "/downloads/tv",
+                    "root_path": "", "content_path": "/downloads/tv/episode.mkv"} }]);
+            }
+            if inc
+                .cmd
+                .web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.preferences")
+            {
+                answer = serde_json::json!({"save_path": "/downloads"});
+            }
+            if inc
+                .cmd
+                .web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.set_category")
+            {
+                answer = serde_json::json!({"ok": true});
+            }
+            if inc
+                .cmd
+                .web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.removal_status")
+            {
+                answer = serde_json::json!({"ready": true});
+            }
+            if inc
+                .cmd
+                .web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.share_limits")
+            {
+                answer = serde_json::json!({"ok": true});
+            }
+            if inc
+                .cmd
+                .web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.create_category")
+            {
+                answer = serde_json::json!({"categories": []});
+            }
+            if inc
+                .cmd
+                .web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.add")
+            {
+                answer = serde_json::json!({"pending": true, "request_id": "test-request"});
+            }
             log.lock().unwrap().push(inc.cmd);
             if let Some(r) = inc.reply {
-                let _ = r.send(answer);
+                let _ = r.send(answer.to_string());
             }
         }
     });
@@ -59,6 +159,9 @@ fn start_mode(
     remote.apply(Config {
         on: true,
         tls,
+        qbittorrent,
+        qbittorrent_subnets: "127.0.0.1/32,::1/128".into(),
+        qbittorrent_auth_bypass: bypass,
         port: 0,
         listen: "127.0.0.1".into(),
         hosts: vec!["mdm.example".into()],
@@ -74,6 +177,387 @@ fn start_mode(
         addrs[0].port()
     );
     (remote, base, seen, dir)
+}
+
+#[test]
+fn qbittorrent_bypass_is_explicit_and_rejects_forwarded_requests() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let (remote, base, _, _dir) = start_with_qbit(&rt, false, true, true);
+    rt.block_on(async {
+        let c = client();
+        let url = format!("{base}api/v2/app/webapiVersion");
+        assert_eq!(c.get(&url).send().await.unwrap().status(), 200);
+        assert_eq!(
+            c.get(&url)
+                .header("x-forwarded-for", "127.0.0.1")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            403
+        );
+        assert_eq!(
+            c.get(&url)
+                .header("cookie", "SID=invalid")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            403
+        );
+        assert_eq!(
+            c.get(&url)
+                .header("origin", "http://evil.example")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            403
+        );
+    });
+    remote.stop();
+}
+
+#[test]
+fn qbittorrent_controls_reach_owner_bridge_with_validated_hashes() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let (remote, base, seen, _dir) = start_with_qbit(&rt, false, true, true);
+    rt.block_on(async {
+        let client = client();
+        let pause = format!("{base}api/v2/torrents/stop");
+        assert_eq!(
+            client
+                .post(&pause)
+                .header("content-type", "application/x-www-form-urlencoded")
+                .body("hashes=bad")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            400
+        );
+        assert_eq!(
+            client
+                .post(&pause)
+                .header("content-type", "application/x-www-form-urlencoded")
+                .body("hashes=all")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            200
+        );
+        let resume = format!("{base}api/v2/torrents/resume");
+        assert_eq!(
+            client
+                .post(&resume)
+                .header("content-type", "application/x-www-form-urlencoded")
+                .body("hashes=0123456789abcdef0123456789abcdef01234567")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            200
+        );
+    });
+    let commands = seen.lock().unwrap();
+    let controls: Vec<_> = commands
+        .iter()
+        .filter(|cmd| {
+            cmd.web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.control")
+        })
+        .collect();
+    assert_eq!(controls.len(), 2);
+    assert!(controls.iter().all(|cmd| cmd.remote && cmd.web_owner));
+    assert_eq!(controls[0].web_request.as_ref().unwrap()["action"], "pause");
+    assert_eq!(
+        controls[1].web_request.as_ref().unwrap()["action"],
+        "resume"
+    );
+    drop(commands);
+    remote.stop();
+}
+
+#[test]
+fn qbittorrent_remove_maps_the_delete_files_choice() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let (remote, base, seen, _dir) = start_with_qbit(&rt, false, true, true);
+    rt.block_on(async {
+        let client = client();
+        let url = format!("{base}api/v2/torrents/delete");
+        assert_eq!(
+            client
+                .post(&url)
+                .header("content-type", "application/x-www-form-urlencoded")
+                .body("hashes=all&deleteFiles=true")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            200
+        );
+        assert_eq!(
+            client
+                .post(&url)
+                .header("content-type", "application/x-www-form-urlencoded")
+                .body("hashes=all")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            200
+        );
+    });
+    let commands = seen.lock().unwrap();
+    let controls: Vec<_> = commands
+        .iter()
+        .filter_map(|cmd| cmd.web_request.as_ref())
+        .filter(|request| request["op"] == "qbittorrent.control")
+        .collect();
+    assert_eq!(controls.len(), 4);
+    assert_eq!(controls[0]["action"], "pause");
+    assert_eq!(controls[1]["action"], "delete");
+    assert_eq!(controls[2]["action"], "pause");
+    assert_eq!(controls[3]["action"], "remove");
+    drop(commands);
+    remote.stop();
+}
+
+#[test]
+fn qbittorrent_files_translate_the_owner_bridge_response() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let (remote, base, seen, _dir) = start_with_qbit(&rt, false, true, true);
+    rt.block_on(async {
+        let client = client();
+        let url =
+            format!("{base}api/v2/torrents/files?hash=0123456789abcdef0123456789abcdef01234567");
+        let result = client.get(url).send().await.unwrap();
+        assert_eq!(result.status(), 200);
+        let body: serde_json::Value = result.json().await.unwrap();
+        assert_eq!(body[0]["name"], "Show/episode.mkv");
+        assert_eq!(body[0]["progress"], 0.5);
+        assert_eq!(
+            client
+                .get(format!("{base}api/v2/torrents/files?hash=all"))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            400
+        );
+    });
+    assert!(seen.lock().unwrap().iter().any(|cmd| {
+        cmd.remote
+            && cmd.web_owner
+            && cmd
+                .web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.files")
+    }));
+    remote.stop();
+}
+
+#[test]
+fn qbittorrent_info_translates_owner_bridge_and_rejects_unsupported_filters() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let (remote, base, seen, _dir) = start_with_qbit(&rt, false, true, true);
+    rt.block_on(async {
+        let client = client();
+        let result = client
+            .get(format!("{base}api/v2/torrents/info?category=tv"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(result.status(), 200);
+        let body: serde_json::Value = result.json().await.unwrap();
+        assert_eq!(body[0]["progress"], 0.5);
+        assert_eq!(body[0]["content_path"], "/downloads/tv/episode.mkv");
+        let filtered = client
+            .get(format!("{base}api/v2/torrents/info?filter=completed"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(filtered.status(), 200);
+        assert!(
+            filtered
+                .json::<serde_json::Value>()
+                .await
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(
+            client
+                .get(format!("{base}api/v2/torrents/info?filter=unsupported"))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            501
+        );
+    });
+    assert!(seen.lock().unwrap().iter().any(|cmd| {
+        cmd.remote
+            && cmd.web_owner
+            && cmd
+                .web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.info" && v["category"] == "tv")
+    }));
+    remote.stop();
+}
+
+#[test]
+fn qbittorrent_preferences_report_mdm_default_folder() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let (remote, base, seen, _dir) = start_with_qbit(&rt, false, true, true);
+    rt.block_on(async {
+        let response = client()
+            .get(format!("{base}api/v2/app/preferences"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200);
+        let value: serde_json::Value = response.json().await.unwrap();
+        assert_eq!(value["save_path"], "/downloads");
+    });
+    assert!(seen.lock().unwrap().iter().any(|cmd| {
+        cmd.remote
+            && cmd.web_owner
+            && cmd
+                .web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.preferences")
+    }));
+    remote.stop();
+}
+
+#[test]
+fn qbittorrent_category_assignment_uses_owner_bridge() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let (remote, base, seen, _dir) = start_with_qbit(&rt, false, true, true);
+    rt.block_on(async {
+        let response = client()
+            .post(format!("{base}api/v2/torrents/setCategory"))
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body("hashes=all&category=tv-sonarr")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200);
+    });
+    assert!(seen.lock().unwrap().iter().any(|cmd| cmd.remote
+        && cmd.web_owner
+        && cmd.web_request.as_ref().is_some_and(
+            |v| v["op"] == "qbittorrent.set_category" && v["category"] == "tv-sonarr"
+        )));
+    remote.stop();
+}
+
+#[test]
+fn qbittorrent_share_limits_use_mdm_torrent_settings() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let (remote, base, seen, _dir) = start_with_qbit(&rt, false, true, true);
+    rt.block_on(async {
+        let url = format!("{base}api/v2/torrents/setShareLimits");
+        let response = client()
+            .post(&url)
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body("hashes=all&ratioLimit=1.5&seedingTimeLimit=60")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200);
+        let response = client()
+            .post(&url)
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body("hashes=all&ratioLimit=-2&seedingTimeLimit=-2&inactiveSeedingTimeLimit=5")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 501);
+    });
+    assert!(seen.lock().unwrap().iter().any(|cmd| {
+        cmd.remote
+            && cmd.web_owner
+            && cmd.web_request.as_ref().is_some_and(|v| {
+                v["op"] == "qbittorrent.share_limits" && v["ratio"] == 1.5 && v["minutes"] == 60
+            })
+    }));
+    remote.stop();
+}
+
+#[test]
+fn qbittorrent_add_magnet_uses_existing_owner_bridge() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let (remote, base, seen, _dir) = start_with_qbit(&rt, false, true, true);
+    rt.block_on(async {
+        let body = "--test-boundary\r\nContent-Disposition: form-data; name=\"urls\"\r\n\r\nmagnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567\r\n--test-boundary\r\nContent-Disposition: form-data; name=\"category\"\r\n\r\ntv-sonarr\r\n--test-boundary--\r\n";
+        let response = client().post(format!("{base}api/v2/torrents/add"))
+            .header("content-type", "multipart/form-data; boundary=test-boundary")
+            .body(body).send().await.unwrap();
+        assert_eq!(response.status(), 200);
+        assert_eq!(response.text().await.unwrap(), "Ok.");
+        let response = client().post(format!("{base}api/v2/torrents/add"))
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body("urls=magnet%3A%3Fxt%3Durn%3Abtih%3A0123456789abcdef0123456789abcdef01234567&category=tv-sonarr&paused=False")
+            .send().await.unwrap();
+        assert_eq!(response.status(), 200);
+    });
+    assert!(seen.lock().unwrap().iter().any(|cmd| {
+        cmd.remote
+            && cmd.web_owner
+            && cmd
+                .web_request
+                .as_ref()
+                .is_some_and(|v| v["op"] == "qbittorrent.add" && v["category"] == "tv-sonarr")
+    }));
+    remote.stop();
+}
+
+#[test]
+fn qbittorrent_login_is_opt_in_and_uses_owner_credentials() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let (disabled, disabled_base, _, _dir) = start_mode(&rt, false);
+    let (remote, base, _, _dir2) = start_with_qbit(&rt, false, true, false);
+    rt.block_on(async {
+        let c = client();
+        let login = |url: String| c.post(url).header("content-type", "application/x-www-form-urlencoded")
+            .body("username=owner&password=correct+horse+battery+staple");
+        assert_eq!(login(format!("{disabled_base}api/v2/auth/login")).send().await.unwrap().status(), 404);
+        let setup = c.post(format!("{base}api/v1/auth/setup"))
+            .json(&serde_json::json!({"code":remote.start_pairing(), "username":"owner", "password":"correct horse battery staple"}))
+            .send().await.unwrap();
+        assert_eq!(setup.status(), 200);
+        let response = login(format!("{base}api/v2/auth/login")).send().await.unwrap();
+        assert_eq!(response.status(), 200);
+        let cookie = response.headers()["set-cookie"].to_str().unwrap();
+        assert!(cookie.starts_with("SID=") && cookie.contains("HttpOnly") && cookie.contains("SameSite=Strict"));
+        let cookie = cookie.split(';').next().unwrap().to_owned();
+        assert_eq!(response.text().await.unwrap(), "Ok.");
+        assert_eq!(login(format!("{base}api/v2/auth/login")).header("origin", "http://evil.example").send().await.unwrap().status(), 403);
+        assert_eq!(login(format!("{base}api/v2/auth/login")).header("origin", "chrome-extension://untrusted").send().await.unwrap().status(), 403);
+        assert_eq!(login(format!("{base}api/v2/auth/login")).header("x-forwarded-for", "127.0.0.1").send().await.unwrap().status(), 403);
+        let version = format!("{base}api/v2/app/webapiVersion");
+        assert_eq!(c.get(&version).send().await.unwrap().status(), 403);
+        assert_eq!(c.get(&version).header("cookie", &cookie).send().await.unwrap().status(), 200);
+        let categories = format!("{base}api/v2/torrents/categories");
+        let create = format!("{base}api/v2/torrents/createCategory");
+        assert_eq!(c.get(&categories).send().await.unwrap().status(), 403);
+        assert_eq!(c.post(&create).header("cookie", &cookie).header("content-type", "application/x-www-form-urlencoded").body("category=tv-sonarr").send().await.unwrap().status(), 200);
+        let result = c.get(&categories).header("cookie", &cookie).send().await.unwrap();
+        assert_eq!(result.status(), 200);
+        let value: serde_json::Value = result.json().await.unwrap();
+        assert_eq!(value["tv-sonarr"]["savePath"], "/downloads/tv");
+        assert_eq!(c.get(&version).header("cookie", format!("{cookie}; {cookie}")).send().await.unwrap().status(), 403);
+        assert_eq!(c.post(format!("{base}api/v2/auth/logout")).header("cookie", &cookie).send().await.unwrap().status(), 200);
+        assert_eq!(c.get(&version).header("cookie", &cookie).send().await.unwrap().status(), 403);
+    });
+    disabled.stop();
+    remote.stop();
 }
 
 #[test]
@@ -334,6 +818,9 @@ fn never_every_address() {
         remote.apply(Config {
             on: true,
             tls: false,
+            qbittorrent: false,
+            qbittorrent_subnets: "127.0.0.1/32,::1/128".into(),
+            qbittorrent_auth_bypass: false,
             port: 0,
             listen: listen.into(),
             hosts: Vec::new(),

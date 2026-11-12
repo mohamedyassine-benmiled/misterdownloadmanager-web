@@ -18,6 +18,7 @@ pub mod auth;
 pub mod devices;
 mod http;
 pub mod pairing;
+pub mod qbittorrent;
 pub mod tls;
 mod web_auth;
 
@@ -34,6 +35,12 @@ pub struct Config {
     pub on: bool,
     /// Serve HTTPS with a self-signed certificate instead of plain HTTP.
     pub tls: bool,
+    /// Enable the experimental qBittorrent authentication boundary.
+    pub qbittorrent: bool,
+    /// Explicit client CIDRs for the experimental qBittorrent API.
+    pub qbittorrent_subnets: String,
+    /// Explicitly allow unauthenticated qBittorrent API access from the allowlist.
+    pub qbittorrent_auth_bypass: bool,
     /// 0: any free port (tests).
     pub port: u16,
     /// "" every local network address; an address; an adapter's name ([`addrs::chosen`]).
@@ -51,6 +58,9 @@ impl Default for Config {
         Config {
             on: false,
             tls: false,
+            qbittorrent: false,
+            qbittorrent_subnets: "127.0.0.1/32,::1/128".into(),
+            qbittorrent_auth_bypass: false,
             port: PORT,
             listen: String::new(),
             hosts: Vec::new(),
@@ -308,6 +318,9 @@ impl Inner {
                 st.config.hosts.clone(),
                 st.generation,
                 st.config.tls || public_https,
+                st.config.qbittorrent,
+                crate::qbittorrent::Allowlist::parse(&st.config.qbittorrent_subnets),
+                st.config.qbittorrent_auth_bypass,
             );
             let tls = identity.as_ref().map(|i| i.config.clone());
             let task = this.rt.spawn(async move {

@@ -54,6 +54,10 @@ pub fn config(settings: &Settings) -> mdm_remote::Config {
     mdm_remote::Config {
         on: settings.remote_on,
         tls: std::env::var("MDM_REMOTE_TLS").is_ok_and(|v| v == "1"),
+        qbittorrent: std::env::var("MDM_QBIT_API").is_ok_and(|v| v == "1"),
+        qbittorrent_subnets: std::env::var("MDM_QBIT_ALLOWED_SUBNETS")
+            .unwrap_or_else(|_| "127.0.0.1/32,::1/128".into()),
+        qbittorrent_auth_bypass: std::env::var("MDM_QBIT_AUTH_BYPASS").is_ok_and(|v| v == "1"),
         port: settings.remote_port,
         listen: settings.remote_listen.clone(),
         hosts,

@@ -92,8 +92,9 @@ impl Additions {
     }
 }
 
-// Existing data may be reused only within the configured downloads root. Recheck
-// canonical ancestors at confirmation time; don't follow a symlink out of that root.
+// Existing data may be reused only within the configured downloads root. Recheck every
+// existing ancestor at confirmation time. These path-based checks do not close replacement
+// races between validation and the torrent engine opening files.
 fn safe_destination(root: &Path, meta: &mdm_torrent::Meta, dir: &Path) -> Result<(), &'static str> {
     let root = root
         .canonicalize()
@@ -114,11 +115,21 @@ fn safe_destination(root: &Path, meta: &mdm_torrent::Meta, dir: &Path) -> Result
                     if info.file_type().is_symlink() {
                         return Err("folder-outside-downloads");
                     }
+                    #[cfg(windows)]
+                    {
+                        use std::os::windows::fs::MetadataExt;
+                        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
+                        if info.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+                            return Err("folder-outside-downloads");
+                        }
+                    }
                     let resolved = ancestor.canonicalize().map_err(|_| "file-unavailable")?;
                     if !resolved.starts_with(&root) {
                         return Err("folder-outside-downloads");
                     }
-                    break;
+                    if resolved == root {
+                        break;
+                    }
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
                 Err(_) => return Err("file-unavailable"),
@@ -387,6 +398,22 @@ mod tests {
             torrent: Vec::new(),
             peers: Vec::new(),
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn torrent_destination_rejects_symlinked_ancestor_even_when_file_exists() {
+        let root = tempfile::tempdir().unwrap();
+        let actual = root.path().join("actual");
+        std::fs::create_dir(&actual).unwrap();
+        std::fs::write(actual.join("file"), b"existing").unwrap();
+        let link = root.path().join("link");
+        std::os::unix::fs::symlink(&actual, &link).unwrap();
+        assert_eq!(
+            safe_destination(root.path(), &meta("file"), &link),
+            Err("folder-outside-downloads")
+        );
+        assert_eq!(std::fs::read(actual.join("file")).unwrap(), b"existing");
     }
 
     #[test]
