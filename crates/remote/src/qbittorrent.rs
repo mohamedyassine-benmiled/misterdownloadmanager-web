@@ -477,11 +477,7 @@ fn info_response(value: serde_json::Value) -> Option<serde_json::Value> {
         };
         let paths = item.get("paths")?;
         let left = size - downloaded;
-        let eta = if speed == 0 {
-            8_640_000
-        } else {
-            (left / speed).min(8_640_000)
-        };
+        let eta = left.checked_div(speed).unwrap_or(8_640_000).min(8_640_000);
         result.push(serde_json::json!({
             "hash": item.get("hash")?.as_str()?, "name": item.get("name")?.as_str()?,
             "category": item.get("category_key")?.as_str()?, "state": state,
@@ -663,7 +659,7 @@ struct FileQuery {
 /// falls back to zero, or to complete for a selected file in a completed torrent.
 fn files_response(value: serde_json::Value) -> Option<serde_json::Value> {
     let details = value.get("details")?;
-    if details.get("metadata_available")?.as_bool()? != true
+    if !details.get("metadata_available")?.as_bool()?
         || details.get("files_truncated")?.as_bool()?
     {
         return None;
@@ -1074,16 +1070,15 @@ async fn logout(s: S, ConnectInfo(peer): ConnectInfo<Peer>, headers: HeaderMap) 
         Ok(identity) => identity,
         Err(status) => return status.into_response(),
     };
-    if let Some(identity) = identity {
-        if crate::web_auth::call(&s, move |auth| {
+    if let Some(identity) = identity
+        && crate::web_auth::call(&s, move |auth| {
             auth.logout(&identity);
             Ok(())
         })
         .await
         .is_err()
-        {
-            return StatusCode::SERVICE_UNAVAILABLE.into_response();
-        }
+    {
+        return StatusCode::SERVICE_UNAVAILABLE.into_response();
     }
     let secure = if s.secure { "; Secure" } else { "" };
     (
