@@ -40,6 +40,11 @@
 #, machine
 @plural	Matches {n} article now (it adds new ones only):|Matches {n} articles now (it adds new ones only):	May {n} artikulong tumutugma ngayon (mga bago lang ang idaragdag):|May {n} na artikulong tumutugma ngayon (mga bago lang ang idaragdag):
 #. count in a dialog box
+#. Cancel in Download File Info with downloads waiting behind it
+#. {n} = a number (keep the braces as they are)
+#, machine
+@plural	There is {n} more download waiting. Cancel it too?|There are {n} more downloads waiting. Cancel them too?	May {n} pang download na naghihintay. Kanselahin din ito?|May {n} pang mga download na naghihintay. Kanselahin din ang mga ito?
+#. count in a dialog box
 #. "files already there" question, under the first path: {n} = how many more
 #. {n} = a number (keep the braces as they are)
 #, machine
@@ -70,7 +75,7 @@
 #. {n} = a number (keep the braces as they are)
 #, machine
 @plural	{n} entry was left out (a link, or a name leading outside the folder)|{n} entries were left out (links, or names leading outside the folder)	Hindi isinama ang {n} entry (isang link o pangalan na humahantong sa labas ng folder)|Hindi isinama ang {n} na entry (mga link o pangalan na humahantong sa labas ng folder)
-#. count in the Batch download window; count in the Link grabber window; count in the Add torrent window
+#. count in the Batch download window; count in the Link grabber window; count in the Add torrent window; count in torrentfiles.rs
 #. how many files the pattern gives in all
 #. Link grabber: a package's row: {n} is its number of links
 #. {n} = a number (keep the braces as they are)
@@ -95,6 +100,14 @@
 #. {n} = a number (keep the braces as they are)
 #, machine
 @plural	{n} selected|{n} selected	{n} napili|{n} napili
+#. count in the Options window
+#. {n} = a number (keep the braces as they are)
+#, machine
+@plural	{n} site added from the file.|{n} sites added from the file.	Nagdagdag ng {n} site mula sa file.|Nagdagdag ng {n} mga site mula sa file.
+#. count in the Options window
+#. {n} = a number (keep the braces as they are)
+#, machine
+@plural	{n} site saved to the file.|{n} sites saved to the file.	Na-save ang {n} site sa file.|Na-save ang {n} mga site sa file.
 #. count in the main window
 #. event log entry: trackers were added to the torrent
 #. {n} = a number (keep the braces as they are)
@@ -169,6 +182,9 @@
 #. window title: 7-Zip (a program's name) must be installed
 #, machine
 	7-Zip needed	Kailangan ang 7-Zip
+#. tab in the main window
+#, machine
+	720p	720p
 #. text in the Options window
 #. Options → Archives: {path} is where 7-Zip's program is
 #, machine
@@ -187,6 +203,10 @@
 #. Options → Accounts: what these accounts are, and the services' rule against sharing
 #, machine
 	A debrid service downloads a file host's link with your own paid account and gives MDM a direct link. Use only your own account: sharing an account or its links breaks the services' terms and can get it suspended. Downloads the browser already started stay as they are.	Dina-download ng serbisyo ng debrid ang link ng host ng file gamit ang sarili mong binayarang account at binibigyan ang MDM ng direktang link. Gamitin lang ang sarili mong account: ang pagbabahagi ng account o mga link nito ay lumalabag sa mga tuntunin ng serbisyo at maaaring masuspinde ito. Mananatili ang mga download na sinimulan na ng browser.
+#. text in a download's progress window
+#. reason shown on the Rename box when the entered name ends with a period
+#, machine
+	A file name cannot end with a dot	Hindi maaaring magtapos sa tuldok ang pangalan ng file
 #. text in errors.rs
 #. a torrent through a debrid service: one of its files has a name that would be written outside its folder; nothing was written. {name} the file's name as the service gave it
 #. {name} = a file name (keep the braces as they are)
@@ -216,6 +236,10 @@
 #. an error: a server on this computer redirected the download to the internet, which would not go through the chosen network adapter; {adapter} its name
 #, machine
 	a server on this computer sent the download elsewhere, which would not go through {adapter}	Nagpadala ang isang server sa computer na ito ng download sa ibang lugar, na hindi dadaan sa {adapter}
+#. message or event log entry in the main window
+#. tooltip on the disabled Rename box for a single-file torrent
+#, machine
+	A single-file torrent keeps its name	Pinapanatili ng single-file torrent ang pangalan nito
 #. text in the Add torrent window
 #. Add trackers: MDM never contacts a tracker on this computer or the local network
 #, machine
@@ -295,6 +319,10 @@
 #. button in the browser extension's window: open the extension's page in that browser
 #, machine
 	Add the extension	Idagdag ang extension
+#. window title in extension.rs
+#. title of the window that shows how to turn on the Safari extension
+#, machine
+	Add the extension to Safari	Idagdag ang extension sa Safari
 #. text in extension.rs
 #, machine
 	Add the free extension: files you download in your browser come here, and videos get a Download button.	Idagdag ang libreng extension: ang mga file na dina-download mo sa iyong browser ay mapupunta rito, at ang mga video ay magkakaroon ng button na I-download.
@@ -568,6 +596,10 @@
 #. a country's name (where a download's server is)
 #, machine
 	Austria	Austria
+#. checkbox in the Options window; text in the Options window
+#. checkbox: the User-Agent is the default browser's, which MDM finds itself
+#, machine
+	Automatic	Awtomatiko
 #. text in remote.rs
 #. remote control page (on a phone): category choice: the category follows the file's type
 #, machine
@@ -816,6 +848,10 @@
 #. text in helpers.rs
 #, machine
 	Check your connection, then try again, or get them later from the video window.	Suriin ang iyong koneksyon, pagkatapos ay subukang muli, o kunin ang mga ito sa ibang pagkakataon mula sa window ng video.
+#. text in the Options window
+#. tooltip of the close-setting: checked keeps MDM running when the window closes, in the notification area when available or else the taskbar; downloads continue; unchecked closing quits
+#, machine
+	Checked, closing the window keeps MDM running: it hides in the notification area when available, or minimizes to the taskbar otherwise, and downloads continue; unchecked, closing quits MDM	Kapag naka-check, mananatiling tumatakbo ang MDM kapag isinara ang window: maitatago ito sa notification area kung available ito, o mami-minimize sa taskbar kung hindi, at magpapatuloy ang mga download; kapag hindi naka-check, magsasara ang MDM kapag isinara ang window
 #. message or event log entry in the main window
 #. event log entry after Recheck: {have} and {total} are sizes ("1.2 GB of 4 GB there")
 #, machine
@@ -849,6 +885,10 @@
 #. the trailing ... means it is still going on: keep it
 #, machine
 	Checking {name} ({n} of {total})...	Sinusuri ang {name} ({n} sa {total})...
+#. text in the download list (sizes, speeds, status)
+#. a torrent's status while its files are read and checked; {percent} is how much is checked, e.g. "42%"
+#, machine
+	Checking {percent}	Sinusuri ang {percent}
 #. text in the Checksum window; text in the Link grabber window
 #. the trailing ... means it is still going on: keep it
 #, machine
@@ -894,11 +934,12 @@
 #. text in the Options window
 #, machine
 	Clock:	Orasan:
-#. text in the Checksum window; text in the main window (menus, toolbar, Categories pane); button in crashui.rs; button in a dialog box; button in extension.rs; button in the Help menu's windows (About, updates, shortcuts, Tell a friend); button in helpers.rs; button in the download list; button in the Options window; button in rssdlg.rs; text in standard windows
+#. text in the Checksum window; text in the main window (menus, toolbar, Categories pane); button in crashui.rs; button in a dialog box; button in extension.rs; button in the Help menu's windows (About, updates, shortcuts, Tell a friend); button in helpers.rs; button in the download list; button in the Options window; button in rssdlg.rs; button in torrentfiles.rs; text in standard windows
 #. both verbs: Verify = check the file now; Close = close the window
 #. tooltip of the × that closes the Categories pane
 #. verb: closes this window
 #. verb: closes the filter box
+#. button that closes the torrent file list window
 #. a window's title-bar button: closes the window
 #, machine
 	Close	Isara
@@ -938,6 +979,10 @@
 #. Options → DNS settings: NextDNS's own configuration ID (optional)
 #, machine
 	Configuration ID:	ID ng Configuration:
+#. text in a download's progress window
+#. verb: button that saves the deferred rename in the progress window
+#, machine
+	Confirm	Kumpirmahin
 #. text in the Options window
 #, machine
 	Confirm before deleting downloads	Kumpirmahin bago magtanggal ng mga download
@@ -1314,6 +1359,11 @@
 #. the trailing ... means it is still going on: keep it
 #, machine
 	Downloading and verifying yt-dlp...	Nagda-download at nagbe-verify ng yt-dlp...
+#. text in helpers.rs
+#. Video helpers: MDM's own yt-dlp is being downloaded
+#. the trailing ... means it is still going on: keep it
+#, machine
+	Downloading MDM's own copy...	Dina-download ang sariling kopya ng MDM...
 #. text in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 #. Check for updates, while Update now downloads; {percent} like "42%"
 #, machine
@@ -1502,9 +1552,13 @@
 #. Options → Accounts: a note that the debrid services' support (Real-Debrid, AllDebrid, Premiumize) is new and not yet tried with real paid accounts
 #, machine
 	Experimental: built from the services' public API documentation, not yet confirmed with real accounts.	Eksperimental: binuo mula sa pampublikong dokumentasyon ng API ng mga serbisyo, hindi pa nakumpirma sa mga totoong account.
-#. message or event log entry in the main window
+#. message or event log entry in the main window; text in the Options window
 #, machine
 	Export	I-export
+#. button in the Options window
+#. the trailing ... means it opens a window: keep it
+#, machine
+	Export...	I-export...
 #. text in the Options window
 #, machine
 	Extend the availability of Manifest 2 Chrome extensions	Palawigin ang availability ng Manifest 2 Chrome extension
@@ -1615,6 +1669,11 @@
 #. text in the Scheduler window; tab in the Scheduler window
 #, machine
 	Files in the queue	Mga file sa queue
+#. button in a download's Properties window
+#. File Properties button that opens the selected torrent's file list
+#. the trailing ... means it opens a window: keep it
+#, machine
+	Files...	Mga File...
 #. button in the Find window
 #. verb: button that starts the search
 #, machine
@@ -1932,6 +1991,10 @@
 #. a country's name (where a download's server is)
 #, machine
 	Hong Kong	Hong Kong
+#. text in extension.rs
+#. button in the browser extension's window, on Safari's row: open the steps that turn the extension on
+#, machine
+	How to Add	Paano idagdag
 #. text in the Scheduler window
 #. link after why the computer can't be woken (Linux, macOS): opens the guide's page that shows how an administrator can allow it
 #, machine
@@ -1970,9 +2033,13 @@
 #. checkbox in the Options window
 #, machine
 	Ignore file modification time changes when resuming a download	Balewalain ang mga pagbabago sa oras ng pagbabago ng file kapag ipinagpapatuloy ang isang download
-#. message or event log entry in the main window
+#. message or event log entry in the main window; text in the Options window
 #, machine
 	Import	I-import
+#. button in the Options window
+#. the trailing ... means it opens a window: keep it
+#, machine
+	Import...	I-import...
 #. value in a column's filter list in the download list
 #, machine
 	In a queue	Sa isang queue
@@ -2147,6 +2214,10 @@
 #. text in a dialog box; text in a download's progress window; text in the Add torrent window
 #, machine
 	KBytes/sec	KB/seg
+#. text in the Options window
+#. checkbox: closing keeps MDM running, in the notification area when available or else the taskbar, instead of quitting
+#, machine
+	Keep running when closing the window	Mananatiling tumatakbo ang MDM kapag isinara ang window
 #. checkbox in the Add torrent window
 #, machine
 	Keep sharing torrents after they finish	Ipagpatuloy ang pagbabahagi ng mga torrent pagkatapos nilang matapos
@@ -2343,6 +2414,10 @@
 #. crash report window: looking on GitHub for an issue about the same problem
 #, machine
 	Looking for this problem on GitHub…	Hinahanap ang problemang ito sa GitHub…
+#. text in the Options window
+#. the trailing ... means it is still going on: keep it
+#, machine
+	Looking for your default browser...	Hinahanap ang iyong default na browser...
 #. text in the Download video window
 #. the trailing ... means it is still going on: keep it
 #, machine
@@ -3050,14 +3125,15 @@
 #. checkbox in a dialog box
 #, machine
 	Only while I'm using the computer	Habang ginagamit ko lang ang computer
-#. button in a dialog box; text in a dialog box; button in a download's Properties window
+#. button in a dialog box; text in a dialog box; button in a download's Properties window; button in torrentfiles.rs
 #. verb: opens the downloaded file
 #. title of the message when a downloaded file can't be opened
 #. verb: opens the file
 #, machine
 	Open	Buksan
-#. button in crashui.rs; button in a dialog box
+#. button in crashui.rs; button in a dialog box; button in torrentfiles.rs
 #. crash report window button: show the report's file in its folder
+#. button that opens the torrent's containing folder in the file manager
 #, machine
 	Open folder	Buksan ang folder
 #. checkbox in the Add torrent window
@@ -3066,6 +3142,14 @@
 #. text in the tray icon's menu
 #, machine
 	Open Mister Download Manager	Buksan ang Mister Download Manager
+#. text in extension.rs
+#. step 2 of turning on the Safari extension; Cmd is the Command key
+#, machine
+	Open Safari's settings (Cmd+,).	Buksan ang mga setting ng Safari (Cmd+,).
+#. text in extension.rs
+#. step 1 of turning on the Safari extension
+#, machine
+	Open Safari.	Buksan ang Safari.
 #. text in the Scheduler window
 #, machine
 	Open the following file when done	Buksan ang sumusunod na file kapag tapos na
@@ -3436,6 +3520,10 @@
 #. {name} = a file name (keep the braces as they are)
 #, machine
 	Remove {name} from the list?	Alisin ang {name} sa listahan?
+#. text in a download's progress window
+#. noun: label before the deferred new file or folder name in the progress window
+#, machine
+	Rename	Palitan ang pangalan
 #. text in the Batch download window
 #. group box title: what the * in the address is replaced with (numbers or letters)
 #, machine
@@ -3500,6 +3588,9 @@
 #. Saturday, as short as a calendar's column head (two letters in English)
 #, machine
 	Sa	Sab
+#. text in extension.rs
+#, machine
+	Safari turns "Allow unsigned extensions" off each time it quits: do steps 1 to 6 again after restarting it.	Ino-off ng Safari ang "Allow unsigned extensions" tuwing magsasara ito: ulitin ang mga hakbang 1 hanggang 6 pagkatapos itong i-restart.
 #. text in countries.rs
 #. a country's name (where a download's server is)
 #, machine
@@ -3567,6 +3658,10 @@
 #, machine
 	Save to:	I-save sa:
 #. text in a download's progress window
+#. status shown in green beside the Rename box once the new name is saved
+#, machine
+	Saved	Na-save
+#. text in a download's progress window
 #. label before the folder the torrent is saved in
 #, machine
 	Saved in	Naka-save sa
@@ -3589,7 +3684,7 @@
 #. title of the folder picker
 #, machine
 	Select a folder	Pumili ng folder
-#. button in playlistdlg.rs; button in the Add torrent window
+#. button in playlistdlg.rs; button in the Add torrent window; text in torrentfiles.rs
 #. button in Download video for a playlist: tick every video
 #, machine
 	Select all	Piliin lahat
@@ -3726,6 +3821,11 @@
 #. event log entry, past tense: a finished torrent stopped being shared to others because its share ratio (sent ÷ received) reached the limit set in Torrent settings; {ratio} = e.g. 2.00
 #, machine
 	Sharing stopped: the share ratio reached {ratio}	Huminto sa pagbabahagi: naabot ng ratio ng pagbabahagi ang {ratio}
+#. message or event log entry in the main window
+#. event log entry on a finished torrent when re-attaching it to keep sharing failed; {error} = why
+#. {error} = an error message (keep the braces as they are)
+#, machine
+	Sharing stopped: {error}	Huminto sa pagbabahagi: {error}
 #. text in the download list
 #, machine
 	Show	Ipakita
@@ -3842,8 +3942,9 @@
 #. text in a download's Properties window
 #, machine
 	Size:	Laki:
-#. text in a download's progress window
+#. text in a download's progress window; text in torrentfiles.rs
 #. a torrent file the user chose not to download
+#. status of a torrent file the user chose not to download
 #, machine
 	Skipped	Nilaktawan
 #. text in the queues
@@ -3919,6 +4020,10 @@
 #. window title in a dialog box
 #, machine
 	Speed Limiter settings	Mga setting ng Speed Limiter
+#. message or event log entry in the main window
+#. tooltip on the disabled Rename box when the file is one part of a split archive (.part1.rar, .7z.001…)
+#, machine
+	Split archive volumes keep their names for extraction	Pinapanatili ng mga bahagi ng split archive ang pangalan para sa pag-extract
 #. text in countries.rs
 #. a country's name (where a download's server is)
 #, machine
@@ -4035,6 +4140,10 @@
 #, machine
 	Stopped: the network adapter changed; starting again	Huminto: nagbago ang network adapter; nagsisimulang muli
 #. message or event log entry in the main window
+#. event log entry: a video or gallery download stopped to start again at the new speed limit (its helper program takes a limit only as it starts)
+#, machine
+	Stopped: the speed limit changed; starting again with it	Huminto ang pag-download: nagbago ang limitasyon ng bilis; magsisimula muli sa bagong limitasyon
+#. message or event log entry in the main window
 #. event log entry: the download stopped because the chosen network adapter (a VPN's, usually) went away; {adapter} its name
 #, machine
 	Stopped: {adapter} is not connected; it goes on when it is back	Huminto: hindi nakakonekta ang {adapter}; magpapatuloy ito kapag nakabalik na
@@ -4088,6 +4197,18 @@
 #. a country's name (where a download's server is)
 #, machine
 	Sweden	Sweden
+#. text in extension.rs
+#. step 3 of turning on the Safari extension; the quoted tab name is what Safari's settings show in this language: use Apple's own word for it, or keep the English name when unsure
+#, machine
+	Switch to the "Advanced" tab (the cogwheels).	Lumipat sa tab na "Advanced" (ang mga cogwheel).
+#. text in extension.rs
+#. step 5 of turning on the Safari extension; the quoted tab name is what Safari's settings show in this language: use Apple's own word for it, or keep the English name when unsure
+#, machine
+	Switch to the "Developer" tab (the screwdriver and spanner).	Lumipat sa tab na "Developer" (ang screwdriver at spanner).
+#. text in extension.rs
+#. step 7 of turning on the Safari extension; the quoted tab name is what Safari's settings show in this language: use Apple's own word for it, or keep the English name when unsure
+#, machine
+	Switch to the "Extensions" tab (the puzzle piece).	Lumipat sa tab na "Extensions" (ang puzzle piece).
 #. text in countries.rs
 #. a country's name (where a download's server is)
 #, machine
@@ -4266,6 +4387,9 @@
 #. text in errors.rs
 #, machine
 	the drive or network share is no longer available	hindi na available ang drive o network share
+#. text in extension.rs
+#, machine
+	The extension is already in this app. Apple hasn't notarized this build, so Safari needs these steps to allow it.	Nasa app na ito ang extension. Hindi na-notarize ng Apple ang build na ito, kaya kailangan ng Safari ang mga hakbang na ito para payagan ito.
 #. text in errors.rs
 #, machine
 	the file changed on the server	nagbago ang file sa server
@@ -4276,7 +4400,7 @@
 #. {error} = an error message (keep the braces as they are)
 #, machine
 	The file could not be moved: {error}	Hindi mailipat ang file: {error}
-#. message or event log entry in the main window
+#. message or event log entry in the main window; text in the Options window
 #. {error} = an error message (keep the braces as they are)
 #, machine
 	The file could not be read: {error}	Hindi mabasa ang file: {error}
@@ -4325,13 +4449,17 @@
 #. a check of Test browser integration: the browsers are set up, but the small helper program they start (misterdownloadmanager-nmhost) is gone
 #, machine
 	The helper program the browsers start is missing	Nawawala ang helper program na sinisimulan ng mga browser
-#. message or event log entry in the main window
+#. message or event log entry in the main window; text in the Options window
 #. {error} = an error message (keep the braces as they are)
 #, machine
 	The list could not be saved: {error}	Hindi ma-save ang listahan: {error}
 #. text in whereis.rs
 #, machine
 	the local network	ang lokal na network
+#. text in a download's progress window
+#. reason shown on the Rename box when the entered name exceeds the length limit
+#, machine
+	The name is too long	Masyadong mahaba ang pangalan
 #. text in errors.rs; text in torrent downloads
 #. an error: the network adapter chosen in Options (a VPN's, usually) is off or gone; {adapter} its name
 #, machine
@@ -4402,6 +4530,18 @@
 #. the Download video window: the site asked for a sign-in although yt-dlp had the cookies of the browser chosen in Options; {browser} = its name
 #, machine
 	The site wants you signed in, even with {browser}'s cookies. Sign in to it in {browser}, then look the page up again.	Gusto ng site na naka-sign in ka, kahit na may mga cookie ng {browser}. Mag-sign in dito sa {browser}, pagkatapos ay hanapin muli ang pahina.
+#. text in the Download video window
+#. the Download video window: the site's bot check (Cloudflare) turned yt-dlp away though the browser's extension passed the page's cookies
+#, machine
+	The site's bot check (Cloudflare) refused yt-dlp, even with your browser's cookies for this page. Try again later, or from another browser.	Tinanggihan ng bot check ng site (Cloudflare) ang yt-dlp, kahit na may cookies ng iyong browser para sa page na ito. Subukang muli mamaya, o mula sa ibang browser.
+#. text in the Download video window
+#. the Download video window: the site's bot check (Cloudflare) turned yt-dlp away though it had the cookies of the browser chosen in Options; {browser} = its name
+#, machine
+	The site's bot check (Cloudflare) refused yt-dlp, even with {browser}'s cookies. Use the Download video button over the video in {browser}, or try the page again later.	Tinanggihan ng bot check ng site (Cloudflare) ang yt-dlp, kahit na may cookies ng {browser}. Gamitin ang button na I-download ang video sa ibabaw ng video sa {browser}, o subukang muli ang page mamaya.
+#. text in the Download video window
+#. the Download video window: the site's bot check (Cloudflare) turned yt-dlp away and no browser cookies were used
+#, machine
+	The site's bot check (Cloudflare) refused yt-dlp. If the page opens in your browser, choose that browser in Options → Sites Logins → Cookies for video sites and look the page up again, or use the Download video button over the video.	Tinanggihan ng bot check ng site (Cloudflare) ang yt-dlp. Kung bumubukas ang page sa iyong browser, piliin ang browser na iyon sa Mga Opsyon → Mga Login sa Site → Cookies para sa mga video site at hanapin muli ang page, o gamitin ang button na I-download ang video sa ibabaw ng video.
 #. text in crashui.rs
 #. crash report window: the symbols couldn't be downloaded; the report still works
 #, machine
@@ -4472,6 +4612,9 @@
 #. in the empty download list, under its title
 #, machine
 	This category or queue holds no downloads yet.	Wala pang mga download ang kategorya o pila na ito.
+#. text in a download's progress window
+#, machine
+	This character is not allowed in a file name	Hindi pinapayagan ang character na ito sa pangalan ng file
 #. text in the Options window
 #. Options → Remote → Pair a device: the code ran out (10 minutes, or 5 wrong tries)
 #, machine
@@ -4515,6 +4658,14 @@
 #. text in a dialog box
 #, machine
 	This folder does not exist:	Hindi umiiral ang folder na ito:
+#. message or event log entry in the main window
+#. tooltip on the disabled Rename box when the folder already holds files this download did not write
+#, machine
+	This folder holds files from outside this download	May mga file sa folder na ito na hindi mula sa download na ito
+#. message or event log entry in the main window
+#. tooltip on the disabled Rename box when the folder holds another download or is a save/category folder
+#, machine
+	This folder is shared with another download or save folder	Nakabahagi ang folder na ito sa ibang download o save folder
 #. text in errors.rs
 #. a download's error: a Google Drive file that isn't shared with everyone
 #, machine
@@ -4542,6 +4693,10 @@
 #. a magnet link's lookup, after 30 seconds: it can't find any peer at all
 #, machine
 	This magnet link names no trackers and the DHT is off, so no peer can be found.	Walang tracker na pinangalanan ang magnet link na ito at naka-off ang DHT, kaya walang mahahanap na peer.
+#. text in a download's progress window
+#. reason shown on the Rename box when the entered name is a reserved device name on Windows (CON, NUL, COM1…)
+#, machine
+	This name is reserved by Windows	Nakareserba sa Windows ang pangalang ito
 #. tooltip (why a control is greyed) in the Download video window
 #. why "Put them into the video" is greyed: ffmpeg (a helper program) is not installed
 #, machine
@@ -4559,6 +4714,10 @@
 #. {name} = a file name (keep the braces as they are)
 #, machine
 	this program isn't {name}	hindi {name} ang program na ito
+#. text in errors.rs
+#. why a download failed: the site's bot check (Cloudflare) lets browsers through, not programs. Alt+click: the link clicked with the Alt key held, which leaves the download to the browser
+#, machine
+	this site lets only browsers through; Alt+click the link	Pinapayagan lang ng site na ito ang mga browser; pindutin ang Alt at i-click ang link
 #. text in a download's progress window
 #, machine
 	This system has no dial-up connections to hang up	Walang dial-up na koneksyon ang system na ito na puwedeng idiskonekta
@@ -4580,6 +4739,11 @@
 #. the Download video window: the video needs the user to be signed in
 #, machine
 	This video needs you to be signed in. Use the Download video button over it in your browser, which passes your sign-in on, or choose your browser in Options → Sites Logins → Cookies for video sites.	Kailangan mong naka-sign in para sa video na ito. Gamitin ang button na I-download ang video sa ibabaw nito sa iyong browser para maipasa ang iyong pag-sign in, o piliin ang iyong browser sa Mga Opsyon → Mga pag-login sa site → Mga cookie para sa mga site ng video.
+#. text in errors.rs
+#. a download's error: the address is a site's web page that needs a browser, not the file; {site} = the site's name (gofile)
+#. {site} = a web site's name such as "example.com" (keep the braces as they are)
+#, machine
+	this {site} link is a web page, not the file: open it in your browser and download from there	ang link na ito ng {site} ay isang web page, hindi ang file: buksan ito sa iyong browser at mag-download mula doon
 #. text in whereis.rs
 #. where a download's server is, when a proxy carries it (the proxy's place not known)
 #, machine
@@ -4644,8 +4808,9 @@
 #. text in the download list (sizes, speeds, status)
 #, machine
 	Torrent downloads (magnet links and .torrent files)	Mga download ng torrent (magnet link at .torrent file)
-#. message or event log entry in the main window; text in the Add torrent window
+#. message or event log entry in the main window; text in the Add torrent window; window title in torrentfiles.rs
 #. the kind of file the Open dialog lists
+#. title of the separate window listing a torrent's files
 #, machine
 	Torrent files	Mga torrent file
 #. window title in the Add torrent window
@@ -4724,6 +4889,22 @@
 #. verb: turn the Speed Limiter on
 #, machine
 	Turn on	I-on
+#. text in extension.rs
+#. step 6 of turning on the Safari extension; the quoted switch name is what Safari's settings show in this language: use Apple's own words for it, or keep the English name when unsure
+#, machine
+	Turn on "Allow unsigned extensions".	I-on ang "Allow unsigned extensions".
+#. text in extension.rs
+#. step 8 of turning on the Safari extension
+#, machine
+	Turn on "Mister Download Manager" and allow it on all websites.	I-on ang "Mister Download Manager" at payagan ito sa lahat ng website.
+#. text in extension.rs
+#. step 4 of turning on the Safari extension; the quoted switch name is what Safari's settings show in this language: use Apple's own words for it, or keep the English name when unsure
+#, machine
+	Turn on "Show features for web developers".	I-on ang "Show features for web developers".
+#. text in extension.rs
+#. the headline of the window that shows how to turn on the Safari extension
+#, machine
+	Turn on the extension in Safari	I-on ang extension sa Safari
 #. tooltip (why a control is greyed) in the Options window
 #. why Options → Remote → Pair a device... is greyed
 #, machine
@@ -5142,6 +5323,13 @@
 #. a row of the browser extension's window when no browser was found by name
 #, machine
 	Your browser	Ang iyong browser
+#. text in the Options window
+#, machine
+	Your default browser isn't one MDM knows: a current Chrome's User-Agent	Hindi alam ng MDM ang iyong default na browser: isang kasalukuyang User-Agent ng Chrome
+#. text in the Options window
+#. tooltip; {browser} is a browser and its version, e.g. "Brave 157"
+#, machine
+	Your default browser's User-Agent: {browser}	User-Agent ng iyong default na browser: {browser}
 #. text in the settings
 #. Options → DNS: the name of a DNS the user typed in, in messages: "your DNS (DNS over TLS)"
 #, machine
@@ -5177,6 +5365,26 @@
 #. {error} = an error message (keep the braces as they are)
 #, machine
 	yt-dlp couldn't read {browser}'s cookies: {error}	Hindi mabasa ng yt-dlp ang mga cookie ng {browser}: {error}
+#. text in a download's progress window
+#. progress window, a video's line: the helper program yt-dlp gave no address MDM's own downloader could use
+#, machine
+	yt-dlp downloads it itself	Dina-download ito mismo ng yt-dlp
+#. text in a download's progress window
+#. progress window, a video's line: MDM's own downloader can't take a live broadcast, so the helper program yt-dlp records it
+#, machine
+	yt-dlp downloads it itself: a live stream	Dina-download ito mismo ng yt-dlp: isang live stream
+#. text in a download's progress window
+#. progress window, a video's line: a stream sent in many small pieces (HLS, DASH), which the helper program yt-dlp downloads itself for now
+#, machine
+	yt-dlp downloads it itself: a stream in pieces	Dina-download ito mismo ng yt-dlp: isang stream na may mga piraso
+#. text in a download's progress window
+#. progress window, a video's line: the stream is copy-protected (DRM), left to the helper program yt-dlp, which refuses it
+#, machine
+	yt-dlp downloads it itself: protected (DRM)	Dina-download ito mismo ng yt-dlp: protektado (DRM)
+#. text in a download's progress window
+#. progress window, a video's line: {protocol} = a streaming protocol's short name (rtmp, rtsp, mms); MDM's own downloader doesn't speak it, so the helper program yt-dlp downloads it
+#, machine
+	yt-dlp downloads it itself: {protocol}	Dina-download ito mismo ng yt-dlp: {protocol}
 #. text in the Download video window
 #. the Download video window: the browser chosen in Options has no cookies on this computer (not installed, or another profile); {browser} = its name
 #, machine
@@ -5255,6 +5463,11 @@
 #. {size} = a file size such as "4.2 MB" (keep the braces as they are)
 #, machine
 	{done} of {size}	{done} ng {size}
+#. text in deferred_rename.rs
+#. appended to an OS error when a case-only rename could not move the temporary file back to its original name; {error} = first OS error, {path} = temporary path left on disk, {rollback_error} = second OS error
+#. {error} = an error message (keep the braces as they are)
+#, machine
+	{error} (left as {path}: {rollback_error})	{error} (iniwan bilang {path}: {rollback_error})
 #. text in a download's Properties window
 #. a kind of file, by its extension: {ext} = "ZIP", "PDF"…
 #, machine
@@ -5481,6 +5694,10 @@ column	File Name	Pangalan ng File
 #, machine
 column	Last Try Date	Petsa ng huling pagsubok
 #. column title in the download list in the download list
+#. column title: how many peers a torrent is connected to now (seeders and leechers)
+#, machine
+column	Peers	Mga Peer
+#. column title in the download list in the download list
 #. column title: one letter for Queue (the column is narrow)
 #, machine
 column	Q	Q
@@ -5488,6 +5705,10 @@ column	Q	Q
 #. tooltip of the narrow "Q" column's title
 #, machine
 column	Queue	Queue
+#. column title in the download list in the download list
+#. column title: what a torrent has sent to peers against what it took
+#, machine
+column	Share ratio	Ratio ng Pagbabahagi
 #. column title in the download list in the download list
 #. noun: the file's size
 #, machine
@@ -5506,10 +5727,26 @@ column	Time left	Natitirang oras
 #. column title in the download list in the download list
 #, machine
 column	Transfer rate	Rate ng paglipat
+#. column title in the download list in the download list
+#. column title: what a torrent sends to peers, bytes per second
+#, machine
+column	Upload speed	Bilis ng upload
+#. text in the browser extension
+#. in the menu under the download button over a video: the page is a list of videos (a playlist), whose videos are chosen in the app's window; keep the name Mister Download Manager as it is
+#, machine
+extension	A list of videos: choose them in Mister Download Manager	Listahan ng mga video: piliin ang mga ito sa Mister Download Manager
+#. text in the browser extension
+#. shown briefly on the download button over a video after a quality was picked: the download was added to the app's download queue, to start later
+#, machine
+extension	Added to the queue	Naidagdag sa queue
 #. text in the browser extension
 #. choice under Send downloads to: an MDM running on another computer of the network, such as a home server; keep the name Mister Download Manager as it is
 #, machine
 extension	Another Mister Download Manager (a server)	Isa pang Mister Download Manager (isang server)
+#. text in the browser extension
+#. tab above the list of qualities in the menu under the download button over a video: the choices that are sound only (MP3, Opus and the like); short, one word
+#, machine
+extension	Audio	Audio
 #. text in the browser extension
 #. the name this browser gets in the other MDM's list of paired devices
 #, machine
@@ -5532,6 +5769,10 @@ extension	Connected to Mister Download Manager	Nakakonekta sa Mister Download Ma
 #. {version} = a version number (keep the braces as they are)
 #, machine
 extension	Connected to Mister Download Manager {version}	Nakakonekta sa Mister Download Manager {version}
+#. text in the browser extension
+#. in the menu under the download button over a video: finding the video's qualities failed; the app's own explanation follows on the next line
+#, machine
+extension	Could not look it up	Hindi ito nahanap
 #. text in the browser extension
 #. button beside a video, sound or stream in the toolbar button's popup: download it with the app; verb; short
 #, machine
@@ -5623,6 +5864,14 @@ extension	Left to the browser: {name}	Iniwan sa browser: {name}
 #, machine
 extension	Live	Live
 #. text in the browser extension
+#. in the menu that opens from the download button over a video, while the app finds which qualities (resolutions, formats) the video can be downloaded in
+#, machine
+extension	Looking up the qualities…	Hinahanap ang mga kalidad…
+#. text in the browser extension
+#. in the menu under the download button over a video: the app took more than a minute to find the video's qualities, so the menu stopped waiting
+#, machine
+extension	Looking up took too long	Masyadong natagalan ang paghahanap
+#. text in the browser extension
 #. heading in the toolbar button's popup over the list of the videos, sounds and streams the current web page has loaded
 #, machine
 extension	Media on this page	Media sa pahinang ito
@@ -5639,6 +5888,10 @@ extension	Mister Download Manager didn't start in time	Hindi nagsimula sa oras a
 #, machine
 extension	Mister Download Manager doesn't accept this copy of the extension	Hindi tinatanggap ng Mister Download Manager ang kopyang ito ng extension
 #. text in the browser extension
+#. in the menu under the download button over a video: the app is already looking up other videos and can't look this one up now; keep the name Mister Download Manager as it is
+#, machine
+extension	Mister Download Manager is busy with other videos	Abala ang Mister Download Manager sa ibang mga video
+#. text in the browser extension
 #. shown briefly on the download button when the app could not be reached; keep the name Mister Download Manager as it is
 #, machine
 extension	Mister Download Manager isn't installed or didn't start	Hindi naka-install ang Mister Download Manager o hindi nagsimula
@@ -5646,6 +5899,10 @@ extension	Mister Download Manager isn't installed or didn't start	Hindi naka-ins
 #. status when the browser can't find the app's connection; keep the name Mister Download Manager as it is
 #, machine
 extension	Mister Download Manager isn't installed, or its browser integration isn't set up	Hindi naka-install ang Mister Download Manager, o hindi naka-set up ang integrasyon nito sa browser
+#. text in the browser extension
+#. in the menu under the download button over a video: the app needs the yt-dlp tool (a program's name, keep it as it is) to find this video's qualities, and it isn't installed; keep the name Mister Download Manager as it is
+#, machine
+extension	Mister Download Manager needs yt-dlp for this video	Kailangan ng Mister Download Manager ng yt-dlp para sa video na ito
 #. text in the browser extension
 #. tooltip of the switch Send downloads through this browser's proxy or VPN extension; keep the name Mister Download Manager as it is
 #, machine
@@ -5673,9 +5930,17 @@ extension	Never take downloads from {site}	Huwag kailanman kumuha ng mga downloa
 #, machine
 extension	No video or sound found on this page yet. Play it, then open this again.	Walang video o tunog na nakita sa pahinang ito. I-play ito, pagkatapos ay buksan muli ito.
 #. text in the browser extension
+#. in the menu under the download button over a video: the app found no quality of the video it could download
+#, machine
+extension	No video to download here	Walang video na ida-download dito
+#. text in the browser extension
 #. pairing failed: the other MDM didn't answer
 #, machine
 extension	Not reached. Open its address once in this browser and accept its certificate, then try again.	Hindi naabot. Buksan ang address nito nang isang beses sa browser na ito at tanggapin ang certificate nito, pagkatapos ay subukang muli.
+#. text in the browser extension
+#. last command of the menu of qualities under the download button over a video: opens the app's Download video window for this video instead; keep the name Mister Download Manager as it is
+#, machine
+extension	Open in Mister Download Manager…	Buksan sa Mister Download Manager…
 #. text in the browser extension
 #. button: open the other MDM's address in a tab (to accept its certificate once)
 #, machine
@@ -5688,6 +5953,10 @@ extension	Open its address once and accept its certificate, then enter a code fr
 #. button in the toolbar button's popup; keep the name Mister Download Manager as it is
 #, machine
 extension	Open Mister Download Manager	Buksan ang Mister Download Manager
+#. text in the browser extension
+#. shown briefly on the download button over a video in a feed (a social site's home page, a timeline) when nothing in the feed gives that video's own address, so nothing was sent: the user should open the post the video belongs to and click the button on that page; short
+#, machine
+extension	Open the post, then use the button there	Buksan ang post, pagkatapos ay gamitin ang button doon
 #. text in the browser extension
 #. button in the toolbar button's popup: open the app's Options
 #. the trailing ... means it is still going on: keep it
@@ -5705,6 +5974,10 @@ extension	Pairing code	Code ng pagpapares
 #. status when the user switched off taking downloads in the toolbar button's popup
 #, machine
 extension	Paused: downloads stay with the browser	Naka-pause: mananatili ang mga download sa browser
+#. text in the browser extension
+#. Option in the browser extension media list: put the page title before the original file name when downloading a detected media file
+#, machine
+extension	Prefix media file names with the page title	Idagdag ang pamagat ng page bago ang mga pangalan ng media file
 #. text in the browser extension
 #. shown instead of the Download button beside a copy-protected (DRM) stream in the toolbar button's popup: it can't be downloaded; short
 #, machine
@@ -5777,6 +6050,10 @@ extension	Update Mister Download Manager to use everything this extension offers
 #. why a download stayed with the browser: the app's setting 'Use advanced browser integration' is off; keep the setting's name as the app shows it
 #, machine
 extension	Use advanced browser integration is off in Options → General.	Naka-off ang Gumamit ng advanced na integrasyon ng browser sa Mga Opsyon → Pangkalahatan.
+#. text in the browser extension
+#. tab above the list of qualities in the menu under the download button over a video: the choices that include picture (video with sound); short, one word
+#, machine
+extension	Video	Video
 #. text in the browser extension
 #. pairing failed: codes tried too fast
 #, machine
@@ -5898,6 +6175,11 @@ menu	&Add new download	&Magdagdag ng bagong download
 #. the trailing ... means it opens a window: keep it
 #, machine
 menu	&Add new download...	&Magdagdag ng bagong download...
+#. menu command in the main window
+#. View → Text: letters drawn the classic way, hinted to whole pixels (crisp, coarse on a dense screen)
+#. & marks the keyboard shortcut letter: keep one & before a letter of the translation
+#, machine
+menu	&Classic	&Classic
 #. menu command in standard windows
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 #, machine
@@ -5979,6 +6261,16 @@ menu	&RSS feeds...	Mga feed ng &RSS...
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 #, machine
 menu	&Scheduler and queues	&Scheduler at mga queue
+#. menu command in a download's progress window
+#. right-click menu of a download window's tab row: bring back the tabs taken off with "Hide tab"
+#. & marks the keyboard shortcut letter: keep one & before a letter of the translation
+#, machine
+menu	&Show hidden tabs	Ipakita ang mga Nakatagong &Tab
+#. menu command in the main window
+#. View → Text: letters drawn smooth, as Windows' modern apps draw them, anti-aliased at any size
+#. & marks the keyboard shortcut letter: keep one & before a letter of the translation
+#, machine
+menu	&Smooth	&Smooth
 #. menu command in the main window
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 #, machine
@@ -5987,6 +6279,11 @@ menu	&Stop All	&Ihinto Lahat
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 #, machine
 menu	&Stop Download	&Ihinto ang Download
+#. menu command in the main window
+#. View menu: submenu choosing how the text is drawn (smooth or classic)
+#. & marks the keyboard shortcut letter: keep one & before a letter of the translation
+#, machine
+menu	&Text	&Text
 #. menu command in the main window
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 #, machine
@@ -6171,9 +6468,18 @@ menu	E&xport	I-e&xport
 #, machine
 menu	Edit queue	I-edit ang queue
 #. menu command in the main window
+#. View → Theme: a style theme's name (a white canvas, emerald fills, 6-point corners), a name: keep "Emerald" as written
+#, machine
+menu	Emerald	Emerald
+#. menu command in the main window
 #. verb: unpack the downloaded archive (zip, 7z, rar) into its folder
 #, machine
 menu	Extract	I-extract
+#. menu command in the main window
+#. right-click → Torrent submenu: open the selected torrent's file list
+#. the trailing ... means it opens a window: keep it
+#, machine
+menu	Files...	Mga File...
 #. menu command in the main window
 #, machine
 menu	Find (Ctrl-F)	Hanapin (Ctrl-F)

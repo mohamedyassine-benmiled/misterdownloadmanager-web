@@ -108,9 +108,13 @@ pub struct Settings {
     /// View → Draw with (#89): OpenGL or Direct3D (Windows only), used from the next start.
     /// None: MDM's default (`renderer::DEFAULT`), which may change.
     pub renderer: Option<crate::renderer::Api>,
-    /// View → Interface size (#262), percent: 100, 125, 150, 175 or 200 (crate::scale). Every
+    /// View → Interface size (#262), percent: one of `crate::scale::STEPS` (100 to 200). Every
     /// window drawn that much larger than the display's own scale makes it.
     pub interface_size: u16,
+    /// View → Text (Windows): smooth text as Windows' modern apps draw it, or the classic
+    /// controls' hinted, whole-pixel look, the default (`crate::theme::set_smooth_text`): text
+    /// doesn't change look on an update; a dense screen can choose Smooth.
+    pub smooth_text: bool,
     /// Scheduler → Download limits: "Download no more than `limits_mb` MBytes every
     /// `limits_hours` hours" (IDM defaults 200 / 5), with a warning before stopping.
     pub limits_on: bool,
@@ -140,6 +144,10 @@ pub struct Settings {
     /// notification area, as closing the main window does (#63). On by default (the
     /// maintainer's choice), for existing lists too. Only where a tray shows MDM's icon.
     pub minimize_to_tray: bool,
+    /// General: closing the main window keeps MDM running, hidden in the notification area (else
+    /// closing quits). On by default, for existing lists too, in every copy. Only where a tray
+    /// shows MDM's icon.
+    pub close_to_tray: bool,
     pub mv2_extensions: bool,
     pub advanced_integration: bool,
     /// General: "Capture downloads from the following browsers" (name, on).
@@ -178,6 +186,11 @@ pub struct Settings {
     /// "If a duplicate download link is added": 0 ask, 1 numbered name, 2 overwrite,
     /// 3 complete → show the complete dialog, else resume.
     pub duplicate_action: u8,
+    /// "User-Agent for manually added downloads": the user's, or empty for the automatic one
+    /// (the default browser's, #668: `mdm_engine::agent::automatic`). Saved before #668 as
+    /// Internet Explorer 11's, the default then: read as empty (`own_user_agent`), which an older
+    /// MDM reads as its default again.
+    #[serde(deserialize_with = "automatic_agent")]
     pub user_agent: String,
     /// Connection: per-server connection limits (server, number).
     pub conn_exceptions: Vec<(String, u32)>,
@@ -365,6 +378,7 @@ impl Default for Settings {
             theme: "classic".into(),
             renderer: None,
             interface_size: 100,
+            smooth_text: false,
             limits_on: false,
             limits_mb: 200,
             limits_hours: 5,
@@ -376,6 +390,7 @@ impl Default for Settings {
             extension_never_ask: false,
             clipboard_autostart: true,
             minimize_to_tray: true,
+            close_to_tray: true,
             mv2_extensions: true,
             advanced_integration: true,
             browsers: BROWSERS.iter().map(|b| (b.to_string(), true)).collect(),
@@ -399,7 +414,7 @@ impl Default for Settings {
             queue_panel_batch: true,
             ignore_mtime: false,
             duplicate_action: 0,
-            user_agent: mdm_engine::download::DEFAULT_USER_AGENT.into(),
+            user_agent: String::new(),
             conn_exceptions: Vec::new(),
             proxy_from_browser: true,
             proxy_mode: 0,
@@ -555,7 +570,25 @@ pub fn remember(list: &mut Vec<String>, value: &str) {
     list.truncate(HISTORY);
 }
 
+/// A saved "User-Agent for manually added downloads": MDM's former default (Internet Explorer
+/// 11's, before #668) or nothing is the automatic one (empty).
+fn automatic_agent<'de, D: serde::Deserializer<'de>>(d: D) -> Result<String, D::Error> {
+    let saved = String::deserialize(d)?;
+    Ok(if saved.trim() == mdm_engine::agent::IE11_USER_AGENT {
+        String::new()
+    } else {
+        saved
+    })
+}
+
 impl Settings {
+    /// The User-Agent the user set for links added by hand; None: the automatic one (the
+    /// default browser's, #668).
+    pub fn own_user_agent(&self) -> Option<&str> {
+        let ua = self.user_agent.trim();
+        (!ua.is_empty() && ua != mdm_engine::agent::IE11_USER_AGENT).then_some(ua)
+    }
+
     /// `live` with the settings a dialog changed (`from` → `to`) put in, field by field: what
     /// changed elsewhere while it was open (the toolbar's Speed Limiter, Torrent settings, the
     /// Categories pane) is kept, not reverted to the copy the dialog started from.
@@ -755,10 +788,10 @@ impl Settings {
             .map(|(_, user, pass)| (user.clone(), pass.clone()))
     }
 
-    /// Options → File types: whether a file name has one of the listed types (`R0*` is a
-    /// prefix pattern).
-    pub fn auto_type(&self, name: &str) -> bool {
-        mdm_ipc::capture::type_listed(&self.auto_types, name)
+    /// Should a copied link named `name` be offered? Fewer types than a browser hands over
+    /// (`mdm_ipc::capture::clipboard_type`).
+    pub fn clipboard_type(&self, name: &str) -> bool {
+        mdm_ipc::capture::clipboard_type(&self.auto_types, name)
     }
 
     /// Set (or forget, with `None`) the category's own folder.
@@ -778,6 +811,21 @@ impl Settings {
         if let Some(d) = dir {
             self.category_dirs.push((key.into_owned(), d));
         }
+    }
+
+    /// The folder just saved into becomes the category's, when it is another one (an unchanged
+    /// folder stays "the default", following Downloads). True when the folder changed.
+    pub fn keep_category_dir(
+        &mut self,
+        cat: crate::model::Category,
+        dir: &std::path::Path,
+        downloads: &std::path::Path,
+    ) -> bool {
+        if dir.as_os_str().is_empty() || dir == self.category_dir(cat, downloads) {
+            return false;
+        }
+        self.set_category_dir(cat, Some(dir.display().to_string()));
+        true
     }
 
     /// Both category registries (the user's and the built-in ones' edits) from these settings,
@@ -931,6 +979,8 @@ static OWN_DNS: std::sync::RwLock<Option<mdm_engine::DnsChoice>> = std::sync::Rw
 
 /// Keep [`own_net`] on the settings' proxy (cheap when it didn't change).
 pub fn share_proxy(proxy: mdm_engine::Proxy) {
+    // yt-dlp and gallery-dl go through it too (#363).
+    mdm_tools::proc::set_proxy(proxy.clone());
     if OWN_PROXY.read().unwrap().as_ref() != Some(&proxy) {
         *OWN_PROXY.write().unwrap() = Some(proxy);
     }
@@ -993,6 +1043,61 @@ pub fn own_net() -> mdm_engine::Options {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
+    /// #668: the User-Agent for links added by hand is the default browser's unless one is set.
+    /// Saved before, MDM's former default (Internet Explorer 11's) or nothing reads as automatic;
+    /// automatic is saved empty, which an older MDM reads as its own default again.
+    #[test]
+    fn the_user_agent_is_automatic_unless_one_is_set() {
+        use super::Settings;
+        let ie11 = mdm_engine::agent::IE11_USER_AGENT;
+        assert_eq!(Settings::default().user_agent, "");
+        assert_eq!(Settings::default().own_user_agent(), None);
+        for saved in [
+            serde_json::json!({ "user_agent": ie11 }),
+            serde_json::json!({ "user_agent": format!(" {ie11} ") }),
+            serde_json::json!({ "user_agent": "" }),
+            serde_json::json!({ "user_agent": "   " }),
+            serde_json::json!({}),
+        ] {
+            let s: Settings = serde_json::from_value(saved.clone()).unwrap();
+            assert_eq!(s.own_user_agent(), None, "{saved}");
+            let again = serde_json::to_value(&s).unwrap();
+            assert_eq!(
+                again["user_agent"].as_str().map(str::trim),
+                Some(""),
+                "{saved}"
+            );
+        }
+        let own: Settings =
+            serde_json::from_value(serde_json::json!({ "user_agent": " MyAgent/1.0 " })).unwrap();
+        assert_eq!(own.own_user_agent(), Some("MyAgent/1.0"));
+        let again: Settings = serde_json::from_value(serde_json::to_value(&own).unwrap()).unwrap();
+        assert_eq!(again.own_user_agent(), Some("MyAgent/1.0"));
+    }
+
+    /// #475: a folder chosen for a video is the Video category's next time; the category's own
+    /// folder stays "the default", following Downloads, and other categories stay as they were.
+    #[test]
+    fn a_folder_saved_into_becomes_the_categorys() {
+        use crate::model::Category;
+        let root = std::env::temp_dir();
+        let downloads = root.join("Downloads");
+        let downloads = downloads.as_path();
+        let mut s = super::Settings::default();
+        let default_video = s.category_dir(Category::Video, downloads);
+        assert!(!s.keep_category_dir(Category::Video, &default_video, downloads));
+        assert!(s.category_dirs.is_empty(), "the default stays the default");
+        assert!(!s.keep_category_dir(Category::Video, Path::new(""), downloads));
+        let chosen = root.join("clips");
+        let chosen = chosen.as_path();
+        assert!(s.keep_category_dir(Category::Video, chosen, downloads));
+        assert_eq!(s.category_dir(Category::Video, downloads), chosen);
+        assert_ne!(s.category_dir(Category::Music, downloads), chosen);
+        assert!(!s.keep_category_dir(Category::Video, chosen, downloads));
+    }
+
     #[test]
     fn a_dialog_keeps_what_changed_elsewhere_meanwhile() {
         let from = super::Settings::default();
@@ -1102,8 +1207,9 @@ mod tests {
     #[test]
     fn listed_file_types() {
         let s = Settings::default();
-        assert!(s.auto_type("setup.EXE") && s.auto_type("a.r01") && s.auto_type("x.zip"));
-        assert!(!s.auto_type("page.html") && !s.auto_type("noext"));
+        let listed = |name| mdm_ipc::capture::type_listed(&s.auto_types, name);
+        assert!(listed("setup.EXE") && listed("a.r01") && listed("x.zip"));
+        assert!(!listed("page.html") && !listed("noext"));
     }
 
     #[test]
@@ -1306,6 +1412,19 @@ pub(crate) mod sealed {
             let plain = serde_json::json!({ "site_logins": [["a.test", "u", "pw"]] });
             let old: crate::settings::Settings = serde_json::from_value(plain).unwrap();
             assert_eq!(old.site_logins[0].2, "pw");
+        }
+
+        #[test]
+        fn the_close_button_keeps_mdm_running_unless_told_otherwise() {
+            let s: crate::settings::Settings =
+                serde_json::from_value(serde_json::json!({})).unwrap();
+            assert!(
+                s.close_to_tray,
+                "a list from before the option goes on hiding"
+            );
+            let s: crate::settings::Settings =
+                serde_json::from_value(serde_json::json!({ "close_to_tray": false })).unwrap();
+            assert!(!s.close_to_tray);
         }
     }
 }

@@ -47,6 +47,11 @@
         "name": "The Evidence Caption Rule",
         "body": "Keep synthetic demonstration data explicitly labeled in images and adjacent captions; screenshots are neither live transfers nor speed benchmarks, and must never expose private account or server data.",
         "section": "components"
+      },
+      {
+        "name": "The Benchmark Attribution Rule",
+        "body": "The owner approved an upstream benchmark section with the original chart, selected report medians and source revision/date. Label those as upstream MDM results, not measurements of Webmister, its current engine, containers or remote deployments. Never promote them into the fork's hero speed claim.",
+        "section": "components"
       }
     ],
     "dos": [

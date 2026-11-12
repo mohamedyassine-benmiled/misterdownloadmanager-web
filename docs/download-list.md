@@ -26,6 +26,9 @@ branches and the category or queue you were looking at.
 | **Status** | How far it is, or **Complete**, **Error** and so on. |
 | **Time left** | While it downloads. |
 | **Transfer rate** | The current speed. |
+| **Upload speed** | A torrent: what it sends to peers, while it runs. |
+| **Peers** | A torrent's connected peers while it runs, seeders and leechers alike. |
+| **Share ratio** | A torrent: what it has sent to peers against what it took. |
 | **Last Try Date** | When it last ran. |
 | **Added** | When you added it. |
 | **Description** | Your note from **Download File Info** or **Properties**. |
@@ -107,7 +110,7 @@ The right-click menu has everything you can do with a download: **Open**, **Open
 ![File Properties: the file's name, address, folder, size, status and description](images/help/properties.webp)
 *File Properties: change the address or the folder of a download.*
 
-**Move/Rename** (**Ctrl+M**) moves or renames the file of a finished download, or of one that hasn't started yet.
+**Move/Rename** (**Ctrl+M**) moves or renames the file of a finished download, or of one that hasn't started yet. With several downloads selected it asks for a folder and moves them all there, each under its own name.
 
 ## Verify checksum
 

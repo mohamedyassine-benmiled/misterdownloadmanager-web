@@ -1,7 +1,30 @@
 # Upstream integration: Web overlay and repeatable merges
 
-Updated: 2026-11-12. **The separation pass is implemented locally; upstream has not
-been merged. Changes are not yet committed or published.**
+Updated: 2026-11-12. **The integration branch incorporates upstream
+`b35b42d4cab545fb63cba9765681ad4c7f67c4f2` (engine 0.5.2). Text conflicts are resolved;
+full default-feature CI and release acceptance remain required before a release tag.**
+
+## Integration result for 2026-11-12
+
+- Kept Webmister's README overlay and marketing/screenshot work, retaining upstream credits.
+- Combined the Web busy guard, owner reply routing and asynchronous torrent admission hooks
+  with upstream's stop-state and video-quality handling. Regenerated the English catalog.
+- Kept the remote adapter while importing upstream media/feed/quality changes. Synchronized
+  its fallback file types with `DEFAULT_AUTO_TYPES`; all 98 extension logic checks pass.
+- Preserved upstream's Safari source, loading the shared adapter before its background
+  script. Safari remains outside fork release targets; package checks cover its script order.
+- Kept the upstream root Dockerfile. Added BoringSSL build prerequisites to the fork image,
+  headless checks and native release jobs; no reduced-feature release fallback is allowed.
+- Pinned browser CI to Ubuntu 24.04 for Playwright 1.58.2, and native Windows CI to Windows
+  2022. Retained the Ubuntu 22.04 native-release compatibility floor and isolated build caches.
+- Kept upstream picture checks, with a scoped PNG exception for the manifest-tracked fork
+  screenshots and a linked inventory of preserved upstream README artwork.
+- Retained website build validation; upstream-only Pages deployment avoids publishing its
+  branded site from a fork where Pages is not configured.
+
+Local reduced-feature Rust checks are useful diagnostics, not proof that default-feature
+Windows/Linux binaries or Docker images work. GitHub CI and the manual coordinated-release
+rehearsal must supply that evidence. Do not tag while required checks are failing.
 
 ## Goal and architectural decision
 

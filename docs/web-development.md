@@ -36,6 +36,18 @@ runtime verification; it is not a completed-feature announcement.
 
 ## Verification
 
+### Build prerequisites after the upstream 0.5.2 merge
+
+Default engine builds now compile BoringSSL for the browser-like TLS connection. Install
+CMake and LLVM's libclang; Windows also requires NASM on `PATH`. Ubuntu/Debian builders need
+`cmake libclang-dev`. The fork Dockerfile and native/headless CI jobs provision these rather
+than silently disabling the default engine feature. The native Linux release remains on
+Ubuntu 22.04; browser fixture/headless jobs use Ubuntu 24.04 because Playwright 1.58.2 does not
+support Ubuntu 26.04. Local `--no-default-features` checks do not validate a full release build.
+
+The upstream-branded website still builds in this fork's Website workflow, but its Pages
+deployment is upstream-only. No Webmister website or store publication is implied.
+
 Run the portable extension regression suite from the repository root:
 
 ```sh

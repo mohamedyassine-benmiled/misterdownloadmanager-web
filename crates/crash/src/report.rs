@@ -70,6 +70,23 @@ pub fn text(input: &Input, home: Option<&Path>) -> String {
         }
         Kind::Freeze => {
             match &input.notes.freeze {
+                Some(f) if f.seconds > 0 && over_before_snapshot(kind, input) => {
+                    let ran = f
+                        .busy
+                        .map(|b| {
+                            format!(
+                                " Its thread ran {:.1} of {:.1} s while it did not answer.",
+                                b.cpu_ms as f64 / 1000.0,
+                                b.wall_ms as f64 / 1000.0
+                            )
+                        })
+                        .unwrap_or_default();
+                    let _ = writeln!(
+                        s,
+                        "The window did not answer for {} s, but it was back to waiting for events when this snapshot was taken, so the stacks below don't show what held it.{ran}",
+                        f.seconds
+                    );
+                }
                 Some(f) if f.seconds > 0 => {
                     let top = key_thread(kind, input).and_then(|t| t.frames.first());
                     let secs = |ms: u64| format!("{:.1}", ms as f64 / 1000.0);
@@ -341,6 +358,11 @@ pub fn description(kind: Kind, notes: &Notes) -> &'static str {
 /// matters ("freeze in misterdownloadmanager::winui::combo_edit").
 pub fn signature(kind: Kind, input: &Input) -> String {
     let main_module = main_module(input);
+    // The freeze ended before the snapshot: its stack says nothing about it, and without this
+    // every such report was filed under the start-up function that runs the event loop (#355).
+    if over_before_snapshot(kind, input) {
+        return format!("{} over before the snapshot", kind.word());
+    }
     // A computer too busy to run MDM: one name for all of them, wherever the thread happened to be.
     if let Some(f) = input.notes.freeze.as_ref().filter(|_| kind == Kind::Freeze) {
         let top = key_thread(kind, input).and_then(|t| t.frames.first());
@@ -425,8 +447,18 @@ pub fn stuck(
         // thread hardly ran is almost always a wait (the system's waits live there).
         None if share > STARVED_SHARE => None,
         None if main.is_some() && top.module.as_deref() == main => Some(Stuck::Starved),
+        // The C runtime's copies and compares (memcmp of an icon's first bytes, #663): never a
+        // wait, so a thread that hardly ran there waited for its memory, loaded from disk.
+        None if top.module.as_deref().is_some_and(is_memory_routines) => Some(Stuck::Starved),
         None => top.module.is_some().then_some(Stuck::Waiting),
     }
+}
+
+/// A module of the C runtime's memory and string routines only (memcpy, memcmp, memset): no
+/// wait lives there. Windows' VCRUNTIME140.dll and VCRUNTIME140_1.dll; not ucrtbase.dll, nor
+/// Linux's libc, which hold the waits as well.
+fn is_memory_routines(module: &str) -> bool {
+    module.to_ascii_lowercase().starts_with("vcruntime")
 }
 
 /// A function a thread waits in: the system's waits and sleeps, locks, I/O.
@@ -483,6 +515,22 @@ fn key_thread<'a>(kind: Kind, input: &Input<'a>) -> Option<&'a Thread> {
             .or_else(|| f.main.then(|| a.threads.first()).flatten());
     }
     a.thread(a.requesting?)
+}
+
+/// A freeze whose window thread was already back in the event loop's wait when the dump was taken:
+/// a frame in progress never has that on its stack, so the frame had ended. The dump follows the
+/// watchdog's request, and came 7 s after it on a stalled computer (#355). winit's wait, on Windows;
+/// other systems' stacks keep the verdicts below.
+fn over_before_snapshot(kind: Kind, input: &Input) -> bool {
+    kind == Kind::Freeze
+        && input.notes.freeze.is_some()
+        && key_thread(kind, input).is_some_and(|t| {
+            t.frames.iter().any(|f| {
+                f.function
+                    .as_deref()
+                    .is_some_and(|n| n.contains("wait_for_messages"))
+            })
+        })
 }
 
 /// The first frame in the program's own code, past the system, Rust's standard library, locks,
@@ -802,6 +850,51 @@ mod tests {
             stuck(&f, bare.threads[0].frames.first(), main),
             Some(Stuck::Waiting)
         );
+        // #663: in the C runtime's memcmp, under MDM's own code: no wait there, so starved.
+        bare.threads[0].frames[0].module = Some("VCRUNTIME140.dll".into());
+        assert_eq!(
+            stuck(&f, bare.threads[0].frames.first(), main),
+            Some(Stuck::Starved)
+        );
+        assert_eq!(
+            signature(Kind::Freeze, &freeze_with(&bare, 100)),
+            "freeze while the computer was busy"
+        );
+    }
+
+    /// #355, as reported: the dump was written 7 s after it was asked for, when the window thread
+    /// was back in the event loop. Not a deadlock, not "in misterdownloadmanager::app".
+    #[test]
+    fn a_freeze_over_before_the_snapshot_says_so() {
+        let mut a = frozen();
+        a.threads[0].frames = vec![
+            Frame {
+                function: None,
+                file: None,
+                line: None,
+                module: Some("win32u.dll".into()),
+                offset: 0xa124,
+            },
+            frame(
+                "winit::platform_impl::windows::event_loop::EventLoop::wait_for_messages<enum2$<eframe::native::winit_integration::UserEvent> >",
+            ),
+            frame("eframe::run_native"),
+            frame("misterdownloadmanager::app"),
+            frame("misterdownloadmanager::main"),
+        ];
+        let input = freeze_with(&a, 0);
+        assert_eq!(
+            signature(Kind::Freeze, &input),
+            "freeze over before the snapshot"
+        );
+        let t = text(&input, None);
+        assert!(
+            t.contains("back to waiting for events when this snapshot was taken"),
+            "{t}"
+        );
+        assert!(t.contains("Its thread ran 0.0 of 7.5 s"), "{t}");
+        assert!(!t.contains("deadlock"), "{t}");
+        assert!(!t.contains("one frame never finished"), "{t}");
     }
 
     #[test]

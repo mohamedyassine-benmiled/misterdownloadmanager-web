@@ -33,6 +33,10 @@
 #. {n} = a number (keep the braces as they are)
 @plural	Matches {n} article now (it adds new ones only):|Matches {n} articles now (it adds new ones only):	Matches {n} article now (it adds new ones only):|Matches {n} articles now (it adds new ones only):
 #. count in a dialog box
+#. Cancel in Download File Info with downloads waiting behind it
+#. {n} = a number (keep the braces as they are)
+@plural	There is {n} more download waiting. Cancel it too?|There are {n} more downloads waiting. Cancel them too?	There is {n} more download waiting. Cancel it too?|There are {n} more downloads waiting. Cancel them too?
+#. count in a dialog box
 #. "files already there" question, under the first path: {n} = how many more
 #. {n} = a number (keep the braces as they are)
 @plural	and {n} other file|and {n} other files	and {n} other file|and {n} other files
@@ -56,7 +60,7 @@
 #. in a download's log, after extracting: entries of the archive not written (links, names that would leave the folder)
 #. {n} = a number (keep the braces as they are)
 @plural	{n} entry was left out (a link, or a name leading outside the folder)|{n} entries were left out (links, or names leading outside the folder)	{n} entry was left out (a link, or a name leading outside the folder)|{n} entries were left out (links, or names leading outside the folder)
-#. count in the Batch download window; count in the Link grabber window; count in the Add torrent window
+#. count in the Batch download window; count in the Link grabber window; count in the Add torrent window; count in torrentfiles.rs
 #. how many files the pattern gives in all
 #. Link grabber: a package's row: {n} is its number of links
 #. {n} = a number (keep the braces as they are)
@@ -76,6 +80,12 @@
 #. count in the main window
 #. {n} = a number (keep the braces as they are)
 @plural	{n} selected|{n} selected	{n} selected|{n} selected
+#. count in the Options window
+#. {n} = a number (keep the braces as they are)
+@plural	{n} site added from the file.|{n} sites added from the file.	{n} site added from the file.|{n} sites added from the file.
+#. count in the Options window
+#. {n} = a number (keep the braces as they are)
+@plural	{n} site saved to the file.|{n} sites saved to the file.	{n} site saved to the file.|{n} sites saved to the file.
 #. count in the main window
 #. event log entry: trackers were added to the torrent
 #. {n} = a number (keep the braces as they are)
@@ -133,6 +143,8 @@
 #. window title in extracting archives (a download's log, the Archive password window)
 #. window title: 7-Zip (a program's name) must be installed
 	7-Zip needed	7-Zip needed
+#. tab in the main window
+	720p	720p
 #. text in the Options window
 #. Options → Archives: {path} is where 7-Zip's program is
 	7z and RAR archives are extracted by 7-Zip ({path}).	7z and RAR archives are extracted by 7-Zip ({path}).
@@ -148,6 +160,9 @@
 #. text in the Options window
 #. Options → Accounts: what these accounts are, and the services' rule against sharing
 	A debrid service downloads a file host's link with your own paid account and gives MDM a direct link. Use only your own account: sharing an account or its links breaks the services' terms and can get it suspended. Downloads the browser already started stay as they are.	A debrid service downloads a file host's link with your own paid account and gives MDM a direct link. Use only your own account: sharing an account or its links breaks the services' terms and can get it suspended. Downloads the browser already started stay as they are.
+#. text in a download's progress window
+#. reason shown on the Rename box when the entered name ends with a period
+	A file name cannot end with a dot	A file name cannot end with a dot
 #. text in errors.rs
 #. a torrent through a debrid service: one of its files has a name that would be written outside its folder; nothing was written. {name} the file's name as the service gave it
 #. {name} = a file name (keep the braces as they are)
@@ -174,6 +189,9 @@
 #. text in errors.rs
 #. an error: a server on this computer redirected the download to the internet, which would not go through the chosen network adapter; {adapter} its name
 	a server on this computer sent the download elsewhere, which would not go through {adapter}	a server on this computer sent the download elsewhere, which would not go through {adapter}
+#. message or event log entry in the main window
+#. tooltip on the disabled Rename box for a single-file torrent
+	A single-file torrent keeps its name	A single-file torrent keeps its name
 #. web interface text in remote/web/app.js
 	A torrent operation is running. Wait for its result in Activity.	A torrent operation is running. Wait for its result in Activity.
 #. text in the Add torrent window
@@ -244,6 +262,9 @@
 #. text in extension.rs
 #. button in the browser extension's window: open the extension's page in that browser
 	Add the extension	Add the extension
+#. window title in extension.rs
+#. title of the window that shows how to turn on the Safari extension
+	Add the extension to Safari	Add the extension to Safari
 #. text in extension.rs
 	Add the free extension: files you download in your browser come here, and videos get a Download button.	Add the free extension: files you download in your browser come here, and videos get a Download button.
 #. text in rssdlg.rs
@@ -471,6 +492,9 @@
 	Authentication	Authentication
 #. web interface text in remote/web/app.js
 	Authentication storage is unavailable. Check server logs and directory permissions.	Authentication storage is unavailable. Check server logs and directory permissions.
+#. checkbox in the Options window; text in the Options window
+#. checkbox: the User-Agent is the default browser's, which MDM finds itself
+	Automatic	Automatic
 #. text in remote.rs; web interface text in remote/web/app.js
 #. remote control page (on a phone): category choice: the category follows the file's type
 	Automatic (by file type)	Automatic (by file type)
@@ -677,6 +701,9 @@
 	Check for updates at every start	Check for updates at every start
 #. text in helpers.rs
 	Check your connection, then try again, or get them later from the video window.	Check your connection, then try again, or get them later from the video window.
+#. text in the Options window
+#. tooltip of the close-setting: checked keeps MDM running when the window closes, in the notification area when available or else the taskbar; downloads continue; unchecked closing quits
+	Checked, closing the window keeps MDM running: it hides in the notification area when available, or minimizes to the taskbar otherwise, and downloads continue; unchecked, closing quits MDM	Checked, closing the window keeps MDM running: it hides in the notification area when available, or minimizes to the taskbar otherwise, and downloads continue; unchecked, closing quits MDM
 #. message or event log entry in the main window
 #. event log entry after Recheck: {have} and {total} are sizes ("1.2 GB of 4 GB there")
 	Checked: {have} of {total} there	Checked: {have} of {total} there
@@ -703,6 +730,9 @@
 #. {name} = a file name; {n} = a number (keep the braces as they are)
 #. the trailing ... means it is still going on: keep it
 	Checking {name} ({n} of {total})...	Checking {name} ({n} of {total})...
+#. text in the download list (sizes, speeds, status)
+#. a torrent's status while its files are read and checked; {percent} is how much is checked, e.g. "42%"
+	Checking {percent}	Checking {percent}
 #. text in the Checksum window; text in the Link grabber window; web interface text in remote/web/app.js
 #. the trailing ... means it is still going on: keep it
 	Checking...	Checking...
@@ -744,11 +774,12 @@
 	Client	Client
 #. text in the Options window
 	Clock:	Clock:
-#. text in the Checksum window; text in the main window (menus, toolbar, Categories pane); button in crashui.rs; button in a dialog box; button in extension.rs; button in the Help menu's windows (About, updates, shortcuts, Tell a friend); button in helpers.rs; button in the download list; button in the Options window; button in rssdlg.rs; text in standard windows; web interface text in remote/web/index.html
+#. text in the Checksum window; text in the main window (menus, toolbar, Categories pane); button in crashui.rs; button in a dialog box; button in extension.rs; button in the Help menu's windows (About, updates, shortcuts, Tell a friend); button in helpers.rs; button in the download list; button in the Options window; button in rssdlg.rs; button in torrentfiles.rs; text in standard windows; web interface text in remote/web/index.html
 #. both verbs: Verify = check the file now; Close = close the window
 #. tooltip of the × that closes the Categories pane
 #. verb: closes this window
 #. verb: closes the filter box
+#. button that closes the torrent file list window
 #. a window's title-bar button: closes the window
 	Close	Close
 #. what a keyboard shortcut does in the Help menu's windows (About, updates, shortcuts, Tell a friend)
@@ -788,6 +819,9 @@
 #. text in the Options window
 #. Options → DNS settings: NextDNS's own configuration ID (optional)
 	Configuration ID:	Configuration ID:
+#. text in a download's progress window
+#. verb: button that saves the deferred rename in the progress window
+	Confirm	Confirm
 #. text in the Options window
 	Confirm before deleting downloads	Confirm before deleting downloads
 #. window title in a dialog box
@@ -1127,6 +1161,10 @@
 #. text in the Download video window
 #. the trailing ... means it is still going on: keep it
 	Downloading and verifying yt-dlp...	Downloading and verifying yt-dlp...
+#. text in helpers.rs
+#. Video helpers: MDM's own yt-dlp is being downloaded
+#. the trailing ... means it is still going on: keep it
+	Downloading MDM's own copy...	Downloading MDM's own copy...
 #. text in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 #. Check for updates, while Update now downloads; {percent} like "42%"
 	Downloading the update... {percent}	Downloading the update... {percent}
@@ -1300,8 +1338,11 @@
 #. text in the Options window
 #. Options → Accounts: a note that the debrid services' support (Real-Debrid, AllDebrid, Premiumize) is new and not yet tried with real paid accounts
 	Experimental: built from the services' public API documentation, not yet confirmed with real accounts.	Experimental: built from the services' public API documentation, not yet confirmed with real accounts.
-#. message or event log entry in the main window
+#. message or event log entry in the main window; text in the Options window
 	Export	Export
+#. button in the Options window
+#. the trailing ... means it opens a window: keep it
+	Export...	Export...
 #. text in the Options window
 	Extend the availability of Manifest 2 Chrome extensions	Extend the availability of Manifest 2 Chrome extensions
 #. text in categories.rs
@@ -1392,6 +1433,10 @@
 	Files go to: {folder}	Files go to: {folder}
 #. text in the Scheduler window; tab in the Scheduler window
 	Files in the queue	Files in the queue
+#. button in a download's Properties window
+#. File Properties button that opens the selected torrent's file list
+#. the trailing ... means it opens a window: keep it
+	Files...	Files...
 #. web interface text in remote/web/index.html
 	Filter by source	Filter by source
 #. button in the Find window
@@ -1637,6 +1682,9 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Hong Kong	Hong Kong
+#. text in extension.rs
+#. button in the browser extension's window, on Safari's row: open the steps that turn the extension on
+	How to Add	How to Add
 #. text in the Scheduler window
 #. link after why the computer can't be woken (Linux, macOS): opens the guide's page that shows how an administrator can allow it
 	How to allow it	How to allow it
@@ -1670,8 +1718,11 @@
 	Ignore file modification time changes when resuming a download	Ignore file modification time changes when resuming a download
 #. web settings label in web.rs
 	Ignore modification time when resuming	Ignore modification time when resuming
-#. message or event log entry in the main window
+#. message or event log entry in the main window; text in the Options window
 	Import	Import
+#. button in the Options window
+#. the trailing ... means it opens a window: keep it
+	Import...	Import...
 #. value in a column's filter list in the download list
 	In a queue	In a queue
 #. what a keyboard shortcut does in the Help menu's windows (About, updates, shortcuts, Tell a friend)
@@ -1803,6 +1854,9 @@
 	Kazakhstan	Kazakhstan
 #. text in a dialog box; text in a download's progress window; text in the Add torrent window
 	KBytes/sec	KBytes/sec
+#. text in the Options window
+#. checkbox: closing keeps MDM running, in the notification area when available or else the taskbar, instead of quitting
+	Keep running when closing the window	Keep running when closing the window
 #. web settings label in web.rs
 	Keep seeding completed torrents	Keep seeding completed torrents
 #. checkbox in the Add torrent window
@@ -1968,6 +2022,9 @@
 #. text in crashui.rs
 #. crash report window: looking on GitHub for an issue about the same problem
 	Looking for this problem on GitHub…	Looking for this problem on GitHub…
+#. text in the Options window
+#. the trailing ... means it is still going on: keep it
+	Looking for your default browser...	Looking for your default browser...
 #. text in the Download video window
 #. the trailing ... means it is still going on: keep it
 	Looking the page up...	Looking the page up...
@@ -2534,7 +2591,7 @@
 	Only these proxies may supply X-Forwarded-For. They must overwrite incoming client headers. Leave empty when connecting directly.	Only these proxies may supply X-Forwarded-For. They must overwrite incoming client headers. Leave empty when connecting directly.
 #. checkbox in a dialog box
 	Only while I'm using the computer	Only while I'm using the computer
-#. button in a dialog box; text in a dialog box; button in a download's Properties window
+#. button in a dialog box; text in a dialog box; button in a download's Properties window; button in torrentfiles.rs
 #. verb: opens the downloaded file
 #. title of the message when a downloaded file can't be opened
 #. verb: opens the file
@@ -2543,13 +2600,20 @@
 	Open download	Open download
 #. web interface text in remote/web/index.html
 	Open existing download	Open existing download
-#. button in crashui.rs; button in a dialog box
+#. button in crashui.rs; button in a dialog box; button in torrentfiles.rs
 #. crash report window button: show the report's file in its folder
+#. button that opens the torrent's containing folder in the file manager
 	Open folder	Open folder
 #. checkbox in the Add torrent window
 	Open magnet links and .torrent files with Mister Download Manager	Open magnet links and .torrent files with Mister Download Manager
 #. text in the tray icon's menu
 	Open Mister Download Manager	Open Mister Download Manager
+#. text in extension.rs
+#. step 2 of turning on the Safari extension; Cmd is the Command key
+	Open Safari's settings (Cmd+,).	Open Safari's settings (Cmd+,).
+#. text in extension.rs
+#. step 1 of turning on the Safari extension
+	Open Safari.	Open Safari.
 #. web interface text in remote/web/index.html
 	Open the existing download to inspect or resume it, or add a separate copy with a numbered name. Existing files will not be replaced.	Open the existing download to inspect or resume it, or add a separate copy with a numbered name. Existing files will not be replaced.
 #. text in the Scheduler window
@@ -2885,6 +2949,9 @@
 #. web interface text in remote/web/app.js
 #. {n} = a number (keep the braces as they are)
 	Remove {n} downloads from the list?	Remove {n} downloads from the list?
+#. text in a download's progress window
+#. noun: label before the deferred new file or folder name in the progress window
+	Rename	Rename
 #. web interface text in remote/web/index.html
 	Replace address	Replace address
 #. text in the Batch download window
@@ -2947,6 +3014,8 @@
 #. text in the Scheduler window
 #. Saturday, as short as a calendar's column head (two letters in English)
 	Sa	Sa
+#. text in extension.rs
+	Safari turns "Allow unsigned extensions" off each time it quits: do steps 1 to 6 again after restarting it.	Safari turns "Allow unsigned extensions" off each time it quits: do steps 1 to 6 again after restarting it.
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Saint Barthélemy	Saint Barthélemy
@@ -3005,6 +3074,9 @@
 #. web interface text in remote/web/index.html
 	Save torrent changes	Save torrent changes
 #. text in a download's progress window
+#. status shown in green beside the Rename box once the new name is saved
+	Saved	Saved
+#. text in a download's progress window
 #. label before the folder the torrent is saved in
 	Saved in	Saved in
 #. web interface text in remote/web/index.html
@@ -3033,7 +3105,7 @@
 #. text in a dialog box
 #. title of the folder picker
 	Select a folder	Select a folder
-#. button in playlistdlg.rs; button in the Add torrent window
+#. button in playlistdlg.rs; button in the Add torrent window; text in torrentfiles.rs
 #. button in Download video for a playlist: tick every video
 	Select all	Select all
 #. what a keyboard shortcut does in the Help menu's windows (About, updates, shortcuts, Tell a friend)
@@ -3147,6 +3219,10 @@
 #. message or event log entry in the main window
 #. event log entry, past tense: a finished torrent stopped being shared to others because its share ratio (sent ÷ received) reached the limit set in Torrent settings; {ratio} = e.g. 2.00
 	Sharing stopped: the share ratio reached {ratio}	Sharing stopped: the share ratio reached {ratio}
+#. message or event log entry in the main window
+#. event log entry on a finished torrent when re-attaching it to keep sharing failed; {error} = why
+#. {error} = an error message (keep the braces as they are)
+	Sharing stopped: {error}	Sharing stopped: {error}
 #. text in the download list
 	Show	Show
 #. message or event log entry in the main window
@@ -3244,8 +3320,9 @@
 	Size:	Size:
 #. web interface text in remote/web/index.html
 	Skip to content	Skip to content
-#. text in a download's progress window
+#. text in a download's progress window; text in torrentfiles.rs
 #. a torrent file the user chose not to download
+#. status of a torrent file the user chose not to download
 	Skipped	Skipped
 #. text in the queues
 #. what the computer does when the queue is done (verb: put it to sleep)
@@ -3309,6 +3386,9 @@
 	Speed Limiter	Speed Limiter
 #. window title in a dialog box
 	Speed Limiter settings	Speed Limiter settings
+#. message or event log entry in the main window
+#. tooltip on the disabled Rename box when the file is one part of a split archive (.part1.rar, .7z.001…)
+	Split archive volumes keep their names for extraction	Split archive volumes keep their names for extraction
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Sri Lanka	Sri Lanka
@@ -3413,6 +3493,9 @@
 #. event log entry: the download stopped to start again through the network adapter as it is now (a VPN reconnected, another adapter chosen)
 	Stopped: the network adapter changed; starting again	Stopped: the network adapter changed; starting again
 #. message or event log entry in the main window
+#. event log entry: a video or gallery download stopped to start again at the new speed limit (its helper program takes a limit only as it starts)
+	Stopped: the speed limit changed; starting again with it	Stopped: the speed limit changed; starting again with it
+#. message or event log entry in the main window
 #. event log entry: the download stopped because the chosen network adapter (a VPN's, usually) went away; {adapter} its name
 	Stopped: {adapter} is not connected; it goes on when it is back	Stopped: {adapter} is not connected; it goes on when it is back
 #. text in a download's progress window
@@ -3452,6 +3535,15 @@
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Sweden	Sweden
+#. text in extension.rs
+#. step 3 of turning on the Safari extension; the quoted tab name is what Safari's settings show in this language: use Apple's own word for it, or keep the English name when unsure
+	Switch to the "Advanced" tab (the cogwheels).	Switch to the "Advanced" tab (the cogwheels).
+#. text in extension.rs
+#. step 5 of turning on the Safari extension; the quoted tab name is what Safari's settings show in this language: use Apple's own word for it, or keep the English name when unsure
+	Switch to the "Developer" tab (the screwdriver and spanner).	Switch to the "Developer" tab (the screwdriver and spanner).
+#. text in extension.rs
+#. step 7 of turning on the Safari extension; the quoted tab name is what Safari's settings show in this language: use Apple's own word for it, or keep the English name when unsure
+	Switch to the "Extensions" tab (the puzzle piece).	Switch to the "Extensions" tab (the puzzle piece).
 #. text in countries.rs
 #. a country's name (where a download's server is)
 	Switzerland	Switzerland
@@ -3592,6 +3684,8 @@
 	the drive or network share is no longer available	the drive or network share is no longer available
 #. web interface text in remote/web/app.js
 	The existing download was removed while the dialog was open. Review the list before adding it again.	The existing download was removed while the dialog was open. Review the list before adding it again.
+#. text in extension.rs
+	The extension is already in this app. Apple hasn't notarized this build, so Safari needs these steps to allow it.	The extension is already in this app. Apple hasn't notarized this build, so Safari needs these steps to allow it.
 #. text in errors.rs
 	the file changed on the server	the file changed on the server
 #. message or event log entry in the main window
@@ -3599,7 +3693,7 @@
 	The file could not be moved: {error}	The file could not be moved: {error}
 #. web interface text in remote/web/app.js
 	The file could not be read. Check its location and server permissions.	The file could not be read. Check its location and server permissions.
-#. message or event log entry in the main window
+#. message or event log entry in the main window; text in the Options window
 #. {error} = an error message (keep the braces as they are)
 	The file could not be read: {error}	The file could not be read: {error}
 #. text in the Checksum window
@@ -3639,11 +3733,14 @@
 #. text in extension.rs
 #. a check of Test browser integration: the browsers are set up, but the small helper program they start (misterdownloadmanager-nmhost) is gone
 	The helper program the browsers start is missing	The helper program the browsers start is missing
-#. message or event log entry in the main window
+#. message or event log entry in the main window; text in the Options window
 #. {error} = an error message (keep the braces as they are)
 	The list could not be saved: {error}	The list could not be saved: {error}
 #. text in whereis.rs
 	the local network	the local network
+#. text in a download's progress window
+#. reason shown on the Rename box when the entered name exceeds the length limit
+	The name is too long	The name is too long
 #. text in errors.rs; text in torrent downloads
 #. an error: the network adapter chosen in Options (a VPN's, usually) is off or gone; {adapter} its name
 	the network adapter {adapter} is not connected	the network adapter {adapter} is not connected
@@ -3702,6 +3799,15 @@
 #. text in the Download video window
 #. the Download video window: the site asked for a sign-in although yt-dlp had the cookies of the browser chosen in Options; {browser} = its name
 	The site wants you signed in, even with {browser}'s cookies. Sign in to it in {browser}, then look the page up again.	The site wants you signed in, even with {browser}'s cookies. Sign in to it in {browser}, then look the page up again.
+#. text in the Download video window
+#. the Download video window: the site's bot check (Cloudflare) turned yt-dlp away though the browser's extension passed the page's cookies
+	The site's bot check (Cloudflare) refused yt-dlp, even with your browser's cookies for this page. Try again later, or from another browser.	The site's bot check (Cloudflare) refused yt-dlp, even with your browser's cookies for this page. Try again later, or from another browser.
+#. text in the Download video window
+#. the Download video window: the site's bot check (Cloudflare) turned yt-dlp away though it had the cookies of the browser chosen in Options; {browser} = its name
+	The site's bot check (Cloudflare) refused yt-dlp, even with {browser}'s cookies. Use the Download video button over the video in {browser}, or try the page again later.	The site's bot check (Cloudflare) refused yt-dlp, even with {browser}'s cookies. Use the Download video button over the video in {browser}, or try the page again later.
+#. text in the Download video window
+#. the Download video window: the site's bot check (Cloudflare) turned yt-dlp away and no browser cookies were used
+	The site's bot check (Cloudflare) refused yt-dlp. If the page opens in your browser, choose that browser in Options → Sites Logins → Cookies for video sites and look the page up again, or use the Download video button over the video.	The site's bot check (Cloudflare) refused yt-dlp. If the page opens in your browser, choose that browser in Options → Sites Logins → Cookies for video sites and look the page up again, or use the Download video button over the video.
 #. text in crashui.rs
 #. crash report window: the symbols couldn't be downloaded; the report still works
 	The symbols couldn't be fetched: some lines of the report show addresses instead of names (the developers can still read them).	The symbols couldn't be fetched: some lines of the report show addresses instead of names (the developers can still read them).
@@ -3757,6 +3863,8 @@
 #. message or event log entry in the main window
 #. in the empty download list, under its title
 	This category or queue holds no downloads yet.	This category or queue holds no downloads yet.
+#. text in a download's progress window
+	This character is not allowed in a file name	This character is not allowed in a file name
 #. text in the Options window
 #. Options → Remote → Pair a device: the code ran out (10 minutes, or 5 wrong tries)
 	This code can't be used any more.	This code can't be used any more.
@@ -3789,6 +3897,12 @@
 	This file is too large to be a torrent.	This file is too large to be a torrent.
 #. text in a dialog box
 	This folder does not exist:	This folder does not exist:
+#. message or event log entry in the main window
+#. tooltip on the disabled Rename box when the folder already holds files this download did not write
+	This folder holds files from outside this download	This folder holds files from outside this download
+#. message or event log entry in the main window
+#. tooltip on the disabled Rename box when the folder holds another download or is a save/category folder
+	This folder is shared with another download or save folder	This folder is shared with another download or save folder
 #. text in errors.rs
 #. a download's error: a Google Drive file that isn't shared with everyone
 	this Google Drive file needs you to sign in: sign in to Google in your browser, then download it from there	this Google Drive file needs you to sign in: sign in to Google in your browser, then download it from there
@@ -3809,6 +3923,9 @@
 #. text in the Add torrent window
 #. a magnet link's lookup, after 30 seconds: it can't find any peer at all
 	This magnet link names no trackers and the DHT is off, so no peer can be found.	This magnet link names no trackers and the DHT is off, so no peer can be found.
+#. text in a download's progress window
+#. reason shown on the Rename box when the entered name is a reserved device name on Windows (CON, NUL, COM1…)
+	This name is reserved by Windows	This name is reserved by Windows
 #. tooltip (why a control is greyed) in the Download video window
 #. why "Put them into the video" is greyed: ffmpeg (a helper program) is not installed
 	This needs ffmpeg	This needs ffmpeg
@@ -3824,6 +3941,9 @@
 #. error: a program chosen as yt-dlp or ffmpeg didn't answer as one; {name} = yt-dlp or ffmpeg
 #. {name} = a file name (keep the braces as they are)
 	this program isn't {name}	this program isn't {name}
+#. text in errors.rs
+#. why a download failed: the site's bot check (Cloudflare) lets browsers through, not programs. Alt+click: the link clicked with the Alt key held, which leaves the download to the browser
+	this site lets only browsers through; Alt+click the link	this site lets only browsers through; Alt+click the link
 #. text in a download's progress window
 	This system has no dial-up connections to hang up	This system has no dial-up connections to hang up
 #. text in errors.rs
@@ -3841,6 +3961,10 @@
 #. text in the Download video window
 #. the Download video window: the video needs the user to be signed in
 	This video needs you to be signed in. Use the Download video button over it in your browser, which passes your sign-in on, or choose your browser in Options → Sites Logins → Cookies for video sites.	This video needs you to be signed in. Use the Download video button over it in your browser, which passes your sign-in on, or choose your browser in Options → Sites Logins → Cookies for video sites.
+#. text in errors.rs
+#. a download's error: the address is a site's web page that needs a browser, not the file; {site} = the site's name (gofile)
+#. {site} = a web site's name such as "example.com" (keep the braces as they are)
+	this {site} link is a web page, not the file: open it in your browser and download from there	this {site} link is a web page, not the file: open it in your browser and download from there
 #. text in whereis.rs
 #. where a download's server is, when a proxy carries it (the proxy's place not known)
 	through a proxy	through a proxy
@@ -3898,8 +4022,9 @@
 	Torrent downloads (magnet links and .torrent files)	Torrent downloads (magnet links and .torrent files)
 #. web interface text in remote/web/index.html
 	Torrent file	Torrent file
-#. message or event log entry in the main window; text in the Add torrent window
+#. message or event log entry in the main window; text in the Add torrent window; window title in torrentfiles.rs
 #. the kind of file the Open dialog lists
+#. title of the separate window listing a torrent's files
 	Torrent files	Torrent files
 #. web interface text in remote/web/app.js
 	Torrent info hash	Torrent info hash
@@ -3987,6 +4112,18 @@
 #. text in the tray icon's menu
 #. verb: turn the Speed Limiter on
 	Turn on	Turn on
+#. text in extension.rs
+#. step 6 of turning on the Safari extension; the quoted switch name is what Safari's settings show in this language: use Apple's own words for it, or keep the English name when unsure
+	Turn on "Allow unsigned extensions".	Turn on "Allow unsigned extensions".
+#. text in extension.rs
+#. step 8 of turning on the Safari extension
+	Turn on "Mister Download Manager" and allow it on all websites.	Turn on "Mister Download Manager" and allow it on all websites.
+#. text in extension.rs
+#. step 4 of turning on the Safari extension; the quoted switch name is what Safari's settings show in this language: use Apple's own words for it, or keep the English name when unsure
+	Turn on "Show features for web developers".	Turn on "Show features for web developers".
+#. text in extension.rs
+#. the headline of the window that shows how to turn on the Safari extension
+	Turn on the extension in Safari	Turn on the extension in Safari
 #. tooltip (why a control is greyed) in the Options window
 #. why Options → Remote → Pair a device... is greyed
 	Turn on the remote control first.	Turn on the remote control first.
@@ -4331,6 +4468,11 @@
 #. text in extension.rs
 #. a row of the browser extension's window when no browser was found by name
 	Your browser	Your browser
+#. text in the Options window
+	Your default browser isn't one MDM knows: a current Chrome's User-Agent	Your default browser isn't one MDM knows: a current Chrome's User-Agent
+#. text in the Options window
+#. tooltip; {browser} is a browser and its version, e.g. "Brave 157"
+	Your default browser's User-Agent: {browser}	Your default browser's User-Agent: {browser}
 #. text in the settings
 #. Options → DNS: the name of a DNS the user typed in, in messages: "your DNS (DNS over TLS)"
 	your DNS ({how})	your DNS ({how})
@@ -4360,6 +4502,21 @@
 #. the Download video window: yt-dlp couldn't read the cookies of the browser chosen in Options; {browser} = its name, {error} = yt-dlp's words
 #. {error} = an error message (keep the braces as they are)
 	yt-dlp couldn't read {browser}'s cookies: {error}	yt-dlp couldn't read {browser}'s cookies: {error}
+#. text in a download's progress window
+#. progress window, a video's line: the helper program yt-dlp gave no address MDM's own downloader could use
+	yt-dlp downloads it itself	yt-dlp downloads it itself
+#. text in a download's progress window
+#. progress window, a video's line: MDM's own downloader can't take a live broadcast, so the helper program yt-dlp records it
+	yt-dlp downloads it itself: a live stream	yt-dlp downloads it itself: a live stream
+#. text in a download's progress window
+#. progress window, a video's line: a stream sent in many small pieces of a rare kind (Adobe HDS, Smooth Streaming), which the helper program yt-dlp downloads itself
+	yt-dlp downloads it itself: a stream in pieces	yt-dlp downloads it itself: a stream in pieces
+#. text in a download's progress window
+#. progress window, a video's line: the stream is copy-protected (DRM), left to the helper program yt-dlp, which refuses it
+	yt-dlp downloads it itself: protected (DRM)	yt-dlp downloads it itself: protected (DRM)
+#. text in a download's progress window
+#. progress window, a video's line: {protocol} = a streaming protocol's short name (rtmp, rtsp, mms); MDM's own downloader doesn't speak it, so the helper program yt-dlp downloads it
+	yt-dlp downloads it itself: {protocol}	yt-dlp downloads it itself: {protocol}
 #. text in the Download video window
 #. the Download video window: the browser chosen in Options has no cookies on this computer (not installed, or another profile); {browser} = its name
 	yt-dlp found no cookies of {browser} on this computer. Check the browser and its profile in Options → Sites Logins.	yt-dlp found no cookies of {browser} on this computer. Check the browser and its profile in Options → Sites Logins.
@@ -4421,6 +4578,10 @@
 #. remote control page (on a phone): progress; {done} and {size} are sizes ("1.2 MB of 7.5 MB")
 #. {size} = a file size such as "4.2 MB" (keep the braces as they are)
 	{done} of {size}	{done} of {size}
+#. text in deferred_rename.rs
+#. appended to an OS error when a case-only rename could not move the temporary file back to its original name; {error} = first OS error, {path} = temporary path left on disk, {rollback_error} = second OS error
+#. {error} = an error message (keep the braces as they are)
+	{error} (left as {path}: {rollback_error})	{error} (left as {path}: {rollback_error})
 #. text in a download's Properties window
 #. a kind of file, by its extension: {ext} = "ZIP", "PDF"…
 	{ext} File	{ext} File
@@ -4601,11 +4762,17 @@ column	File Name	File Name
 #. column title in the download list in the download list
 column	Last Try Date	Last Try Date
 #. column title in the download list in the download list
+#. column title: how many peers a torrent is connected to now (seeders and leechers)
+column	Peers	Peers
+#. column title in the download list in the download list
 #. column title: one letter for Queue (the column is narrow)
 column	Q	Q
 #. column title in the main window; column title in the download list
 #. tooltip of the narrow "Q" column's title
 column	Queue	Queue
+#. column title in the download list in the download list
+#. column title: what a torrent has sent to peers against what it took
+column	Share ratio	Share ratio
 #. column title in the download list in the download list
 #. noun: the file's size
 column	Size	Size
@@ -4619,9 +4786,21 @@ column	Status	Status
 column	Time left	Time left
 #. column title in the download list in the download list
 column	Transfer rate	Transfer rate
+#. column title in the download list in the download list
+#. column title: what a torrent sends to peers, bytes per second
+column	Upload speed	Upload speed
+#. text in the browser extension
+#. in the menu under the download button over a video: the page is a list of videos (a playlist), whose videos are chosen in the app's window; keep the name Mister Download Manager as it is
+extension	A list of videos: choose them in Mister Download Manager	A list of videos: choose them in Mister Download Manager
+#. text in the browser extension
+#. shown briefly on the download button over a video after a quality was picked: the download was added to the app's download queue, to start later
+extension	Added to the queue	Added to the queue
 #. text in the browser extension
 #. choice under Send downloads to: an MDM running on another computer of the network, such as a home server; keep the name Mister Download Manager as it is
 extension	Another Mister Download Manager (a server)	Another Mister Download Manager (a server)
+#. text in the browser extension
+#. tab above the list of qualities in the menu under the download button over a video: the choices that are sound only (MP3, Opus and the like); short, one word
+extension	Audio	Audio
 #. text in the browser extension
 #. the name this browser gets in the other MDM's list of paired devices
 extension	Browser extension	Browser extension
@@ -4639,6 +4818,9 @@ extension	Connected to Mister Download Manager	Connected to Mister Download Mana
 #. the toolbar button's status when the browser reaches the app, with the app's version number; keep the name Mister Download Manager as it is
 #. {version} = a version number (keep the braces as they are)
 extension	Connected to Mister Download Manager {version}	Connected to Mister Download Manager {version}
+#. text in the browser extension
+#. in the menu under the download button over a video: finding the video's qualities failed; the app's own explanation follows on the next line
+extension	Could not look it up	Could not look it up
 #. text in the browser extension
 #. button beside a video, sound or stream in the toolbar button's popup: download it with the app; verb; short
 extension	Download	Download
@@ -4708,6 +4890,12 @@ extension	Left to the browser: {name}	Left to the browser: {name}
 #. beside a stream in the toolbar button's popup: it is a live broadcast (no fixed length); short
 extension	Live	Live
 #. text in the browser extension
+#. in the menu that opens from the download button over a video, while the app finds which qualities (resolutions, formats) the video can be downloaded in
+extension	Looking up the qualities…	Looking up the qualities…
+#. text in the browser extension
+#. in the menu under the download button over a video: the app took more than a minute to find the video's qualities, so the menu stopped waiting
+extension	Looking up took too long	Looking up took too long
+#. text in the browser extension
 #. heading in the toolbar button's popup over the list of the videos, sounds and streams the current web page has loaded
 extension	Media on this page	Media on this page
 #. text in the browser extension
@@ -4720,11 +4908,17 @@ extension	Mister Download Manager didn't start in time	Mister Download Manager d
 #. status when the app refuses this copy of the extension (another copy is installed, or it came from another store); keep the name Mister Download Manager as it is
 extension	Mister Download Manager doesn't accept this copy of the extension	Mister Download Manager doesn't accept this copy of the extension
 #. text in the browser extension
+#. in the menu under the download button over a video: the app is already looking up other videos and can't look this one up now; keep the name Mister Download Manager as it is
+extension	Mister Download Manager is busy with other videos	Mister Download Manager is busy with other videos
+#. text in the browser extension
 #. shown briefly on the download button when the app could not be reached; keep the name Mister Download Manager as it is
 extension	Mister Download Manager isn't installed or didn't start	Mister Download Manager isn't installed or didn't start
 #. text in the browser extension
 #. status when the browser can't find the app's connection; keep the name Mister Download Manager as it is
 extension	Mister Download Manager isn't installed, or its browser integration isn't set up	Mister Download Manager isn't installed, or its browser integration isn't set up
+#. text in the browser extension
+#. in the menu under the download button over a video: the app needs the yt-dlp tool (a program's name, keep it as it is) to find this video's qualities, and it isn't installed; keep the name Mister Download Manager as it is
+extension	Mister Download Manager needs yt-dlp for this video	Mister Download Manager needs yt-dlp for this video
 #. text in the browser extension
 #. tooltip of the switch Send downloads through this browser's proxy or VPN extension; keep the name Mister Download Manager as it is
 extension	Mister Download Manager then downloads through the same proxy as this browser. The browser asks you once to allow it; turning this off takes that back.	Mister Download Manager then downloads through the same proxy as this browser. The browser asks you once to allow it; turning this off takes that back.
@@ -4746,8 +4940,14 @@ extension	Never take downloads from {site}	Never take downloads from {site}
 #. shown in the toolbar button's popup when the current web page hasn't loaded any video, sound or stream yet
 extension	No video or sound found on this page yet. Play it, then open this again.	No video or sound found on this page yet. Play it, then open this again.
 #. text in the browser extension
+#. in the menu under the download button over a video: the app found no quality of the video it could download
+extension	No video to download here	No video to download here
+#. text in the browser extension
 #. pairing failed: the other MDM didn't answer
 extension	Not reached. Open its address once in this browser and accept its certificate, then try again.	Not reached. Open its address once in this browser and accept its certificate, then try again.
+#. text in the browser extension
+#. last command of the menu of qualities under the download button over a video: opens the app's Download video window for this video instead; keep the name Mister Download Manager as it is
+extension	Open in Mister Download Manager…	Open in Mister Download Manager…
 #. text in the browser extension
 #. button: open the other MDM's address in a tab (to accept its certificate once)
 extension	Open it	Open it
@@ -4757,6 +4957,9 @@ extension	Open its address once and accept its certificate, then enter a code fr
 #. text in the browser extension
 #. button in the toolbar button's popup; keep the name Mister Download Manager as it is
 extension	Open Mister Download Manager	Open Mister Download Manager
+#. text in the browser extension
+#. shown briefly on the download button over a video in a feed (a social site's home page, a timeline) when nothing in the feed gives that video's own address, so nothing was sent: the user should open the post the video belongs to and click the button on that page; short
+extension	Open the post, then use the button there	Open the post, then use the button there
 #. text in the browser extension
 #. button in the toolbar button's popup: open the app's Options
 #. the trailing ... means it is still going on: keep it
@@ -4770,6 +4973,9 @@ extension	Pairing code	Pairing code
 #. text in the browser extension
 #. status when the user switched off taking downloads in the toolbar button's popup
 extension	Paused: downloads stay with the browser	Paused: downloads stay with the browser
+#. text in the browser extension
+#. Option in the browser extension media list: put the page title before the original file name when downloading a detected media file
+extension	Prefix media file names with the page title	Prefix media file names with the page title
 #. text in the browser extension
 #. shown instead of the Download button beside a copy-protected (DRM) stream in the toolbar button's popup: it can't be downloaded; short
 extension	Protected	Protected
@@ -4824,6 +5030,9 @@ extension	Update Mister Download Manager to use everything this extension offers
 #. text in the browser extension
 #. why a download stayed with the browser: the app's setting 'Use advanced browser integration' is off; keep the setting's name as the app shows it
 extension	Use advanced browser integration is off in Options → General.	Use advanced browser integration is off in Options → General.
+#. text in the browser extension
+#. tab above the list of qualities in the menu under the download button over a video: the choices that include picture (video with sound); short, one word
+extension	Video	Video
 #. text in the browser extension
 #. pairing failed: codes tried too fast
 extension	Wait a moment, then try again.	Wait a moment, then try again.
@@ -4915,6 +5124,10 @@ menu	&Add new download	&Add new download
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 #. the trailing ... means it opens a window: keep it
 menu	&Add new download...	&Add new download...
+#. menu command in the main window
+#. View → Text: letters drawn the classic way, hinted to whole pixels (crisp, coarse on a dense screen)
+#. & marks the keyboard shortcut letter: keep one & before a letter of the translation
+menu	&Classic	&Classic
 #. menu command in standard windows
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 menu	&Copy	&Copy
@@ -4978,12 +5191,24 @@ menu	&RSS feeds...	&RSS feeds...
 #. menu command in the main window
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 menu	&Scheduler and queues	&Scheduler and queues
+#. menu command in a download's progress window
+#. right-click menu of a download window's tab row: bring back the tabs taken off with "Hide tab"
+#. & marks the keyboard shortcut letter: keep one & before a letter of the translation
+menu	&Show hidden tabs	&Show hidden tabs
+#. menu command in the main window
+#. View → Text: letters drawn smooth, as Windows' modern apps draw them, anti-aliased at any size
+#. & marks the keyboard shortcut letter: keep one & before a letter of the translation
+menu	&Smooth	&Smooth
 #. menu command in the main window
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 menu	&Stop All	&Stop All
 #. menu command in the main window
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 menu	&Stop Download	&Stop Download
+#. menu command in the main window
+#. View menu: submenu choosing how the text is drawn (smooth or classic)
+#. & marks the keyboard shortcut letter: keep one & before a letter of the translation
+menu	&Text	&Text
 #. menu command in the main window
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 menu	&Tray icon	&Tray icon
@@ -5122,8 +5347,15 @@ menu	E&xport	E&xport
 #. menu command in the main window
 menu	Edit queue	Edit queue
 #. menu command in the main window
+#. View → Theme: a style theme's name (a white canvas, emerald fills, 6-point corners), a name: keep "Emerald" as written
+menu	Emerald	Emerald
+#. menu command in the main window
 #. verb: unpack the downloaded archive (zip, 7z, rar) into its folder
 menu	Extract	Extract
+#. menu command in the main window
+#. right-click → Torrent submenu: open the selected torrent's file list
+#. the trailing ... means it opens a window: keep it
+menu	Files...	Files...
 #. menu command in the main window
 menu	Find (Ctrl-F)	Find (Ctrl-F)
 #. menu command in the main window

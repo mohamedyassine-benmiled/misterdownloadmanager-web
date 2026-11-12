@@ -32,10 +32,12 @@ pub fn monitor_main(m: MonitorArgs) -> eframe::Result {
     );
     let (tx, rx) = channel();
     {
-        let (socket, data, tx) = (m.socket.clone(), m.data.clone(), tx.clone());
+        let (socket, data, tx, failed) = (m.socket.clone(), m.data.clone(), tx.clone(), tx.clone());
         std::thread::spawn(move || {
             if let Err(e) = monitor::serve(&socket, &data, tx) {
-                tracing::error!("crash monitor: {e}");
+                // The app can't connect: say so, rather than waiting beside it as a second
+                // process that can never report anything.
+                let _ = failed.send(Event::ServeFailed(e));
             }
         });
     }
@@ -72,6 +74,10 @@ pub fn monitor_main(m: MonitorArgs) -> eframe::Result {
                 return Ok(());
             }
             Ok(Event::Recovered) => {}
+            Ok(Event::ServeFailed(e)) => {
+                tracing::error!("crash monitor: {e}");
+                return Ok(());
+            }
             Err(_) => return Ok(()),
         }
     };
@@ -85,6 +91,7 @@ pub fn monitor_main(m: MonitorArgs) -> eframe::Result {
     // And its interface size (#262): the window is made before the zoom applies, so its size is
     // given zoomed (brought inside the screen at its first frame).
     let zoom = crate::scale::startup(settings.interface_size);
+    crate::theme::init_smooth_text(settings.smooth_text);
     let builder = crate::quiet(
         ViewportBuilder::default()
             .with_title(crate::i18n::t("Mister Download Manager crash report"))
@@ -184,6 +191,10 @@ struct ReportWindow {
     icon: Option<egui::TextureHandle>,
     /// Windows' caption follows the window's theme (set once the window exists).
     caption_set: bool,
+    /// DWM gave the caption its light or dark (once: asked every second, it caught the window's
+    /// thread in a stalled system, #633).
+    #[cfg(windows)]
+    caption_dwm: bool,
     /// Brought inside the screen once it exists (scale::fit_window, #262).
     fitted: bool,
 }
@@ -202,6 +213,8 @@ impl ReportWindow {
             told: None,
             icon: None,
             caption_set: false,
+            #[cfg(windows)]
+            caption_dwm: false,
             fitted: false,
         }
     }
@@ -319,12 +332,14 @@ impl eframe::App for ReportWindow {
             let layout = egui::vec2(CLIENT[0], CLIENT[1]);
             crate::scale::fit_window(ui.ctx(), egui::vec2(120.0, 120.0), Some(layout));
         }
-        // Re-asserted as the main window does (winit can set it back from Windows' own mode).
+        // And through DWM, as the main window's, once the window is there.
         #[cfg(windows)]
-        crate::win32::caption_dark(
-            crate::i18n::t("Mister Download Manager crash report"),
-            crate::theme::dark_surface(),
-        );
+        if !self.caption_dwm {
+            self.caption_dwm = crate::win32::caption_dark(
+                crate::i18n::t("Mister Download Manager crash report"),
+                crate::theme::dark_surface(),
+            );
+        }
         while let Ok(e) = self.events.try_recv() {
             if matches!(e, Event::Recovered) {
                 self.recovered = true;
@@ -376,7 +391,7 @@ impl ReportWindow {
 
         // The app's icon and the heading.
         let icon = self.icon.get_or_insert_with(|| {
-            let i = crate::app_icon();
+            let i = crate::app_picture();
             let img = egui::ColorImage::from_rgba_unmultiplied(
                 [i.width as usize, i.height as usize],
                 &i.rgba,

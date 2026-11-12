@@ -15,8 +15,9 @@ use mdm_engine::download::State;
 use mdm_torrent::{Config, Phase, Torrents};
 use serde::{Deserialize, Serialize};
 
-/// What a torrent download keeps in the list (downloads.json).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// What a torrent download keeps in the list (downloads.json). `Eq` is not derived: its live
+/// `up_speed` is an `f64`, and nothing compares a whole spec for equality.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct TorrentSpec {
     /// The info hash, 40 hex digits; the .torrent itself is in [`torrent_file`].
     pub hash: String,
@@ -31,6 +32,15 @@ pub struct TorrentSpec {
     /// Seconds it has spent sharing once finished, in all its runs.
     #[serde(default)]
     pub seeded_secs: u64,
+    /// Peers connected to it now (#357), for the list's "Peers" column; every connected peer,
+    /// seeders and leechers alike. Live only: never saved, and zero whenever there is no torrent
+    /// session or the session has no numbers for it.
+    #[serde(skip)]
+    pub peers: usize,
+    /// What it sends to peers right now, bytes/s (#357), for the list's "Upload speed" column.
+    /// Live only, like [`peers`](Self::peers): never saved, zero without a session or stats.
+    #[serde(skip)]
+    pub up_speed: f64,
     /// Its own upload limit, bytes/s (None: only Torrent settings' limit for all torrents).
     #[serde(default)]
     pub upload_limit: Option<u64>,
@@ -86,7 +96,7 @@ pub fn sharing_limit_reached(
     done: u64,
     limits: SharingLimits,
 ) -> Option<Reached> {
-    let ratio = spec.uploaded as f64 / done.max(1) as f64;
+    let ratio = share_ratio(spec.uploaded, done);
     if let Some(r) = limits.ratio
         && done > 0
         && ratio >= r
@@ -99,6 +109,30 @@ pub fn sharing_limit_reached(
         return Some(Reached::Time(spec.seeded_secs));
     }
     None
+}
+
+/// No session is running: nothing is connected and nothing is moving, whatever the list last
+/// showed (#357).
+pub fn clear_live<'a>(specs: impl Iterator<Item = &'a mut TorrentSpec>) {
+    specs.for_each(|t| {
+        t.peers = 0;
+        t.up_speed = 0.0;
+    });
+}
+
+/// A torrent's share ratio: what it sent to peers against what it has. Zero while it has nothing.
+pub fn share_ratio(sent: u64, done: u64) -> f64 {
+    if done == 0 {
+        0.0
+    } else {
+        sent as f64 / done as f64
+    }
+}
+
+/// [`share_ratio`] as the interface writes it, in the list and the progress window's General tab:
+/// two decimals, `0.00` while it has nothing.
+pub fn share_ratio_text(sent: u64, done: u64) -> String {
+    crate::i18n::decimal(share_ratio(sent, done), 2)
 }
 
 /// Adds up what each torrent sent, run after run: librqbit's count starts at 0 again each time
@@ -474,18 +508,31 @@ impl Host {
                 Ok(Done::Rechecking)
             }
             Act::Reannounce => {
-                if let Some(t) = self.get() {
+                if let Some(t) = self.get().filter(|t| t.has(hash)) {
                     t.reannounce(hash).await.map_err(err)?;
                 }
                 Ok(Done::Reannounced)
             }
             Act::Choose { files, pause } => {
-                if let Some(t) = self.get().filter(|t| t.has(hash)) {
+                if let Some(t) = self.get() {
+                    if !t.has(hash) {
+                        let file = torrent_file(hash).ok_or(crate::i18n::t("no data folder"))?;
+                        let bytes = std::fs::read(&file)
+                            .map_err(|_| crate::i18n::t("the .torrent file kept for it is gone"))?;
+                        t.add(&bytes, &spec.folder, Some(files.clone()), Vec::new(), pause)
+                            .await
+                            .map_err(err)?;
+                        return Ok(Done::Chosen);
+                    }
                     t.choose(hash, &files.into_iter().collect())
                         .await
                         .map_err(err)?;
                     if pause {
-                        t.pause(hash).await.map_err(err)?;
+                        if t.stats(hash).is_ok_and(|s| s.phase == Phase::Finished) {
+                            t.remove(hash, false).await.map_err(err)?;
+                        } else {
+                            t.pause(hash).await.map_err(err)?;
+                        }
                     }
                 }
                 Ok(Done::Chosen)
@@ -496,6 +543,112 @@ impl Host {
     /// Whether an action is busy with this torrent.
     pub fn busy(&self, hash: &str) -> bool {
         self.busy.lock().unwrap().contains(hash)
+    }
+
+    /// Rename a finished torrent's file or folder on disk through the host's busy guard.
+    ///
+    /// Returns `Err(hold)` when another host action is currently busy with `spec.hash` so the
+    /// caller can retry on a later tick. When `keep_sharing` is on:
+    /// - a renamed multi-file folder torrent is re-attached at the new folder with its saved
+    ///   piece bitmap, rate limits and piece order;
+    /// - if the rename fails after detaching, the torrent is re-attached at `spec.folder` so
+    ///   sharing does not stop.
+    #[allow(clippy::too_many_arguments)]
+    pub fn rename_finished(
+        &self,
+        rt: &tokio::runtime::Handle,
+        known: HashSet<String>,
+        spec: &TorrentSpec,
+        from: PathBuf,
+        initial_to: PathBuf,
+        hold: Option<mdm_engine::naming::Reservation>,
+        is_dir: bool,
+        keep_sharing: bool,
+        tx: std::sync::mpsc::Sender<(Result<PathBuf, String>, Option<String>)>,
+    ) -> Result<(), Option<mdm_engine::naming::Reservation>> {
+        {
+            let mut busy = self.busy.lock().unwrap();
+            if busy.contains(&spec.hash) {
+                return Err(hold);
+            }
+            busy.insert(spec.hash.clone());
+        }
+        let (host, spec) = (self.clone(), spec.clone());
+        rt.spawn(async move {
+            let mut sharing_error: Option<String> = None;
+            let session = if keep_sharing && is_dir {
+                match host.session(known).await {
+                    Ok(t) => Some(t),
+                    Err(e) => {
+                        sharing_error = Some(e);
+                        None
+                    }
+                }
+            } else {
+                host.get()
+            };
+            let detached = match &session {
+                Some(t) => t.detach(&spec.hash).await.ok().flatten(),
+                None => None,
+            };
+            let mut res = crate::deferred_rename::rename_entry_io(&from, &initial_to);
+            for _ in 1..6 {
+                match &res {
+                    Ok(()) => break,
+                    Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => break,
+                    Err(_) => {
+                        tokio::time::sleep(std::time::Duration::from_millis(40)).await;
+                        res = crate::deferred_rename::rename_entry_io(&from, &initial_to);
+                    }
+                }
+            }
+            let final_res = match res {
+                Ok(()) => {
+                    drop(hold);
+                    Ok(initial_to)
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                    crate::deferred_rename::rename_reserved_or_number(
+                        &from, initial_to, hold, is_dir,
+                    )
+                    .map_err(|e| e.to_string())
+                }
+                Err(e) => {
+                    drop(hold);
+                    Err(e.to_string())
+                }
+            };
+            let reattach_at = match &final_res {
+                Ok(actual_to) if is_dir => Some(actual_to.as_path()),
+                Err(_) if detached.is_some() => Some(spec.folder.as_path()),
+                _ => None,
+            };
+            if keep_sharing
+                && let Some(t) = &session
+                && let Some(folder) = reattach_at
+            {
+                let bytes = match torrent_file(&spec.hash) {
+                    None => Err(crate::i18n::t("no data folder").to_owned()),
+                    Some(file) => std::fs::read(&file).map_err(|_| {
+                        crate::i18n::t("the .torrent file kept for it is gone").to_owned()
+                    }),
+                };
+                match bytes {
+                    Ok(bytes) => {
+                        if let Err(e) = t
+                            .attach(&spec.hash, &bytes, folder, spec.files.clone(), detached)
+                            .await
+                        {
+                            sharing_error = Some(crate::errors::torrent(&e));
+                        }
+                    }
+                    Err(why) => sharing_error = Some(why),
+                }
+            }
+            host.busy.lock().unwrap().remove(&spec.hash);
+            let _ = tx.send((final_res, sharing_error));
+        });
+        Ok(())
     }
 
     /// The finished actions' outcomes since last asked, by info hash.
@@ -623,7 +776,7 @@ impl Host {
                 let _ = if on {
                     t.resume(&h).await
                 } else {
-                    t.pause(&h).await
+                    t.remove(&h, false).await
                 };
             }
         });
@@ -802,7 +955,7 @@ impl Run {
     }
 
     /// Mark its files once librqbit has created them (it leaves Checking) and again once it
-    /// finishes, off the window's thread.
+    /// finishes, off the window's thread (reading which files it has waits on librqbit too).
     fn mark_when(&self, t: &Arc<Torrents>, phase: Phase) {
         use std::sync::atomic::Ordering;
         // Paused: perhaps never started, its files not created yet.
@@ -814,11 +967,12 @@ impl Run {
         if self.marked.fetch_max(step, Ordering::SeqCst) >= step {
             return;
         }
-        let Some((files, _, _)) = t.files(&self.hash) else {
-            return;
-        };
-        let folder = self.folder.clone();
-        self.rt.spawn_blocking(move || mark_files(&folder, &files));
+        let (t, hash, folder) = (t.clone(), self.hash.clone(), self.folder.clone());
+        self.rt.spawn_blocking(move || {
+            if let Some((files, _, _)) = t.files(&hash) {
+                mark_files(&folder, &files);
+            }
+        });
     }
 
     fn session(&self) -> Option<Arc<Torrents>> {
@@ -828,6 +982,8 @@ impl Run {
         }
     }
 
+    /// What the list shows. On the window's thread: the session's numbers as last read
+    /// (`Torrents::seen`), never waiting on librqbit (#693).
     pub fn snapshot(&self) -> Snapshot {
         let mut s = Snapshot {
             state: State::Probing,
@@ -843,10 +999,11 @@ impl Run {
             events: Vec::new(),
             // A torrent has peers, not one server (#140).
             server: None,
+            at_service: None,
         };
         if *self.stopped.lock().unwrap() {
             s.state = State::Cancelled;
-            if let Some(st) = self.session().and_then(|t| t.stats(&self.hash).ok()) {
+            if let Some(st) = self.session().and_then(|t| t.seen(&self.hash)) {
                 s.downloaded = st.done;
                 s.size = Some(st.total);
             }
@@ -866,7 +1023,14 @@ impl Run {
             }
             RunState::Ready(t) => t.clone(),
         };
-        let Ok(st) = t.stats(&self.hash) else {
+        let Some(st) = t.seen(&self.hash) else {
+            let (done, size) = *self.last.lock().unwrap();
+            if size.is_some_and(|total| total > 0 && done >= total) {
+                s.state = State::Done;
+                s.downloaded = done;
+                s.size = size;
+                return s;
+            }
             s.state = State::Failed;
             // i18n: an error: the torrent is gone from the torrent session
             s.error = Some(crate::i18n::t("the torrent is no longer there").into());
@@ -887,7 +1051,7 @@ impl Run {
         // Done: it stops sharing (a download manager finishes downloads; D-018), unless the
         // person chose to keep sharing.
         if s.state == State::Done && !self.keep_sharing {
-            self.pause_in_background(&t);
+            self.remove_in_background(&t);
         }
         s
     }
@@ -899,11 +1063,24 @@ impl Run {
         });
     }
 
-    /// Stop: pause it (the pieces stay; starting again continues).
+    fn remove_in_background(&self, t: &Arc<Torrents>) {
+        let (t, hash) = (t.clone(), self.hash.clone());
+        self.rt.spawn(async move {
+            let _ = t.remove(&hash, false).await;
+        });
+    }
+
+    /// Stop: a completed run leaves the session; an incomplete one pauses to resume later.
     pub fn cancel(&self) {
         *self.stopped.lock().unwrap() = true;
         if let Some(t) = self.session() {
-            self.pause_in_background(&t);
+            if t.seen(&self.hash)
+                .is_some_and(|s| s.phase == Phase::Finished)
+            {
+                self.remove_in_background(&t);
+            } else {
+                self.pause_in_background(&t);
+            }
         }
     }
 
@@ -944,7 +1121,7 @@ impl Run {
     /// downloads share with torrents); None until it is in the session.
     pub fn fetched(&self) -> Option<u64> {
         let t = self.session()?;
-        t.stats(&self.hash).ok().map(|s| s.fetched)
+        t.seen(&self.hash).map(|s| s.fetched)
     }
 
     pub fn details(&self) -> Details {
@@ -962,11 +1139,13 @@ impl Run {
 }
 
 /// What the progress window's torrent tabs show for `hash`, from the session: a `Run`'s
-/// torrent, or a finished one still shared without a `Run` (None: not in the session).
+/// torrent, or a finished one still shared without a `Run` (None: not in the session). As last
+/// read: the window's thread never waits on librqbit (#693).
 pub fn details_of(t: &Torrents, hash: &str) -> Option<Details> {
-    let stats = t.stats(hash).ok()?;
+    let stats = t.seen(hash)?;
     let done = stats.file_done.clone();
-    let (entries, chosen, piece_length) = t.files(hash).unwrap_or_default();
+    let (entries, chosen, piece_length) = t.seen_files(hash).unwrap_or_default();
+    let swarm = t.seen_swarm(hash);
     Some(Details {
         files: entries
             .into_iter()
@@ -978,9 +1157,9 @@ pub fn details_of(t: &Torrents, hash: &str) -> Option<Details> {
             })
             .collect(),
         piece_length,
-        peers: t.peers(hash),
-        trackers: t.trackers(hash),
-        pieces: t.pieces(hash),
+        peers: swarm.peers,
+        trackers: swarm.trackers,
+        pieces: swarm.pieces,
         stats: Some(stats),
     })
 }
@@ -1011,6 +1190,72 @@ pub fn dest_for(meta: &mdm_torrent::Meta, dir: &Path, files: Option<&[usize]>) -
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn a_spec() -> TorrentSpec {
+        TorrentSpec {
+            hash: "h".into(),
+            files: None,
+            folder: "f".into(),
+            uploaded: 0,
+            seeded_secs: 0,
+            peers: 0,
+            up_speed: 0.0,
+            upload_limit: None,
+            in_order: false,
+            ends_first: true,
+        }
+    }
+
+    /// #357: the ratio the list and the General tab share, and the seeding limit's.
+    #[test]
+    fn a_torrents_share_ratio() {
+        assert_eq!(share_ratio(0, 0), 0.0);
+        assert_eq!(share_ratio(500, 0), 0.0, "nothing taken: no ratio");
+        assert_eq!(share_ratio(500, 1000), 0.5);
+        assert_eq!(
+            share_ratio_text(0, 0),
+            "0.00",
+            "as the General tab writes it"
+        );
+        assert_eq!(share_ratio_text(500, 1000), "0.50");
+        assert_eq!(share_ratio_text(2000, 1000), "2.00");
+        assert_eq!(share_ratio_text(1, 3), "0.33");
+    }
+
+    /// #357: a torrent's live numbers aren't kept across a restart: they aren't saved and an old
+    /// value in the file is ignored, so a stopped torrent can't show a stale count or rate.
+    #[test]
+    fn a_torrents_live_numbers_are_not_saved() {
+        let mut t = a_spec();
+        t.peers = 7;
+        t.up_speed = 4096.0;
+        let saved = serde_json::to_value(&t).unwrap();
+        assert!(saved.get("peers").is_none(), "the count isn't written");
+        assert!(saved.get("up_speed").is_none(), "the rate isn't written");
+        let mut with_old = saved.clone();
+        with_old["peers"] = 9.into();
+        with_old["seeders"] = 9.into();
+        with_old["up_speed"] = 999.0.into();
+        let loaded: TorrentSpec = serde_json::from_value(with_old).unwrap();
+        assert_eq!(
+            loaded.peers, 0,
+            "an old value in the file doesn't come back"
+        );
+        assert_eq!(loaded.up_speed, 0.0, "nor does an old rate");
+    }
+
+    /// #357: with no session running, the columns say nobody is connected and nothing is moving.
+    #[test]
+    fn no_session_means_no_live_numbers() {
+        let mut specs = [a_spec(), a_spec()];
+        specs[0].peers = 3;
+        specs[0].up_speed = 4096.0;
+        specs[1].peers = 12;
+        specs[1].up_speed = 1024.0;
+        clear_live(specs.iter_mut());
+        assert_eq!([specs[0].peers, specs[1].peers], [0, 0]);
+        assert_eq!([specs[0].up_speed, specs[1].up_speed], [0.0, 0.0]);
+    }
 
     /// #39: what a torrent sent adds up across its runs: librqbit's count is 0 while paused
     /// and starts again at 0 on each resume.
@@ -1066,6 +1311,8 @@ mod tests {
             folder: "f".into(),
             uploaded,
             seeded_secs,
+            peers: 0,
+            up_speed: 0.0,
             upload_limit: None,
             in_order: false,
             ends_first: true,

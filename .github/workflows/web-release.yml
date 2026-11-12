@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   metadata:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.metadata.outputs.version }}
       publish: ${{ steps.metadata.outputs.publish }}
@@ -44,7 +44,7 @@ jobs:
 
   extension:
     needs: metadata
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -83,7 +83,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          - os: windows-2022
             platform: windows
             executable: misterdownloadmanager.exe
           - os: ubuntu-22.04
@@ -106,13 +106,24 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target/release
-          key: webmister-release-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-          restore-keys: webmister-release-${{ runner.os }}-
+          key: webmister-release-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: webmister-release-${{ matrix.os }}-
+      - name: Windows BoringSSL prerequisites
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install nasm --version 2.16.3 --no-progress -y
+          if ($LASTEXITCODE) { throw 'NASM installation failed.' }
+          'C:\Program Files\NASM' >> $env:GITHUB_PATH
+          # Hosted Windows 2022 has CMake and LLVM; fail clearly if the image changes.
+          Get-Command cmake -ErrorAction Stop
+          if (-not (Test-Path 'C:\Program Files\LLVM\bin\libclang.dll')) { throw 'LLVM libclang is missing.' }
+          'LIBCLANG_PATH=C:\Program Files\LLVM\bin' >> $env:GITHUB_ENV
       - name: Linux runtime/build libraries
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake libgtk-3-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev \
+          sudo apt-get install -y cmake libclang-dev libgtk-3-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev \
             libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
       - name: Build the actual release programs
         run: cargo build --locked --release -p mdm-app -p mdm-cli -p mdm-nmhost -p mdm-mcp
@@ -168,7 +179,7 @@ jobs:
 
   assemble:
     needs: [metadata, extension, native, image]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write

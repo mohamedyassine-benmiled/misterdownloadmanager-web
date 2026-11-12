@@ -136,12 +136,79 @@ pub fn browser_cookies() -> Option<BrowserCookies> {
 /// store is read only when nothing came: a pasted address, a link typed into Add URL, a
 /// playlist listed later. yt-dlp would merge the two if given both; it never is.
 fn browser_cookie_args(args: &[String], chosen: Option<&BrowserCookies>) -> Vec<String> {
-    let has_cookies = args
+    let settled = args
         .iter()
-        .any(|a| a == "--cookies" || a == "--cookies-from-browser");
+        .any(|a| a == "--cookies" || a == "--cookies-from-browser" || a == NO_COOKIES);
     match chosen {
-        Some(c) if !has_cookies => vec!["--cookies-from-browser".into(), c.spec()],
+        Some(c) if !settled => vec!["--cookies-from-browser".into(), c.spec()],
         _ => Vec::new(),
+    }
+}
+
+/// yt-dlp's "no cookies from any browser": a run told this gets none of the chosen browser's.
+const NO_COOKIES: &str = "--no-cookies-from-browser";
+
+/// `ours` for a look-up without cookies (#352): the cookie file taken out, the browser's store
+/// refused.
+fn without_cookies(ours: &[String]) -> Vec<String> {
+    let mut out = Vec::with_capacity(ours.len() + 1);
+    let mut args = ours.iter();
+    while let Some(a) = args.next() {
+        if a == "--cookies" || a == "--cookies-from-browser" {
+            args.next();
+        } else {
+            out.push(a.clone());
+        }
+    }
+    out.push(NO_COOKIES.to_owned());
+    out
+}
+
+/// Does a run with arguments `ours` have cookies (its own, or the chosen browser's)?
+fn with_cookies(ours: &[String], chosen: Option<&BrowserCookies>) -> bool {
+    chosen.is_some()
+        || ours
+            .iter()
+            .any(|a| a == "--cookies" || a == "--cookies-from-browser")
+}
+
+/// A page's `-J` output, and whether it took looking the page up without cookies.
+pub struct LookedUp {
+    pub json: Vec<u8>,
+    pub without_cookies: bool,
+}
+
+/// Look a page up (`yt-dlp -J`, `ours` holding its arguments). yt-dlp's `-J` chooses a format too,
+/// and fails when none is left. Signed-in cookies make that likely on YouTube (#352): yt-dlp then
+/// asks only the players that need a JavaScript runtime to decode their links, and without one
+/// (it looks for Deno alone) every video is dropped: "Requested format is not available". The
+/// same page without the cookies lists its qualities, so a look-up that fails this way and had
+/// cookies is made once more without them; if that fails too, the first error is the one told.
+pub fn look_up(
+    exe: &Path,
+    ours: &[String],
+    url: &str,
+    timeout: Duration,
+) -> Result<LookedUp, ProcError> {
+    let run = |args: &[String]| output(ytdlp(exe, &[], args, url)?, "yt-dlp", timeout);
+    match run(ours) {
+        Ok(json) => Ok(LookedUp {
+            json,
+            without_cookies: false,
+        }),
+        Err(first)
+            if with_cookies(ours, browser_cookies().as_ref())
+                && crate::servers::format_unavailable(&first.to_string()) =>
+        {
+            match run(&without_cookies(ours)) {
+                Ok(json) => Ok(LookedUp {
+                    json,
+                    without_cookies: true,
+                }),
+                Err(_) => Err(first),
+            }
+        }
+        Err(e) => Err(e),
     }
 }
 
@@ -162,6 +229,110 @@ pub fn cookie_trouble(line: &str) -> bool {
     ]
     .iter()
     .any(|k| l.contains(k))
+}
+
+/// Options -> Proxy / Socks for the helpers (#363): yt-dlp and gallery-dl go through the same proxy
+/// as MDM's downloads. The app shares it as it changes ([`set_proxy`]).
+static PROXY: std::sync::RwLock<mdm_engine::Proxy> =
+    std::sync::RwLock::new(mdm_engine::Proxy::None);
+
+/// The proxy every helper run goes through (the app's setting).
+pub fn set_proxy(proxy: mdm_engine::Proxy) {
+    if *PROXY.read().unwrap() != proxy {
+        *PROXY.write().unwrap() = proxy;
+    }
+}
+
+/// How the proxy for a helper's run is given to it. A login is never put on the command line,
+/// where other programs can read it (the cookies neither): only in the environment.
+#[derive(Debug, PartialEq, Eq)]
+enum ProxyGiven {
+    /// Nothing: yt-dlp keeps doing what it always did (the system's and the environment's).
+    Nothing,
+    /// `--proxy URL`.
+    Argument(String),
+    /// `HTTP_PROXY` and the like: the address with its login.
+    Environment(String),
+}
+
+/// The proxy for `url` under `proxy`, as a helper takes it. `None` proxy and an address the
+/// setting doesn't cover (Manual with its scheme unticked; a script that says DIRECT): nothing,
+/// so the helper does what it did before. A script that gives no usable answer leaves it to the
+/// system's settings, as for a download.
+fn proxy_given(proxy: &mdm_engine::Proxy, url: Option<&url::Url>) -> ProxyGiven {
+    use mdm_engine::{Proxy, pac};
+    let system = |url: Option<&url::Url>| {
+        // A helper's run with no address known yet (a page's looked-up info) asks for any.
+        let any = url::Url::parse("https://example.com/").expect("a valid address");
+        mdm_engine::net::system_proxy(url.unwrap_or(&any))
+    };
+    let plain = |p: Option<String>| p.map_or(ProxyGiven::Nothing, ProxyGiven::Argument);
+    match proxy {
+        Proxy::None => ProxyGiven::Nothing,
+        Proxy::System => plain(system(url)),
+        Proxy::Pac { script } => {
+            let first = url.and_then(|u| {
+                pac::routes(script, u)
+                    .ok()?
+                    .into_iter()
+                    .next()
+                    .map(|r| match r {
+                        pac::Route::Direct => None,
+                        pac::Route::Proxy(p) => Some(p),
+                    })
+            });
+            match first {
+                Some(Some(p)) => ProxyGiven::Argument(p),
+                Some(None) => ProxyGiven::Nothing,
+                None => plain(system(url)),
+            }
+        }
+        Proxy::Manual {
+            url: address,
+            login,
+            http,
+            https,
+        } => {
+            let https_page = url.is_none_or(|u| u.scheme() == "https");
+            if !(if https_page { *https } else { *http }) {
+                return ProxyGiven::Nothing;
+            }
+            match login {
+                None => ProxyGiven::Argument(address.clone()),
+                Some((user, pass)) => {
+                    let Ok(mut u) = url::Url::parse(address) else {
+                        return ProxyGiven::Nothing;
+                    };
+                    let _ = u.set_username(user);
+                    let _ = u.set_password(Some(pass));
+                    ProxyGiven::Environment(u.to_string())
+                }
+            }
+        }
+    }
+}
+
+/// Give `helper` the proxy for `url`: returns the arguments to pass (before `--`).
+fn through_proxy(cmd: &mut Command, url: Option<&str>) -> Vec<String> {
+    let page = url.and_then(|u| url::Url::parse(u).ok());
+    match proxy_given(&PROXY.read().unwrap(), page.as_ref()) {
+        ProxyGiven::Nothing => Vec::new(),
+        ProxyGiven::Argument(p) => vec!["--proxy".into(), p],
+        ProxyGiven::Environment(p) => {
+            for var in [
+                "HTTP_PROXY",
+                "HTTPS_PROXY",
+                "ALL_PROXY",
+                "http_proxy",
+                "https_proxy",
+                "all_proxy",
+            ] {
+                cmd.env(var, &p);
+            }
+            cmd.env_remove("NO_PROXY").env_remove("no_proxy");
+            Vec::new()
+        }
+    }
 }
 
 /// The helpers' relay, started on first use.
@@ -198,9 +369,14 @@ enum Helper {
 /// - gallery-dl: `--proxy`.
 /// - Both, and anything they start: `HTTP_PROXY`, `HTTPS_PROXY` and `ALL_PROXY` (curl, aria2c,
 ///   gallery-dl's Python), with `NO_PROXY` taken away so no host is let around it.
-fn through_adapter(cmd: &mut Command, helper: Helper) -> Result<Vec<String>, ProcError> {
+fn through_adapter(
+    cmd: &mut Command,
+    helper: Helper,
+    url: Option<&str>,
+) -> Result<Vec<String>, ProcError> {
     match route() {
-        mdm_engine::Route::Any => Ok(Vec::new()),
+        // No adapter: Options -> Proxy / Socks (#363).
+        mdm_engine::Route::Any => Ok(through_proxy(cmd, url)),
         mdm_engine::Route::Down { label } => Err(mdm_engine::NetError::Down { label }.into()),
         mdm_engine::Route::Bound(_) => {
             let url = relay()?.url();
@@ -254,7 +430,7 @@ pub fn gallery_dl(
     url: &str,
 ) -> Result<Command, ProcError> {
     let mut cmd = Command::new(&tool.exe);
-    let route = through_adapter(&mut cmd, Helper::GalleryDl)?;
+    let route = through_adapter(&mut cmd, Helper::GalleryDl, Some(url))?;
     cmd.env("PYTHONIOENCODING", "utf-8");
     for a in ours {
         cmd.arg(safe(a)?);
@@ -488,6 +664,152 @@ fn layers_with(
     Ok(())
 }
 
+/// The file named `name` (`name.exe` on Windows) in one of `dirs`.
+fn program_in(dirs: &[PathBuf], name: &str) -> Option<PathBuf> {
+    let file = format!("{name}{}", std::env::consts::EXE_SUFFIX);
+    dirs.iter().map(|d| d.join(&file)).find(|p| p.is_file())
+}
+
+/// Node.js from nvm (`~/.nvm/versions/node/<version>/bin/node`), the newest name first: a program
+/// started from the desktop doesn't have nvm's folders on its PATH (#360).
+fn nvm_node(home: &Path) -> Option<PathBuf> {
+    let mut versions: Vec<PathBuf> = std::fs::read_dir(home.join(".nvm/versions/node"))
+        .ok()?
+        .flatten()
+        .map(|e| e.path().join("bin"))
+        .collect();
+    versions.sort();
+    versions.reverse();
+    program_in(&versions, "node")
+}
+
+/// What yt-dlp should be told about JavaScript (#360, #352, #351): YouTube's formats need a
+/// runtime, and yt-dlp looks for Deno alone unless told of another. Deno found: nothing to say.
+/// Else Node.js or Bun, if there is one.
+fn js_runtime(dirs: &[PathBuf], home: Option<&Path>) -> Option<(&'static str, PathBuf)> {
+    if program_in(dirs, "deno").is_some() {
+        return None;
+    }
+    program_in(dirs, "node")
+        .or_else(|| home.and_then(nvm_node))
+        .map(|p| ("node", p))
+        .or_else(|| program_in(dirs, "bun").map(|p| ("bun", p)))
+}
+
+/// The folders of `path` (a PATH value) a helper can walk, in their order (#508): yt-dlp looks
+/// through the PATH folders, and one Windows refused to open ("[WinError 448] The path cannot be
+/// traversed because it contains an untrusted mount point": a junction Redirection Guard
+/// doesn't trust) ended the look-up. A folder MDM can't open (gone, refused, not a folder) is
+/// left out; one reached through a junction or link is given as the folder it leads to, so the
+/// helper crosses no mount point on its way, even when Windows holds the helper to stricter
+/// rules than MDM. Every other folder stays as it was written.
+///
+/// On Linux and macOS the package managers' folders follow, when the PATH lacks them (#659): a
+/// helper found there ([`crate::system`]) looks there for its own tools too (yt-dlp for Deno
+/// and ffmpeg), even when MDM was opened from Finder, whose PATH has no Homebrew.
+fn usable_dirs(path: &std::ffi::OsStr) -> Vec<PathBuf> {
+    #[allow(unused_mut)]
+    let mut dirs: Vec<PathBuf> = std::env::split_paths(path)
+        .filter_map(|dir| usable_dir(&dir))
+        .collect();
+    #[cfg(unix)]
+    for extra in crate::system::PACKAGE_DIRS.map(PathBuf::from) {
+        if !dirs.contains(&extra)
+            && let Some(dir) = usable_dir(&extra)
+        {
+            dirs.push(dir);
+        }
+    }
+    dirs
+}
+
+fn usable_dir(dir: &Path) -> Option<PathBuf> {
+    if !std::fs::metadata(dir).ok()?.is_dir() {
+        return None;
+    }
+    // Only Windows refuses mount points (Redirection Guard); elsewhere a link is just followed.
+    #[cfg(windows)]
+    if dir.is_absolute()
+        && dir.ancestors().any(reparse_point)
+        && let Ok(real) = std::fs::canonicalize(dir)
+    {
+        return Some(without_verbatim(real));
+    }
+    Some(dir.to_owned())
+}
+
+/// A junction, a link or a mounted volume's folder.
+#[cfg(windows)]
+fn reparse_point(p: &Path) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
+    std::fs::symlink_metadata(p)
+        .is_ok_and(|m| m.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0)
+}
+
+/// `\\?\C:\x` as `C:\x` and `\\?\UNC\server\share` as `\\server\share`, the way PATH writes
+/// them (`canonicalize` gives the long forms).
+#[cfg(windows)]
+fn without_verbatim(p: PathBuf) -> PathBuf {
+    let s = p.to_string_lossy();
+    if let Some(unc) = s.strip_prefix(r"\\?\UNC\") {
+        return PathBuf::from(format!(r"\\{unc}"));
+    }
+    match s.strip_prefix(r"\\?\") {
+        Some(rest) if rest.as_bytes().get(1) == Some(&b':') => PathBuf::from(rest),
+        _ => p.clone(),
+    }
+}
+
+/// The PATH a helper gets ([`usable_dirs`] of `path`); `None` when it can't be written back
+/// (then it's left as it was).
+fn child_path(path: &std::ffi::OsStr) -> Option<std::ffi::OsString> {
+    std::env::join_paths(usable_dirs(path)).ok()
+}
+
+/// Give `cmd` the PATH of [`child_path`]: of the one it was given, else of MDM's own. Every
+/// helper starts here ([`spawn`]), and ffmpeg, started by yt-dlp, inherits it.
+fn with_usable_path(cmd: &mut Command) {
+    let is_path = |k: &std::ffi::OsStr| {
+        if cfg!(windows) {
+            k.eq_ignore_ascii_case("PATH")
+        } else {
+            k == "PATH"
+        }
+    };
+    let path = match cmd.get_envs().find(|(k, _)| is_path(k)) {
+        Some((_, Some(given))) => given.to_owned(),
+        Some((_, None)) => return,
+        None => match std::env::var_os("PATH") {
+            Some(own) => own,
+            None => return,
+        },
+    };
+    if let Some(usable) = child_path(&path) {
+        cmd.env("PATH", usable);
+    }
+}
+
+/// `--js-runtimes` for this computer's Node.js or Bun, looked for once in the PATH folders a
+/// helper gets ([`usable_dirs`]): a node.exe behind a junction is named by its real folder.
+fn js_runtime_args() -> &'static [String] {
+    static ARGS: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+    ARGS.get_or_init(|| {
+        let dirs: Vec<PathBuf> = std::env::var_os("PATH")
+            .map(|p| usable_dirs(&p))
+            .unwrap_or_default();
+        let home = std::env::var_os("HOME").map(PathBuf::from);
+        js_runtime(&dirs, home.as_deref())
+            .map(|(name, path)| {
+                vec![
+                    "--js-runtimes".to_owned(),
+                    format!("{name}:{}", path.display()),
+                ]
+            })
+            .unwrap_or_default()
+    })
+}
+
 /// `yt-dlp` with arguments in layers: `user` extras, then `ours` (then the chosen browser's
 /// cookies when neither brought any, [`layers`]), then the fixed ones last (so nothing can
 /// switch them off), then `--` and the URL (so a URL starting with `-` is never read as an
@@ -499,9 +821,10 @@ pub fn ytdlp(
     url: &str,
 ) -> Result<Command, ProcError> {
     let mut cmd = ytdlp_command(exe);
-    let route = through_adapter(&mut cmd, Helper::YtDlp)?;
+    let route = through_adapter(&mut cmd, Helper::YtDlp, Some(url))?;
     layers(&mut cmd, user, ours)?;
     cmd.args(["--ignore-config", "--no-exec", "--no-update"]);
+    cmd.args(js_runtime_args());
     cmd.args(UTF8);
     cmd.args(route);
     cmd.arg("--");
@@ -518,9 +841,10 @@ pub fn ytdlp_info(
     info: &Path,
 ) -> Result<Command, ProcError> {
     let mut cmd = ytdlp_command(exe);
-    let route = through_adapter(&mut cmd, Helper::YtDlp)?;
+    let route = through_adapter(&mut cmd, Helper::YtDlp, None)?;
     layers(&mut cmd, user, ours)?;
     cmd.args(["--ignore-config", "--no-exec", "--no-update"]);
+    cmd.args(js_runtime_args());
     cmd.args(UTF8);
     cmd.args(route);
     cmd.arg("--load-info-json");
@@ -624,8 +948,9 @@ fn with_cookie_trouble(message: String, warnings: &[String], tail: &VecDeque<Str
 }
 
 /// Start `cmd` supervised: no window, in the job, stdout piped for the caller, stderr kept as a
-/// tail.
+/// tail, with a PATH it can walk ([`with_usable_path`], #508).
 pub fn spawn(mut cmd: Command, name: &str) -> Result<Spawned, ProcError> {
+    with_usable_path(&mut cmd);
     cmd.stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -885,6 +1210,101 @@ mod tests {
         assert!(b.args("not a url").unwrap().1.is_some());
     }
 
+    fn args_of(cmd: &Command) -> Vec<String> {
+        cmd.get_args()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    fn proxied(cmd: &Command) -> Option<String> {
+        cmd.get_envs()
+            .find(|(k, _)| k.to_string_lossy() == "HTTPS_PROXY")
+            .and_then(|(_, v)| v.map(|v| v.to_string_lossy().into_owned()))
+    }
+
+    /// #363: Options -> Proxy / Socks reaches yt-dlp: the address on the command line, a login
+    /// only in the environment, never as an argument; a manual proxy only for its ticked
+    /// schemes; "no proxy" and a script's DIRECT: nothing added, so yt-dlp's own default stays.
+    #[test]
+    fn a_helper_is_given_the_proxy_of_the_settings() {
+        use mdm_engine::Proxy;
+        let manual = |login: Option<(&str, &str)>, http, https| Proxy::Manual {
+            url: "http://127.0.0.1:10808".into(),
+            login: login.map(|(u, p)| (u.to_owned(), p.to_owned())),
+            http,
+            https,
+        };
+        let youtube = url::Url::parse("https://www.youtube.com/watch?v=x").unwrap();
+        assert_eq!(
+            proxy_given(&Proxy::None, Some(&youtube)),
+            ProxyGiven::Nothing
+        );
+        assert_eq!(
+            proxy_given(&manual(None, true, true), Some(&youtube)),
+            ProxyGiven::Argument("http://127.0.0.1:10808".into())
+        );
+        assert_eq!(
+            proxy_given(&manual(None, true, false), Some(&youtube)),
+            ProxyGiven::Nothing,
+            "https unticked: this https page isn't covered"
+        );
+        // A login: in the environment, encoded, never an argument.
+        assert_eq!(
+            proxy_given(&manual(Some(("u@me", "p:ss")), true, true), Some(&youtube)),
+            ProxyGiven::Environment("http://u%40me:p%3Ass@127.0.0.1:10808/".into())
+        );
+        let pac = |script: &str| Proxy::Pac {
+            script: std::sync::Arc::from(script),
+        };
+        assert_eq!(
+            proxy_given(
+                &pac("function FindProxyForURL(u,h){return 'PROXY 10.0.0.1:3128';}"),
+                Some(&youtube)
+            ),
+            ProxyGiven::Argument("http://10.0.0.1:3128".into())
+        );
+        assert_eq!(
+            proxy_given(
+                &pac("function FindProxyForURL(u,h){return 'DIRECT';}"),
+                Some(&youtube)
+            ),
+            ProxyGiven::Nothing
+        );
+    }
+
+    /// #363, the wiring: the setting reaches a real command line.
+    #[test]
+    fn yt_dlp_runs_through_the_settings_proxy() {
+        use mdm_engine::Proxy;
+        let url = "https://www.youtube.com/watch?v=x";
+        let exe = std::path::Path::new("yt-dlp");
+        set_proxy(Proxy::Manual {
+            url: "http://127.0.0.1:10808".into(),
+            login: None,
+            http: true,
+            https: true,
+        });
+        let plain = args_of(&ytdlp(exe, &[], &["-J".into()], url).unwrap());
+        let at = plain.iter().position(|a| a == "--proxy").expect("--proxy");
+        assert_eq!(plain[at + 1], "http://127.0.0.1:10808");
+        assert!(at < plain.iter().position(|a| a == "--").unwrap());
+        set_proxy(Proxy::Manual {
+            url: "http://127.0.0.1:10808".into(),
+            login: Some(("me".into(), "secret".into())),
+            http: true,
+            https: true,
+        });
+        let cmd = ytdlp(exe, &[], &["-J".into()], url).unwrap();
+        assert!(!args_of(&cmd).iter().any(|a| a.contains("secret")));
+        assert_eq!(
+            proxied(&cmd).as_deref(),
+            Some("http://me:secret@127.0.0.1:10808/")
+        );
+        set_proxy(Proxy::None);
+        let none = args_of(&ytdlp(exe, &[], &["-J".into()], url).unwrap());
+        assert!(!none.iter().any(|a| a == "--proxy"));
+    }
+
     fn yt(chosen: Option<&BrowserCookies>, ours: &[&str]) -> Vec<String> {
         let mut cmd = Command::new("yt-dlp");
         let ours: Vec<String> = ours.iter().map(|s| s.to_string()).collect();
@@ -939,6 +1359,220 @@ mod tests {
             cookie_browsers().contains(&"safari"),
             cfg!(target_os = "macos")
         );
+    }
+
+    /// #360: yt-dlp is told of Node.js or Bun, from the PATH or nvm, and left alone with Deno.
+    #[test]
+    fn the_javascript_runtime_yt_dlp_is_told_of() {
+        let touch = |dir: &Path, name: &str| {
+            std::fs::create_dir_all(dir).unwrap();
+            std::fs::write(
+                dir.join(format!("{name}{}", std::env::consts::EXE_SUFFIX)),
+                b"",
+            )
+            .unwrap();
+        };
+        let root = tempfile::tempdir().unwrap();
+        let (path, home) = (root.path().join("bin"), root.path().join("home"));
+        let dirs = vec![path.clone()];
+        std::fs::create_dir_all(&path).unwrap();
+        assert_eq!(js_runtime(&dirs, Some(&home)), None);
+        for v in ["v20.1.0", "v22.3.0"] {
+            touch(&home.join(".nvm/versions/node").join(v).join("bin"), "node");
+        }
+        let (name, found) = js_runtime(&dirs, Some(&home)).unwrap();
+        assert_eq!(name, "node");
+        assert!(found.to_string_lossy().contains("v22.3.0"));
+        touch(&path, "bun");
+        assert_eq!(js_runtime(&dirs, None).unwrap().0, "bun");
+        touch(&path, "node");
+        assert_eq!(
+            js_runtime(&dirs, None).unwrap().1,
+            path.join(format!("node{}", std::env::consts::EXE_SUFFIX))
+        );
+        touch(&path, "deno");
+        assert_eq!(js_runtime(&dirs, Some(&home)), None);
+    }
+
+    /// #508: a helper's PATH keeps its folders in their order and leaves out those that can't be
+    /// opened (missing, a file); a plain PATH comes through unchanged.
+    #[test]
+    fn a_helpers_path_leaves_out_the_folders_it_cant_open() {
+        let root = tempfile::tempdir().unwrap();
+        let (a, b, gone, file) = (
+            root.path().join("a"),
+            root.path().join("b"),
+            root.path().join("gone"),
+            root.path().join("file"),
+        );
+        std::fs::create_dir_all(&a).unwrap();
+        std::fs::create_dir_all(&b).unwrap();
+        std::fs::write(&file, b"").unwrap();
+        let join = |dirs: &[&PathBuf]| std::env::join_paths(dirs).unwrap();
+        // What the helper gets: those, then (on Linux and macOS) the package folders (#659).
+        let given = |dirs: &[&PathBuf]| {
+            #[allow(unused_mut)]
+            let mut all: Vec<PathBuf> = dirs.iter().map(|d| d.to_path_buf()).collect();
+            #[cfg(unix)]
+            all.extend(
+                crate::system::PACKAGE_DIRS
+                    .map(PathBuf::from)
+                    .into_iter()
+                    .filter(|d| d.is_dir()),
+            );
+            std::env::join_paths(all).unwrap()
+        };
+
+        let plain = join(&[&b, &a]);
+        assert_eq!(child_path(&plain).unwrap(), given(&[&b, &a]));
+        assert_eq!(
+            child_path(&join(&[&gone, &b, &file, &a])).unwrap(),
+            given(&[&b, &a])
+        );
+
+        let mut cmd = Command::new("x");
+        cmd.env("PATH", join(&[&a, &gone]));
+        with_usable_path(&mut cmd);
+        let got: Vec<_> = cmd.get_envs().filter(|(k, _)| *k == "PATH").collect();
+        let want = given(&[&a]);
+        assert_eq!(
+            got,
+            [(std::ffi::OsStr::new("PATH"), Some(want.as_os_str()))]
+        );
+    }
+
+    /// #659: MDM opened from Finder has no Homebrew on its PATH, yet finds yt-dlp there; the
+    /// helper gets the package folders after its own, once each, so yt-dlp finds Deno and
+    /// ffmpeg where Homebrew put them.
+    #[cfg(unix)]
+    #[test]
+    fn a_helper_gets_the_package_folders_after_its_path() {
+        let root = tempfile::tempdir().unwrap();
+        let own = root.path().join("own");
+        std::fs::create_dir_all(&own).unwrap();
+        let usr_bin = PathBuf::from("/usr/bin");
+
+        let dirs = usable_dirs(&std::env::join_paths([&own]).unwrap());
+        assert_eq!(dirs[0], own, "the PATH's own folders first");
+        assert!(dirs.contains(&usr_bin), "{dirs:?}");
+        for d in crate::system::PACKAGE_DIRS.map(PathBuf::from) {
+            assert_eq!(dirs.contains(&d), d.is_dir(), "{d:?} in {dirs:?}");
+        }
+
+        // Already on the PATH: kept where it was, not added again.
+        let dirs = usable_dirs(&std::env::join_paths([&usr_bin, &own]).unwrap());
+        assert_eq!(dirs[..2], [usr_bin.clone(), own]);
+        assert_eq!(dirs.iter().filter(|d| **d == usr_bin).count(), 1);
+    }
+
+    /// #508 as it happened: Windows refuses a junction to a process held to Redirection Guard
+    /// ("[WinError 448] ... untrusted mount point"). A stand-in for yt-dlp (PowerShell turning
+    /// the guard on for itself, then opening each PATH folder) fails on a PATH through a
+    /// junction made here, and passes once started as MDM starts helpers: given the junction's
+    /// real folder, in the same place.
+    #[cfg(windows)]
+    #[test]
+    fn a_helper_held_to_redirection_guard_walks_its_path() {
+        let root = tempfile::tempdir().unwrap();
+        let (real, junction) = (root.path().join("real"), root.path().join("bin"));
+        std::fs::create_dir_all(&real).unwrap();
+        std::fs::write(real.join("tool.txt"), b"").unwrap();
+        let made = Command::new("cmd")
+            .arg("/C")
+            .arg("mklink")
+            .arg("/J")
+            .arg(&junction)
+            .arg(&real)
+            .output()
+            .unwrap();
+        assert!(made.status.success(), "{made:?}");
+
+        let system = PathBuf::from(std::env::var_os("SystemRoot").unwrap()).join("System32");
+        let path = std::env::join_paths([&system, &junction]).unwrap();
+        let usable = child_path(&path).unwrap();
+        let mut dirs: Vec<PathBuf> = std::env::split_paths(&usable).collect();
+        assert_eq!(dirs.len(), 2);
+        let found = dirs.pop().unwrap();
+        assert!(
+            std::fs::canonicalize(&found).unwrap() == std::fs::canonicalize(&real).unwrap()
+                && !found.to_string_lossy().starts_with(r"\\?\")
+                && !found.ancestors().any(reparse_point),
+            "{found:?}"
+        );
+        assert_eq!(dirs, std::slice::from_ref(&system));
+
+        let script = root.path().join("standin.ps1");
+        std::fs::write(
+            &script,
+            r#"
+Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices;
+public static class Guard { [DllImport("kernel32.dll", SetLastError=true)]
+public static extern bool SetProcessMitigationPolicy(int policy, ref uint flags, UIntPtr size); }'
+[uint32]$enforce = 1
+if (-not [Guard]::SetProcessMitigationPolicy(16, [ref]$enforce, [UIntPtr]::new([uint32]4))) {
+  'no guard here'; exit 0
+}
+foreach ($d in $env:PATH.Split(';')) {
+  if ($d) {
+    try { [void][IO.Directory]::GetFiles($d, 'tool.txt') }
+    catch { [Console]::Error.WriteLine('ERROR: WinError ' + ($_.Exception.InnerException.HResult -band 0xFFFF) + ' ' + $d); exit 1 }
+  }
+}
+'walked'
+"#,
+        )
+        .unwrap();
+        let standin = || {
+            let mut cmd = Command::new(system.join(r"WindowsPowerShell\v1.0\powershell.exe"));
+            cmd.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
+                .arg(&script)
+                .env("PATH", &path);
+            cmd
+        };
+        let raw = standin().output().unwrap();
+        let said = String::from_utf8_lossy(&raw.stdout).trim().to_owned();
+        if said == "no guard here" {
+            eprintln!("this Windows has no Redirection Guard: the stand-in can't be held to it");
+            return;
+        }
+        if raw.status.success() && said == "walked" {
+            // A junction an administrator made is trusted (CI runs as one): nothing to refuse.
+            eprintln!(
+                "this junction is trusted here (made as an administrator): nothing to refuse"
+            );
+            return;
+        }
+        let refused = String::from_utf8_lossy(&raw.stderr);
+        assert!(
+            !raw.status.success() && refused.contains("WinError 448"),
+            "the junction is refused as it was on #508: {said} {refused}"
+        );
+        let out = output(standin(), "stand-in", Duration::from_secs(60)).unwrap();
+        assert_eq!(String::from_utf8_lossy(&out).trim(), "walked");
+    }
+
+    /// #352: the second look-up has no cookies of any kind, and everything else the first had.
+    #[test]
+    fn a_look_up_without_cookies_keeps_the_rest() {
+        let ours: Vec<String> = [
+            "-J",
+            "--cookies",
+            "/tmp/c.txt",
+            "--referer",
+            "https://p.test/",
+        ]
+        .map(String::from)
+        .to_vec();
+        assert_eq!(
+            without_cookies(&ours),
+            ["-J", "--referer", "https://p.test/", NO_COOKIES]
+        );
+        let firefox = BrowserCookies::new("firefox", "").unwrap();
+        assert!(with_cookies(&ours, None));
+        assert!(with_cookies(&["-J".to_owned()], Some(&firefox)));
+        assert!(!with_cookies(&["-J".to_owned()], None));
+        // Told so, the chosen browser's cookies aren't read either.
+        assert_eq!(yt(Some(&firefox), &["-J", NO_COOKIES]), ["-J", NO_COOKIES]);
     }
 
     /// #229: why the browser's cookies didn't help stays on the failure's message.
@@ -997,10 +1631,14 @@ mod tests {
             "-https://x/",
         )
         .unwrap();
-        let args: Vec<String> = cmd
+        let mut args: Vec<String> = cmd
             .get_args()
             .map(|a| a.to_string_lossy().into_owned())
             .collect();
+        // This computer's Node.js or Bun, if it has one (#360); tested on its own below.
+        if let Some(i) = args.iter().position(|a| a == "--js-runtimes") {
+            args.drain(i..=i + 1);
+        }
         assert_eq!(
             args,
             [

@@ -4,7 +4,7 @@ ARG PROFILE=release
 FROM rust:1-trixie AS build
 ARG PROFILE
 RUN apt-get update \
- && apt-get install -y --no-install-recommends cmake \
+ && apt-get install -y --no-install-recommends cmake libclang-dev \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY . .

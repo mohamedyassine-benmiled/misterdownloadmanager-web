@@ -35,7 +35,7 @@ pub struct GalleryDialog {
     checked: Option<(String, bool)>,
     error: Option<String>,
     start_now: Option<bool>,
-    asking: Option<(crate::dialogs::CreateFolder, ())>,
+    asking: crate::dialogs::FolderGate<()>,
     helpers: Option<crate::helpers::Programs>,
     /// The helper as found (read again after an install or Helpers, not every frame).
     tool: Option<Option<mdm_tools::Installed>>,
@@ -58,7 +58,7 @@ impl GalleryDialog {
             checked: None,
             error: None,
             start_now: None,
-            asking: None,
+            asking: Default::default(),
             helpers: None,
             tool: None,
         }
@@ -99,13 +99,13 @@ impl GalleryDialog {
             |ui, o| self.body(ui, o, rt),
         );
         if let Some(h) = &mut self.helpers
-            && !matches!(h.show(ctx), Outcome::Open)
+            && !matches!(h.show(ctx, rt), Outcome::Open)
         {
             self.helpers = None;
             self.tool = None;
             self.checked = None;
         }
-        let folder = PathBuf::from(self.folder.trim());
+        let folder = crate::dialogs::resolve_path(&self.folder);
         match crate::dialogs::ensure_folder(ctx, &mut self.asking, out, &folder) {
             Outcome::Open => Outcome::Open,
             Outcome::Closed => Outcome::Closed,

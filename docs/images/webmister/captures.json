@@ -1,5 +1,6 @@
 {
   "command": "node tools/web/readme-shots.mjs",
+  "source_hash_normalization": "UTF-8 text with LF line endings",
   "sources": {
     "crates/remote/web/index.html": "9011cd0c66a60e056c7b9af15161f7c2b8bd608c00706e182906b3ade0acb47f",
     "crates/remote/web/app.css": "d968bbf1254e1248be0e614ea0f002123e601083f7601e43d91c7bba5c28748c",
@@ -40,6 +41,69 @@
       "viewport": {
         "width": 1440,
         "height": 940
+      },
+      "origin": "Unretouched Chromium screenshot of the shipped Web UI against tools/web/preview.mjs. All transfers are synthetic, as labeled in the image."
+    },
+    {
+      "file": "add-url.png",
+      "subject": "Add a synthetic public download link",
+      "viewport": {
+        "width": 1440,
+        "height": 940
+      },
+      "origin": "Unretouched Chromium screenshot of the shipped Web UI against tools/web/preview.mjs. All transfers are synthetic, as labeled in the image."
+    },
+    {
+      "file": "add-torrent.png",
+      "subject": "Add a synthetic magnet or choose a torrent file",
+      "viewport": {
+        "width": 1440,
+        "height": 940
+      },
+      "origin": "Unretouched Chromium screenshot of the shipped Web UI against tools/web/preview.mjs. All transfers are synthetic, as labeled in the image."
+    },
+    {
+      "file": "settings-downloads.png",
+      "subject": "Supported application settings with synthetic server defaults",
+      "viewport": {
+        "width": 1440,
+        "height": 1600
+      },
+      "origin": "Unretouched Chromium screenshot of the shipped Web UI against tools/web/preview.mjs. All transfers are synthetic, as labeled in the image."
+    },
+    {
+      "file": "settings-security.png",
+      "subject": "Owner authentication and session policy with synthetic values",
+      "viewport": {
+        "width": 1440,
+        "height": 1600
+      },
+      "origin": "Unretouched Chromium screenshot of the shipped Web UI against tools/web/preview.mjs. All transfers are synthetic, as labeled in the image."
+    },
+    {
+      "file": "devices.png",
+      "subject": "Device pairing controls and a synthetic extension device",
+      "viewport": {
+        "width": 1440,
+        "height": 1600
+      },
+      "origin": "Unretouched Chromium screenshot of the shipped Web UI against tools/web/preview.mjs. All transfers are synthetic, as labeled in the image."
+    },
+    {
+      "file": "queues.png",
+      "subject": "Queue concurrency and a synthetic overnight schedule",
+      "viewport": {
+        "width": 1440,
+        "height": 1600
+      },
+      "origin": "Unretouched Chromium screenshot of the shipped Web UI against tools/web/preview.mjs. All transfers are synthetic, as labeled in the image."
+    },
+    {
+      "file": "categories.png",
+      "subject": "Category and bounded server folder controls with synthetic values",
+      "viewport": {
+        "width": 1440,
+        "height": 1600
       },
       "origin": "Unretouched Chromium screenshot of the shipped Web UI against tools/web/preview.mjs. All transfers are synthetic, as labeled in the image."
     },

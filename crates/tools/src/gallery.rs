@@ -74,8 +74,16 @@ pub struct Accepts {
 
 impl Accepts {
     /// For `version` as gallery-dl prints it (`1.26.9`, `1.31.0-dev`). A version that can't be
-    /// read is taken as a recent one, as before #236.
+    /// read is taken as a recent one, as before #236. The system's copy (#571), whose version
+    /// isn't asked (finding it starts no program), gets what every release MDM drives accepts:
+    /// a distribution's may be one of the oldest.
     pub fn of(version: &str) -> Accepts {
+        if version == crate::SYSTEM {
+            return Accepts {
+                no_input: false,
+                user_agent: false,
+            };
+        }
         let at_least = |v: &str| release(version).is_none_or(|have| Some(have) >= release(v));
         Accepts {
             no_input: at_least("1.27.1"),
@@ -100,13 +108,18 @@ pub fn too_old(version: &str) -> bool {
     release(version).is_some_and(|have| Some(have) < release(OLDEST))
 }
 
-/// The gallery-dl to use: the person's own (`chosen`), else MDM's install in `dir`. A chosen
-/// one too old for MDM ([`too_old`], chosen before #236 checked) is passed over for MDM's own
-/// copy; [`chosen_too_old`] names it, for the Helpers window to say so.
+/// The gallery-dl to use: the person's own (`chosen`), else MDM's install in `dir`; on Linux
+/// and macOS, else the system's (#571, as yt-dlp's: a package manager's or Homebrew's, kept up
+/// to date by it). A chosen one too old for MDM ([`too_old`], chosen before #236 checked) is
+/// passed over; [`chosen_too_old`] names it, for the Helpers window to say so.
 pub fn installed(dir: &Path) -> Option<Installed> {
-    chosen::chosen(dir, chosen::Helper::GalleryDl)
+    let own = chosen::chosen(dir, chosen::Helper::GalleryDl)
         .filter(|mine| !too_old(&mine.version))
-        .or_else(|| own(dir))
+        .or_else(|| own(dir));
+    #[cfg(unix)]
+    return own.or_else(|| crate::system::installed("gallery-dl"));
+    #[cfg(not(unix))]
+    own
 }
 
 /// The person's own gallery-dl when it is too old for MDM, so passed over.
@@ -133,7 +146,9 @@ struct Asset {
 }
 
 /// Install the latest gallery-dl into `dir` unless the installed one is as new, downloaded with
-/// MDM's engine (`net`), counted into `progress`. The person's own copy is theirs to update.
+/// MDM's engine (`net`), counted into `progress`. The person's own copy is theirs to update. A
+/// system copy doesn't count as installed here: this is the way to MDM's own instead (Helpers,
+/// #571), which then wins ([`installed`]).
 pub async fn install_latest(
     dir: &Path,
     net: &mdm_engine::Options,
@@ -254,6 +269,8 @@ struct Shared {
     there: u64,
     /// The files saved this run (at most `KEEP_PATHS`).
     files: Vec<PathBuf>,
+    /// Every file gallery-dl reported for this gallery (`Saved` + `There`, at most `KEEP_PATHS`).
+    known: Vec<PathBuf>,
 }
 
 impl Default for Progress {
@@ -266,6 +283,8 @@ impl Default for Progress {
             events: Vec::new(),
             side_files: Vec::new(),
             sub_problems: Vec::new(),
+            engine: None,
+            helper: None,
         }
     }
 }
@@ -325,6 +344,11 @@ impl GalleryJob {
     /// The files saved so far this run (asked once, at the end: not every frame).
     pub fn saved(&self) -> Vec<PathBuf> {
         self.shared.lock().unwrap().files.clone()
+    }
+
+    /// Every file gallery-dl reported for this gallery (`Saved` + `There` across resumed runs).
+    pub fn known_files(&self) -> Vec<PathBuf> {
+        self.shared.lock().unwrap().known.clone()
     }
 
     /// End gallery-dl and all it started; what was saved stays.
@@ -412,10 +436,18 @@ fn read(stdout: impl std::io::Read, shared: &Mutex<Shared>) {
                 sh.saved += 1;
                 sh.progress.downloaded += std::fs::metadata(&p).map_or(0, |m| m.len());
                 if sh.files.len() < KEEP_PATHS {
-                    sh.files.push(p);
+                    sh.files.push(p.clone());
+                }
+                if sh.known.len() < KEEP_PATHS {
+                    sh.known.push(p);
                 }
             }
-            Line::There(_) => sh.there += 1,
+            Line::There(p) => {
+                sh.there += 1;
+                if sh.known.len() < KEEP_PATHS {
+                    sh.known.push(p);
+                }
+            }
         }
         let secs = started.elapsed().as_secs_f64().max(0.5);
         sh.progress.speed = sh.progress.downloaded as f64 / secs;
@@ -505,6 +537,9 @@ mod tests {
         assert_eq!(accepts("2.0"), (true, true));
         // One that can't be read: as recent as MDM's own.
         assert_eq!(accepts("unknown"), (true, true));
+        // The system's, not asked (#571): what every release from 1.20.0 accepts.
+        assert_eq!(accepts("system"), (false, false));
+        assert!(!too_old("system"));
         assert!(too_old("1.17.0") && too_old("1.19.3") && too_old("0.9"));
         assert!(!too_old("1.20.0") && !too_old("1.26.9") && !too_old("unknown"));
 
@@ -576,7 +611,11 @@ mod tests {
         std::fs::write(&exe, b"x").unwrap();
         let json = serde_json::json!({ "gallery-dl": { "version": "1.17.0", "exe": exe } });
         std::fs::write(dir.path().join("programs.json"), json.to_string()).unwrap();
-        assert_eq!(installed(dir.path()), None, "not the old one");
+        // Not the old one: on Linux and macOS a gallery-dl the system has may stand in (#571).
+        assert!(
+            installed(dir.path()).is_none_or(|i| i.version != "1.17.0"),
+            "not the old one"
+        );
         assert_eq!(
             chosen_too_old(dir.path()).map(|i| i.version).as_deref(),
             Some("1.17.0")
@@ -662,6 +701,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(installed(dir.path()), Some(now));
-        assert!(crate::installed(dir.path()).is_none(), "not yt-dlp's");
+        assert!(crate::own_ytdlp(dir.path()).is_none(), "not yt-dlp's");
     }
 }

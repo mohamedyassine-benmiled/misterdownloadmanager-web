@@ -40,6 +40,11 @@
 #, machine
 @plural	Matches {n} article now (it adds new ones only):|Matches {n} articles now (it adds new ones only):	現在 {n} 件の記事に一致します (新しい記事のみ追加されます):
 #. count in a dialog box
+#. Cancel in Download File Info with downloads waiting behind it
+#. {n} = a number (keep the braces as they are)
+#, machine
+@plural	There is {n} more download waiting. Cancel it too?|There are {n} more downloads waiting. Cancel them too?	他に {n} 件のダウンロードが待機しています。これもキャンセルしますか?
+#. count in a dialog box
 #. "files already there" question, under the first path: {n} = how many more
 #. {n} = a number (keep the braces as they are)
 #, machine
@@ -70,7 +75,7 @@
 #. {n} = a number (keep the braces as they are)
 #, machine
 @plural	{n} entry was left out (a link, or a name leading outside the folder)|{n} entries were left out (links, or names leading outside the folder)	{n} 個のエントリが除外されました (リンク、またはフォルダー外につながる名前)
-#. count in the Batch download window; count in the Link grabber window; count in the Add torrent window
+#. count in the Batch download window; count in the Link grabber window; count in the Add torrent window; count in torrentfiles.rs
 #. how many files the pattern gives in all
 #. Link grabber: a package's row: {n} is its number of links
 #. {n} = a number (keep the braces as they are)
@@ -95,6 +100,14 @@
 #. {n} = a number (keep the braces as they are)
 #, machine
 @plural	{n} selected|{n} selected	{n}個を選択済み
+#. count in the Options window
+#. {n} = a number (keep the braces as they are)
+#, machine
+@plural	{n} site added from the file.|{n} sites added from the file.	ファイルから {n} サイトを追加しました。
+#. count in the Options window
+#. {n} = a number (keep the braces as they are)
+#, machine
+@plural	{n} site saved to the file.|{n} sites saved to the file.	ファイルに {n} サイトを保存しました。
 #. count in the main window
 #. event log entry: trackers were added to the torrent
 #. {n} = a number (keep the braces as they are)
@@ -169,6 +182,9 @@
 #. window title: 7-Zip (a program's name) must be installed
 #, machine
 	7-Zip needed	7-Zip が必要です
+#. tab in the main window
+#, machine
+	720p	720p
 #. text in the Options window
 #. Options → Archives: {path} is where 7-Zip's program is
 #, machine
@@ -187,6 +203,10 @@
 #. Options → Accounts: what these accounts are, and the services' rule against sharing
 #, machine
 	A debrid service downloads a file host's link with your own paid account and gives MDM a direct link. Use only your own account: sharing an account or its links breaks the services' terms and can get it suspended. Downloads the browser already started stay as they are.	デブリットサービスは、お客様ご自身の有料アカウントを使用してファイルホストのリンクをダウンロードし、MDMに直接リンクを提供します。ご自身のアカウントのみを使用してください。アカウントまたはそのリンクを共有すると、サービスの規約に違反し、アカウントが停止される可能性があります。ブラウザーが既に開始したダウンロードは、そのまま維持されます。
+#. text in a download's progress window
+#. reason shown on the Rename box when the entered name ends with a period
+#, machine
+	A file name cannot end with a dot	ファイル名の末尾にピリオドは使用できません
 #. text in errors.rs
 #. a torrent through a debrid service: one of its files has a name that would be written outside its folder; nothing was written. {name} the file's name as the service gave it
 #. {name} = a file name (keep the braces as they are)
@@ -216,6 +236,10 @@
 #. an error: a server on this computer redirected the download to the internet, which would not go through the chosen network adapter; {adapter} its name
 #, machine
 	a server on this computer sent the download elsewhere, which would not go through {adapter}	このコンピューター上のサーバーがダウンロードを別の場所に送信しましたが、{adapter} を経由しない場所です
+#. message or event log entry in the main window
+#. tooltip on the disabled Rename box for a single-file torrent
+#, machine
+	A single-file torrent keeps its name	単一ファイルのトレントは名前を維持します
 #. text in the Add torrent window
 #. Add trackers: MDM never contacts a tracker on this computer or the local network
 #, machine
@@ -295,6 +319,10 @@
 #. button in the browser extension's window: open the extension's page in that browser
 #, machine
 	Add the extension	拡張機能を追加
+#. window title in extension.rs
+#. title of the window that shows how to turn on the Safari extension
+#, machine
+	Add the extension to Safari	Safari に拡張機能を追加
 #. text in extension.rs
 #, machine
 	Add the free extension: files you download in your browser come here, and videos get a Download button.	無料の拡張機能を追加すると、ブラウザーでダウンロードしたファイルがここに表示され、ビデオにダウンロード ボタンが表示されます。
@@ -568,6 +596,10 @@
 #. a country's name (where a download's server is)
 #, machine
 	Austria	オーストリア
+#. checkbox in the Options window; text in the Options window
+#. checkbox: the User-Agent is the default browser's, which MDM finds itself
+#, machine
+	Automatic	自動
 #. text in remote.rs
 #. remote control page (on a phone): category choice: the category follows the file's type
 #, machine
@@ -816,6 +848,10 @@
 #. text in helpers.rs
 #, machine
 	Check your connection, then try again, or get them later from the video window.	接続を確認してから再試行するか、後で動画ウィンドウから取得してください。
+#. text in the Options window
+#. tooltip of the close-setting: checked keeps MDM running when the window closes, in the notification area when available or else the taskbar; downloads continue; unchecked closing quits
+#, machine
+	Checked, closing the window keeps MDM running: it hides in the notification area when available, or minimizes to the taskbar otherwise, and downloads continue; unchecked, closing quits MDM	オンにすると、ウィンドウを閉じても MDM は実行を継続し、利用可能な場合は通知領域に最小化されます。利用できない場合はタスク バーに最小化され、ダウンロードは継続されます。オフにすると、ウィンドウを閉じたときに MDM は終了します。
 #. message or event log entry in the main window
 #. event log entry after Recheck: {have} and {total} are sizes ("1.2 GB of 4 GB there")
 #, machine
@@ -849,6 +885,10 @@
 #. the trailing ... means it is still going on: keep it
 #, machine
 	Checking {name} ({n} of {total})...	{name} を確認しています ({n}/{total})...
+#. text in the download list (sizes, speeds, status)
+#. a torrent's status while its files are read and checked; {percent} is how much is checked, e.g. "42%"
+#, machine
+	Checking {percent}	{percent} を確認しています
 #. text in the Checksum window; text in the Link grabber window
 #. the trailing ... means it is still going on: keep it
 #, machine
@@ -894,11 +934,12 @@
 #. text in the Options window
 #, machine
 	Clock:	時計:
-#. text in the Checksum window; text in the main window (menus, toolbar, Categories pane); button in crashui.rs; button in a dialog box; button in extension.rs; button in the Help menu's windows (About, updates, shortcuts, Tell a friend); button in helpers.rs; button in the download list; button in the Options window; button in rssdlg.rs; text in standard windows
+#. text in the Checksum window; text in the main window (menus, toolbar, Categories pane); button in crashui.rs; button in a dialog box; button in extension.rs; button in the Help menu's windows (About, updates, shortcuts, Tell a friend); button in helpers.rs; button in the download list; button in the Options window; button in rssdlg.rs; button in torrentfiles.rs; text in standard windows
 #. both verbs: Verify = check the file now; Close = close the window
 #. tooltip of the × that closes the Categories pane
 #. verb: closes this window
 #. verb: closes the filter box
+#. button that closes the torrent file list window
 #. a window's title-bar button: closes the window
 #, machine
 	Close	閉じる
@@ -938,6 +979,10 @@
 #. Options → DNS settings: NextDNS's own configuration ID (optional)
 #, machine
 	Configuration ID:	構成 ID:
+#. text in a download's progress window
+#. verb: button that saves the deferred rename in the progress window
+#, machine
+	Confirm	確認
 #. text in the Options window
 #, machine
 	Confirm before deleting downloads	ダウンロードを削除する前に確認する
@@ -1314,6 +1359,11 @@
 #. the trailing ... means it is still going on: keep it
 #, machine
 	Downloading and verifying yt-dlp...	yt-dlp をダウンロードして確認しています...
+#. text in helpers.rs
+#. Video helpers: MDM's own yt-dlp is being downloaded
+#. the trailing ... means it is still going on: keep it
+#, machine
+	Downloading MDM's own copy...	MDM のコピーをダウンロードしています...
 #. text in the Help menu's windows (About, updates, shortcuts, Tell a friend)
 #. Check for updates, while Update now downloads; {percent} like "42%"
 #, machine
@@ -1502,9 +1552,13 @@
 #. Options → Accounts: a note that the debrid services' support (Real-Debrid, AllDebrid, Premiumize) is new and not yet tried with real paid accounts
 #, machine
 	Experimental: built from the services' public API documentation, not yet confirmed with real accounts.	試験運用版: 各サービスの公開 API ドキュメントに基づいて構築されており、実際の有料アカウントではまだ確認されていません。
-#. message or event log entry in the main window
+#. message or event log entry in the main window; text in the Options window
 #, machine
 	Export	エクスポート
+#. button in the Options window
+#. the trailing ... means it opens a window: keep it
+#, machine
+	Export...	エクスポート...
 #. text in the Options window
 #, machine
 	Extend the availability of Manifest 2 Chrome extensions	Manifest V2 Chrome 拡張機能の可用性を拡張する
@@ -1615,6 +1669,11 @@
 #. text in the Scheduler window; tab in the Scheduler window
 #, machine
 	Files in the queue	キュー内のファイル
+#. button in a download's Properties window
+#. File Properties button that opens the selected torrent's file list
+#. the trailing ... means it opens a window: keep it
+#, machine
+	Files...	ファイル...
 #. button in the Find window
 #. verb: button that starts the search
 #, machine
@@ -1932,6 +1991,10 @@
 #. a country's name (where a download's server is)
 #, machine
 	Hong Kong	香港
+#. text in extension.rs
+#. button in the browser extension's window, on Safari's row: open the steps that turn the extension on
+#, machine
+	How to Add	追加方法
 #. text in the Scheduler window
 #. link after why the computer can't be woken (Linux, macOS): opens the guide's page that shows how an administrator can allow it
 #, machine
@@ -1970,9 +2033,13 @@
 #. checkbox in the Options window
 #, machine
 	Ignore file modification time changes when resuming a download	ダウンロードを再開するときにファイルの変更時間の変更を無視する
-#. message or event log entry in the main window
+#. message or event log entry in the main window; text in the Options window
 #, machine
 	Import	インポート
+#. button in the Options window
+#. the trailing ... means it opens a window: keep it
+#, machine
+	Import...	インポート...
 #. value in a column's filter list in the download list
 #, machine
 	In a queue	キュー内
@@ -2147,6 +2214,10 @@
 #. text in a dialog box; text in a download's progress window; text in the Add torrent window
 #, machine
 	KBytes/sec	KB/秒
+#. text in the Options window
+#. checkbox: closing keeps MDM running, in the notification area when available or else the taskbar, instead of quitting
+#, machine
+	Keep running when closing the window	ウィンドウを閉じても実行を継続する
 #. checkbox in the Add torrent window
 #, machine
 	Keep sharing torrents after they finish	完了後もトレントを共有し続ける
@@ -2343,6 +2414,10 @@
 #. crash report window: looking on GitHub for an issue about the same problem
 #, machine
 	Looking for this problem on GitHub…	GitHub でこの問題を検索しています…
+#. text in the Options window
+#. the trailing ... means it is still going on: keep it
+#, machine
+	Looking for your default browser...	既定のブラウザーを検索しています...
 #. text in the Download video window
 #. the trailing ... means it is still going on: keep it
 #, machine
@@ -3050,14 +3125,15 @@
 #. checkbox in a dialog box
 #, machine
 	Only while I'm using the computer	コンピューターを使用している間のみ
-#. button in a dialog box; text in a dialog box; button in a download's Properties window
+#. button in a dialog box; text in a dialog box; button in a download's Properties window; button in torrentfiles.rs
 #. verb: opens the downloaded file
 #. title of the message when a downloaded file can't be opened
 #. verb: opens the file
 #, machine
 	Open	開く
-#. button in crashui.rs; button in a dialog box
+#. button in crashui.rs; button in a dialog box; button in torrentfiles.rs
 #. crash report window button: show the report's file in its folder
+#. button that opens the torrent's containing folder in the file manager
 #, machine
 	Open folder	フォルダーを開く
 #. checkbox in the Add torrent window
@@ -3066,6 +3142,14 @@
 #. text in the tray icon's menu
 #, machine
 	Open Mister Download Manager	Mister Download Manager を開く
+#. text in extension.rs
+#. step 2 of turning on the Safari extension; Cmd is the Command key
+#, machine
+	Open Safari's settings (Cmd+,).	Safari の設定 (Cmd+,) を開きます。
+#. text in extension.rs
+#. step 1 of turning on the Safari extension
+#, machine
+	Open Safari.	Safari を開きます。
 #. text in the Scheduler window
 #, machine
 	Open the following file when done	完了したら次のファイルを開く
@@ -3436,6 +3520,10 @@
 #. {name} = a file name (keep the braces as they are)
 #, machine
 	Remove {name} from the list?	リストから {name} を削除しますか?
+#. text in a download's progress window
+#. noun: label before the deferred new file or folder name in the progress window
+#, machine
+	Rename	名前の変更
 #. text in the Batch download window
 #. group box title: what the * in the address is replaced with (numbers or letters)
 #, machine
@@ -3500,6 +3588,9 @@
 #. Saturday, as short as a calendar's column head (two letters in English)
 #, machine
 	Sa	土
+#. text in extension.rs
+#, machine
+	Safari turns "Allow unsigned extensions" off each time it quits: do steps 1 to 6 again after restarting it.	Safari は終了するたびに「署名されていない機能拡張を許可」をオフにします。再起動後は、手順 1 から 6 をもう一度行ってください。
 #. text in countries.rs
 #. a country's name (where a download's server is)
 #, machine
@@ -3567,6 +3658,10 @@
 #, machine
 	Save to:	保存先:
 #. text in a download's progress window
+#. status shown in green beside the Rename box once the new name is saved
+#, machine
+	Saved	保存済み
+#. text in a download's progress window
 #. label before the folder the torrent is saved in
 #, machine
 	Saved in	保存場所
@@ -3589,7 +3684,7 @@
 #. title of the folder picker
 #, machine
 	Select a folder	フォルダーの選択
-#. button in playlistdlg.rs; button in the Add torrent window
+#. button in playlistdlg.rs; button in the Add torrent window; text in torrentfiles.rs
 #. button in Download video for a playlist: tick every video
 #, machine
 	Select all	すべて選択
@@ -3726,6 +3821,11 @@
 #. event log entry, past tense: a finished torrent stopped being shared to others because its share ratio (sent ÷ received) reached the limit set in Torrent settings; {ratio} = e.g. 2.00
 #, machine
 	Sharing stopped: the share ratio reached {ratio}	共有を停止しました: 共有比率が{ratio}に達しました
+#. message or event log entry in the main window
+#. event log entry on a finished torrent when re-attaching it to keep sharing failed; {error} = why
+#. {error} = an error message (keep the braces as they are)
+#, machine
+	Sharing stopped: {error}	共有を停止しました: {error}
 #. text in the download list
 #, machine
 	Show	表示
@@ -3842,8 +3942,9 @@
 #. text in a download's Properties window
 #, machine
 	Size:	サイズ:
-#. text in a download's progress window
+#. text in a download's progress window; text in torrentfiles.rs
 #. a torrent file the user chose not to download
+#. status of a torrent file the user chose not to download
 #, machine
 	Skipped	スキップ済み
 #. text in the queues
@@ -3919,6 +4020,10 @@
 #. window title in a dialog box
 #, machine
 	Speed Limiter settings	スピード リミッター設定
+#. message or event log entry in the main window
+#. tooltip on the disabled Rename box when the file is one part of a split archive (.part1.rar, .7z.001…)
+#, machine
+	Split archive volumes keep their names for extraction	分割アーカイブのボリュームは展開のため名前を維持します
 #. text in countries.rs
 #. a country's name (where a download's server is)
 #, machine
@@ -4035,6 +4140,10 @@
 #, machine
 	Stopped: the network adapter changed; starting again	停止: ネットワーク アダプターが変更されました。再開しています
 #. message or event log entry in the main window
+#. event log entry: a video or gallery download stopped to start again at the new speed limit (its helper program takes a limit only as it starts)
+#, machine
+	Stopped: the speed limit changed; starting again with it	停止しました: 速度制限が変更されました。新しい制限で再開します
+#. message or event log entry in the main window
 #. event log entry: the download stopped because the chosen network adapter (a VPN's, usually) went away; {adapter} its name
 #, machine
 	Stopped: {adapter} is not connected; it goes on when it is back	停止: {adapter} は接続されていません。接続が戻ると再開します
@@ -4088,6 +4197,18 @@
 #. a country's name (where a download's server is)
 #, machine
 	Sweden	スウェーデン
+#. text in extension.rs
+#. step 3 of turning on the Safari extension; the quoted tab name is what Safari's settings show in this language: use Apple's own word for it, or keep the English name when unsure
+#, machine
+	Switch to the "Advanced" tab (the cogwheels).	「詳細」タブ (歯車のアイコン) に切り替えます。
+#. text in extension.rs
+#. step 5 of turning on the Safari extension; the quoted tab name is what Safari's settings show in this language: use Apple's own word for it, or keep the English name when unsure
+#, machine
+	Switch to the "Developer" tab (the screwdriver and spanner).	「開発」タブ (ドライバーとレンチのアイコン) に切り替えます。
+#. text in extension.rs
+#. step 7 of turning on the Safari extension; the quoted tab name is what Safari's settings show in this language: use Apple's own word for it, or keep the English name when unsure
+#, machine
+	Switch to the "Extensions" tab (the puzzle piece).	「機能拡張」タブ (パズルのピースのアイコン) に切り替えます。
 #. text in countries.rs
 #. a country's name (where a download's server is)
 #, machine
@@ -4266,6 +4387,9 @@
 #. text in errors.rs
 #, machine
 	the drive or network share is no longer available	ドライブまたはネットワーク共有が利用できなくなりました
+#. text in extension.rs
+#, machine
+	The extension is already in this app. Apple hasn't notarized this build, so Safari needs these steps to allow it.	拡張機能はこのアプリにすでに含まれています。このビルドは Apple による公証を受けていないため、Safari で許可するには次の手順が必要です。
 #. text in errors.rs
 #, machine
 	the file changed on the server	サーバー上のファイルが変更されました
@@ -4276,7 +4400,7 @@
 #. {error} = an error message (keep the braces as they are)
 #, machine
 	The file could not be moved: {error}	ファイルを移動できませんでした: {error}
-#. message or event log entry in the main window
+#. message or event log entry in the main window; text in the Options window
 #. {error} = an error message (keep the braces as they are)
 #, machine
 	The file could not be read: {error}	ファイルを読み取れませんでした: {error}
@@ -4325,13 +4449,17 @@
 #. a check of Test browser integration: the browsers are set up, but the small helper program they start (misterdownloadmanager-nmhost) is gone
 #, machine
 	The helper program the browsers start is missing	ブラウザーが起動するヘルパー プログラムが見つかりません
-#. message or event log entry in the main window
+#. message or event log entry in the main window; text in the Options window
 #. {error} = an error message (keep the braces as they are)
 #, machine
 	The list could not be saved: {error}	リストを保存できませんでした: {error}
 #. text in whereis.rs
 #, machine
 	the local network	ローカル ネットワーク
+#. text in a download's progress window
+#. reason shown on the Rename box when the entered name exceeds the length limit
+#, machine
+	The name is too long	名前が長すぎます
 #. text in errors.rs; text in torrent downloads
 #. an error: the network adapter chosen in Options (a VPN's, usually) is off or gone; {adapter} its name
 #, machine
@@ -4402,6 +4530,18 @@
 #. the Download video window: the site asked for a sign-in although yt-dlp had the cookies of the browser chosen in Options; {browser} = its name
 #, machine
 	The site wants you signed in, even with {browser}'s cookies. Sign in to it in {browser}, then look the page up again.	このページでは {browser} の Cookie を使用しても、サイトへのサインインが必要です。{browser} でサインインしてから、もう一度ページを検索してください。
+#. text in the Download video window
+#. the Download video window: the site's bot check (Cloudflare) turned yt-dlp away though the browser's extension passed the page's cookies
+#, machine
+	The site's bot check (Cloudflare) refused yt-dlp, even with your browser's cookies for this page. Try again later, or from another browser.	サイトのボット チェック (Cloudflare) により yt-dlp が拒否されました。このページのブラウザーの Cookie を使用しても拒否されます。後でもう一度試すか、別のブラウザーから試してください。
+#. text in the Download video window
+#. the Download video window: the site's bot check (Cloudflare) turned yt-dlp away though it had the cookies of the browser chosen in Options; {browser} = its name
+#, machine
+	The site's bot check (Cloudflare) refused yt-dlp, even with {browser}'s cookies. Use the Download video button over the video in {browser}, or try the page again later.	サイトのボット チェック (Cloudflare) により yt-dlp が拒否されました。{browser} の Cookie を使用しても拒否されます。{browser} の動画の上の [動画をダウンロード] ボタンを使用するか、後でページをもう一度試してください。
+#. text in the Download video window
+#. the Download video window: the site's bot check (Cloudflare) turned yt-dlp away and no browser cookies were used
+#, machine
+	The site's bot check (Cloudflare) refused yt-dlp. If the page opens in your browser, choose that browser in Options → Sites Logins → Cookies for video sites and look the page up again, or use the Download video button over the video.	サイトのボット チェック (Cloudflare) により yt-dlp が拒否されました。ページがブラウザーで開く場合は、[オプション] → [サイトのログイン] → [動画サイトの Cookie] でそのブラウザーを選択し、ページをもう一度検索するか、動画の上の [動画をダウンロード] ボタンを使用してください。
 #. text in crashui.rs
 #. crash report window: the symbols couldn't be downloaded; the report still works
 #, machine
@@ -4472,6 +4612,9 @@
 #. in the empty download list, under its title
 #, machine
 	This category or queue holds no downloads yet.	このカテゴリまたはキューにはまだダウンロードがありません。
+#. text in a download's progress window
+#, machine
+	This character is not allowed in a file name	この文字はファイル名に使用できません
 #. text in the Options window
 #. Options → Remote → Pair a device: the code ran out (10 minutes, or 5 wrong tries)
 #, machine
@@ -4515,6 +4658,14 @@
 #. text in a dialog box
 #, machine
 	This folder does not exist:	このフォルダーは存在しません:
+#. message or event log entry in the main window
+#. tooltip on the disabled Rename box when the folder already holds files this download did not write
+#, machine
+	This folder holds files from outside this download	このフォルダーにはこのダウンロード以外のファイルが含まれています
+#. message or event log entry in the main window
+#. tooltip on the disabled Rename box when the folder holds another download or is a save/category folder
+#, machine
+	This folder is shared with another download or save folder	このフォルダーは他のダウンロードまたは保存フォルダーと共有されています
 #. text in errors.rs
 #. a download's error: a Google Drive file that isn't shared with everyone
 #, machine
@@ -4542,6 +4693,10 @@
 #. a magnet link's lookup, after 30 seconds: it can't find any peer at all
 #, machine
 	This magnet link names no trackers and the DHT is off, so no peer can be found.	このマグネットリンクにはトラッカーが指定されておらず、DHT もオフになっているため、ピアが見つかりません。
+#. text in a download's progress window
+#. reason shown on the Rename box when the entered name is a reserved device name on Windows (CON, NUL, COM1…)
+#, machine
+	This name is reserved by Windows	この名前は Windows によって予約されています
 #. tooltip (why a control is greyed) in the Download video window
 #. why "Put them into the video" is greyed: ffmpeg (a helper program) is not installed
 #, machine
@@ -4559,6 +4714,10 @@
 #. {name} = a file name (keep the braces as they are)
 #, machine
 	this program isn't {name}	このプログラムは {name} ではありません
+#. text in errors.rs
+#. why a download failed: the site's bot check (Cloudflare) lets browsers through, not programs. Alt+click: the link clicked with the Alt key held, which leaves the download to the browser
+#, machine
+	this site lets only browsers through; Alt+click the link	このサイトはブラウザーのみを許可しています。リンクを Alt キーを押しながらクリックしてください
 #. text in a download's progress window
 #, machine
 	This system has no dial-up connections to hang up	このシステムには切断するダイヤルアップ接続がありません
@@ -4580,6 +4739,11 @@
 #. the Download video window: the video needs the user to be signed in
 #, machine
 	This video needs you to be signed in. Use the Download video button over it in your browser, which passes your sign-in on, or choose your browser in Options → Sites Logins → Cookies for video sites.	この動画にはサインインが必要です。ブラウザーの動画上にある [動画をダウンロード] ボタンを使用すると、サインイン情報が渡されます。または、[オプション] → [サイトのログイン] → [動画サイトの Cookie] でブラウザーを選択してください。
+#. text in errors.rs
+#. a download's error: the address is a site's web page that needs a browser, not the file; {site} = the site's name (gofile)
+#. {site} = a web site's name such as "example.com" (keep the braces as they are)
+#, machine
+	this {site} link is a web page, not the file: open it in your browser and download from there	この {site} リンクはファイルではなく Web ページです。ブラウザーで開いてそこからダウンロードしてください
 #. text in whereis.rs
 #. where a download's server is, when a proxy carries it (the proxy's place not known)
 #, machine
@@ -4644,8 +4808,9 @@
 #. text in the download list (sizes, speeds, status)
 #, machine
 	Torrent downloads (magnet links and .torrent files)	トレント ダウンロード (マグネット リンクと .torrent ファイル)
-#. message or event log entry in the main window; text in the Add torrent window
+#. message or event log entry in the main window; text in the Add torrent window; window title in torrentfiles.rs
 #. the kind of file the Open dialog lists
+#. title of the separate window listing a torrent's files
 #, machine
 	Torrent files	Torrent ファイル
 #. window title in the Add torrent window
@@ -4724,6 +4889,22 @@
 #. verb: turn the Speed Limiter on
 #, machine
 	Turn on	オンにする
+#. text in extension.rs
+#. step 6 of turning on the Safari extension; the quoted switch name is what Safari's settings show in this language: use Apple's own words for it, or keep the English name when unsure
+#, machine
+	Turn on "Allow unsigned extensions".	「署名されていない機能拡張を許可」をオンにします。
+#. text in extension.rs
+#. step 8 of turning on the Safari extension
+#, machine
+	Turn on "Mister Download Manager" and allow it on all websites.	「Mister Download Manager」をオンにして、すべての Web サイトでの使用を許可します。
+#. text in extension.rs
+#. step 4 of turning on the Safari extension; the quoted switch name is what Safari's settings show in this language: use Apple's own words for it, or keep the English name when unsure
+#, machine
+	Turn on "Show features for web developers".	「ウェブ開発者向けの機能を表示」をオンにします。
+#. text in extension.rs
+#. the headline of the window that shows how to turn on the Safari extension
+#, machine
+	Turn on the extension in Safari	Safari で拡張機能をオンにする
 #. tooltip (why a control is greyed) in the Options window
 #. why Options → Remote → Pair a device... is greyed
 #, machine
@@ -5142,6 +5323,13 @@
 #. a row of the browser extension's window when no browser was found by name
 #, machine
 	Your browser	お使いのブラウザー
+#. text in the Options window
+#, machine
+	Your default browser isn't one MDM knows: a current Chrome's User-Agent	既定のブラウザーは MDM が認識しているものではありません: 現在の Chrome のユーザー エージェント
+#. text in the Options window
+#. tooltip; {browser} is a browser and its version, e.g. "Brave 157"
+#, machine
+	Your default browser's User-Agent: {browser}	既定のブラウザーのユーザー エージェント: {browser}
 #. text in the settings
 #. Options → DNS: the name of a DNS the user typed in, in messages: "your DNS (DNS over TLS)"
 #, machine
@@ -5177,6 +5365,26 @@
 #. {error} = an error message (keep the braces as they are)
 #, machine
 	yt-dlp couldn't read {browser}'s cookies: {error}	yt-dlp は {browser} の Cookie を読み取れませんでした: {error}
+#. text in a download's progress window
+#. progress window, a video's line: the helper program yt-dlp gave no address MDM's own downloader could use
+#, machine
+	yt-dlp downloads it itself	yt-dlp がダウンロードしています
+#. text in a download's progress window
+#. progress window, a video's line: MDM's own downloader can't take a live broadcast, so the helper program yt-dlp records it
+#, machine
+	yt-dlp downloads it itself: a live stream	yt-dlp がダウンロードしています: ライブ ストリーム
+#. text in a download's progress window
+#. progress window, a video's line: a stream sent in many small pieces (HLS, DASH), which the helper program yt-dlp downloads itself for now
+#, machine
+	yt-dlp downloads it itself: a stream in pieces	yt-dlp がダウンロードしています: 分割されたストリーム
+#. text in a download's progress window
+#. progress window, a video's line: the stream is copy-protected (DRM), left to the helper program yt-dlp, which refuses it
+#, machine
+	yt-dlp downloads it itself: protected (DRM)	yt-dlp がダウンロードしています: 保護されています (DRM)
+#. text in a download's progress window
+#. progress window, a video's line: {protocol} = a streaming protocol's short name (rtmp, rtsp, mms); MDM's own downloader doesn't speak it, so the helper program yt-dlp downloads it
+#, machine
+	yt-dlp downloads it itself: {protocol}	yt-dlp がダウンロードしています: {protocol}
 #. text in the Download video window
 #. the Download video window: the browser chosen in Options has no cookies on this computer (not installed, or another profile); {browser} = its name
 #, machine
@@ -5255,6 +5463,11 @@
 #. {size} = a file size such as "4.2 MB" (keep the braces as they are)
 #, machine
 	{done} of {size}	{size} 中 {done}
+#. text in deferred_rename.rs
+#. appended to an OS error when a case-only rename could not move the temporary file back to its original name; {error} = first OS error, {path} = temporary path left on disk, {rollback_error} = second OS error
+#. {error} = an error message (keep the braces as they are)
+#, machine
+	{error} (left as {path}: {rollback_error})	{error} ({path} のまま残されました: {rollback_error})
 #. text in a download's Properties window
 #. a kind of file, by its extension: {ext} = "ZIP", "PDF"…
 #, machine
@@ -5481,6 +5694,10 @@ column	File Name	ファイル名
 #, machine
 column	Last Try Date	最終試行日時
 #. column title in the download list in the download list
+#. column title: how many peers a torrent is connected to now (seeders and leechers)
+#, machine
+column	Peers	ピア
+#. column title in the download list in the download list
 #. column title: one letter for Queue (the column is narrow)
 #, machine
 column	Q	Q
@@ -5488,6 +5705,10 @@ column	Q	Q
 #. tooltip of the narrow "Q" column's title
 #, machine
 column	Queue	キュー
+#. column title in the download list in the download list
+#. column title: what a torrent has sent to peers against what it took
+#, machine
+column	Share ratio	共有比率
 #. column title in the download list in the download list
 #. noun: the file's size
 #, machine
@@ -5506,10 +5727,26 @@ column	Time left	残り時間
 #. column title in the download list in the download list
 #, machine
 column	Transfer rate	転送速度
+#. column title in the download list in the download list
+#. column title: what a torrent sends to peers, bytes per second
+#, machine
+column	Upload speed	アップロード速度
+#. text in the browser extension
+#. in the menu under the download button over a video: the page is a list of videos (a playlist), whose videos are chosen in the app's window; keep the name Mister Download Manager as it is
+#, machine
+extension	A list of videos: choose them in Mister Download Manager	動画の一覧: Mister Download Manager で選択してください
+#. text in the browser extension
+#. shown briefly on the download button over a video after a quality was picked: the download was added to the app's download queue, to start later
+#, machine
+extension	Added to the queue	キューに追加しました
 #. text in the browser extension
 #. choice under Send downloads to: an MDM running on another computer of the network, such as a home server; keep the name Mister Download Manager as it is
 #, machine
 extension	Another Mister Download Manager (a server)	別の Mister Download Manager (サーバー)
+#. text in the browser extension
+#. tab above the list of qualities in the menu under the download button over a video: the choices that are sound only (MP3, Opus and the like); short, one word
+#, machine
+extension	Audio	オーディオ
 #. text in the browser extension
 #. the name this browser gets in the other MDM's list of paired devices
 #, machine
@@ -5532,6 +5769,10 @@ extension	Connected to Mister Download Manager	Mister Download Manager に接続
 #. {version} = a version number (keep the braces as they are)
 #, machine
 extension	Connected to Mister Download Manager {version}	Mister Download Manager {version} に接続済み
+#. text in the browser extension
+#. in the menu under the download button over a video: finding the video's qualities failed; the app's own explanation follows on the next line
+#, machine
+extension	Could not look it up	検索できませんでした
 #. text in the browser extension
 #. button beside a video, sound or stream in the toolbar button's popup: download it with the app; verb; short
 #, machine
@@ -5623,6 +5864,14 @@ extension	Left to the browser: {name}	ブラウザーに残されました: {nam
 #, machine
 extension	Live	ライブ
 #. text in the browser extension
+#. in the menu that opens from the download button over a video, while the app finds which qualities (resolutions, formats) the video can be downloaded in
+#, machine
+extension	Looking up the qualities…	画質を検索しています…
+#. text in the browser extension
+#. in the menu under the download button over a video: the app took more than a minute to find the video's qualities, so the menu stopped waiting
+#, machine
+extension	Looking up took too long	検索に時間がかかりすぎました
+#. text in the browser extension
 #. heading in the toolbar button's popup over the list of the videos, sounds and streams the current web page has loaded
 #, machine
 extension	Media on this page	このページのメディア
@@ -5639,6 +5888,10 @@ extension	Mister Download Manager didn't start in time	Mister Download Manager �
 #, machine
 extension	Mister Download Manager doesn't accept this copy of the extension	Mister Download Manager はこの拡張機能のコピーを受け入れません
 #. text in the browser extension
+#. in the menu under the download button over a video: the app is already looking up other videos and can't look this one up now; keep the name Mister Download Manager as it is
+#, machine
+extension	Mister Download Manager is busy with other videos	Mister Download Manager は他の動画の処理中です
+#. text in the browser extension
 #. shown briefly on the download button when the app could not be reached; keep the name Mister Download Manager as it is
 #, machine
 extension	Mister Download Manager isn't installed or didn't start	Mister Download Manager がインストールされていないか、起動していません
@@ -5646,6 +5899,10 @@ extension	Mister Download Manager isn't installed or didn't start	Mister Downloa
 #. status when the browser can't find the app's connection; keep the name Mister Download Manager as it is
 #, machine
 extension	Mister Download Manager isn't installed, or its browser integration isn't set up	Mister Download Manager がインストールされていないか、ブラウザー統合が設定されていません
+#. text in the browser extension
+#. in the menu under the download button over a video: the app needs the yt-dlp tool (a program's name, keep it as it is) to find this video's qualities, and it isn't installed; keep the name Mister Download Manager as it is
+#, machine
+extension	Mister Download Manager needs yt-dlp for this video	この動画には Mister Download Manager に yt-dlp が必要です
 #. text in the browser extension
 #. tooltip of the switch Send downloads through this browser's proxy or VPN extension; keep the name Mister Download Manager as it is
 #, machine
@@ -5673,9 +5930,17 @@ extension	Never take downloads from {site}	{site} からのダウンロードは
 #, machine
 extension	No video or sound found on this page yet. Play it, then open this again.	このページでは、まだ動画や音声が見つかりません。再生してから、もう一度開いてください。
 #. text in the browser extension
+#. in the menu under the download button over a video: the app found no quality of the video it could download
+#, machine
+extension	No video to download here	ここにはダウンロードできる動画がありません
+#. text in the browser extension
 #. pairing failed: the other MDM didn't answer
 #, machine
 extension	Not reached. Open its address once in this browser and accept its certificate, then try again.	到達できません。このブラウザーで一度アドレスを開き、証明書を承認してから、もう一度お試しください。
+#. text in the browser extension
+#. last command of the menu of qualities under the download button over a video: opens the app's Download video window for this video instead; keep the name Mister Download Manager as it is
+#, machine
+extension	Open in Mister Download Manager…	Mister Download Manager で開く…
 #. text in the browser extension
 #. button: open the other MDM's address in a tab (to accept its certificate once)
 #, machine
@@ -5688,6 +5953,10 @@ extension	Open its address once and accept its certificate, then enter a code fr
 #. button in the toolbar button's popup; keep the name Mister Download Manager as it is
 #, machine
 extension	Open Mister Download Manager	Mister Download Manager を開く
+#. text in the browser extension
+#. shown briefly on the download button over a video in a feed (a social site's home page, a timeline) when nothing in the feed gives that video's own address, so nothing was sent: the user should open the post the video belongs to and click the button on that page; short
+#, machine
+extension	Open the post, then use the button there	投稿を開いて、そこにあるボタンを使用してください
 #. text in the browser extension
 #. button in the toolbar button's popup: open the app's Options
 #. the trailing ... means it is still going on: keep it
@@ -5705,6 +5974,10 @@ extension	Pairing code	ペアリング コード
 #. status when the user switched off taking downloads in the toolbar button's popup
 #, machine
 extension	Paused: downloads stay with the browser	一時停止: ダウンロードはブラウザーに残ります
+#. text in the browser extension
+#. Option in the browser extension media list: put the page title before the original file name when downloading a detected media file
+#, machine
+extension	Prefix media file names with the page title	メディアファイル名の前にページのタイトルを付ける
 #. text in the browser extension
 #. shown instead of the Download button beside a copy-protected (DRM) stream in the toolbar button's popup: it can't be downloaded; short
 #, machine
@@ -5777,6 +6050,10 @@ extension	Update Mister Download Manager to use everything this extension offers
 #. why a download stayed with the browser: the app's setting 'Use advanced browser integration' is off; keep the setting's name as the app shows it
 #, machine
 extension	Use advanced browser integration is off in Options → General.	オプション → 全般で「高度なブラウザー統合を使用する」がオフになっています。
+#. text in the browser extension
+#. tab above the list of qualities in the menu under the download button over a video: the choices that include picture (video with sound); short, one word
+#, machine
+extension	Video	ビデオ
 #. text in the browser extension
 #. pairing failed: codes tried too fast
 #, machine
@@ -5898,6 +6175,11 @@ menu	&Add new download	新しいダウンロードの追加(&A)
 #. the trailing ... means it opens a window: keep it
 #, machine
 menu	&Add new download...	新しいダウンロードの追加(&A)...
+#. menu command in the main window
+#. View → Text: letters drawn the classic way, hinted to whole pixels (crisp, coarse on a dense screen)
+#. & marks the keyboard shortcut letter: keep one & before a letter of the translation
+#, machine
+menu	&Classic	クラシック(&C)
 #. menu command in standard windows
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 #, machine
@@ -5979,6 +6261,16 @@ menu	&RSS feeds...	R&SS フィード...
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 #, machine
 menu	&Scheduler and queues	スケジューラとキュー(&S)
+#. menu command in a download's progress window
+#. right-click menu of a download window's tab row: bring back the tabs taken off with "Hide tab"
+#. & marks the keyboard shortcut letter: keep one & before a letter of the translation
+#, machine
+menu	&Show hidden tabs	非表示のタブを表示(&S)
+#. menu command in the main window
+#. View → Text: letters drawn smooth, as Windows' modern apps draw them, anti-aliased at any size
+#. & marks the keyboard shortcut letter: keep one & before a letter of the translation
+#, machine
+menu	&Smooth	スムーズ(&S)
 #. menu command in the main window
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 #, machine
@@ -5987,6 +6279,11 @@ menu	&Stop All	すべて停止(&S)
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 #, machine
 menu	&Stop Download	ダウンロードを停止(&S)
+#. menu command in the main window
+#. View menu: submenu choosing how the text is drawn (smooth or classic)
+#. & marks the keyboard shortcut letter: keep one & before a letter of the translation
+#, machine
+menu	&Text	テキスト(&T)
 #. menu command in the main window
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation
 #, machine
@@ -6175,6 +6472,11 @@ menu	Edit queue	キューを編集
 #, machine
 menu	Extract	展開
 #. menu command in the main window
+#. right-click → Torrent submenu: open the selected torrent's file list
+#. the trailing ... means it opens a window: keep it
+#, machine
+menu	Files...	ファイル...
+#. menu command in the main window
 #, machine
 menu	Find (Ctrl-F)	検索 (Ctrl+F)
 #. menu command in the main window
@@ -6286,6 +6588,10 @@ menu	OpenGL	OpenGL
 #. noun: opens the category's properties
 #, machine
 menu	Properties	プロパティ
+#. menu command in the main window
+#. View → Theme: the colours of pywal (a program making colour schemes from the wallpaper), followed as they change; a name: keep "pywal" as written
+#, machine
+menu	pywal	pywal の配色
 #. menu command in the main window
 #. verb: download the file again from the start
 #. & marks the keyboard shortcut letter: keep one & before a letter of the translation

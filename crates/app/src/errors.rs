@@ -15,6 +15,8 @@ pub fn describe(e: &Error) -> String {
             t("the server answered {status}"),
             &[("status", &ltr(&s.to_string()))],
         ),
+        // i18n: why a download failed: the site's bot check (Cloudflare) lets browsers through, not programs. Alt+click: the link clicked with the Alt key held, which leaves the download to the browser
+        Error::BotCheck => t("this site lets only browsers through; Alt+click the link").to_owned(),
         Error::Throttled(s, _) => fmt(
             t("the server is busy ({status}); try again later"),
             &[("status", &ltr(&s.to_string()))],
@@ -189,6 +191,13 @@ fn refusal(r: &Refusal) -> String {
             // i18n: a download's error: the address is a Google Drive folder, which isn't one file
             t("this is a Google Drive folder, not a file").to_owned()
         }
+        Refusal::NeedsBrowser { site } => fmt(
+            // i18n: a download's error: the address is a site's web page that needs a browser, not the file; {site} = the site's name (gofile)
+            t(
+                "this {site} link is a web page, not the file: open it in your browser and download from there",
+            ),
+            &[("site", &ltr(site))],
+        ),
         Refusal::Service { service, fault } => self::service(service, fault),
     }
 }

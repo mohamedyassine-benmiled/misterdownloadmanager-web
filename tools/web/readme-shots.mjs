@@ -41,6 +41,45 @@ try {
   await capture('torrent-files', 'Post-add torrent file selection and verification details', '#details');
   await page.locator('#close-details').click();
   await page.goto(preview.url); await page.locator('#downloads-table').waitFor({ state: 'visible' });
+  await page.locator('#show-add').click();
+  await page.locator('#url').fill('https://downloads.example.test/sample-project-assets.zip');
+  await capture('add-url', 'Add a synthetic public download link', '#add-panel');
+  await page.locator('#add-tab-torrent').click();
+  await page.locator('#url').fill('magnet:?xt=urn:btih:0123456789012345678901234567890123456789');
+  await capture('add-torrent', 'Add a synthetic magnet or choose a torrent file', '#add-panel');
+  await page.locator('#dismiss-add').click();
+  await page.setViewportSize({ width: 1440, height: 1600 });
+  for (const [view, name, subject] of [
+    ['settings', 'settings-downloads', 'Supported application settings with synthetic server defaults'],
+    ['security', 'settings-security', 'Owner authentication and session policy with synthetic values'],
+    ['devices', 'devices', 'Device pairing controls and a synthetic extension device'],
+    ['queues', 'queues', 'Queue concurrency and a synthetic overnight schedule'],
+    ['categories', 'categories', 'Category and bounded server folder controls with synthetic values'],
+  ]) {
+    await page.locator(`[data-page="${view}"]`).first().click();
+    await page.locator(`[data-view="${view}"]`).waitFor({ state: 'visible' });
+    await page.locator('#section-loading').waitFor({ state: 'hidden' });
+    if (view === 'settings') await page.locator('#settings-fields input').first().waitFor();
+    if (view === 'devices') await page.locator('#device-list').getByText('Synthetic Firefox extension').waitFor();
+    if (view === 'queues') {
+      await page.locator('#new-queue').click();
+      await page.locator('#queue-name').fill('Synthetic overnight downloads');
+      await page.locator('#queue-concurrency').fill('2');
+      await page.locator('#queue-start').fill('01:00:00');
+      await page.locator('#queue-stop').fill('06:00:00');
+    }
+    if (view === 'categories') {
+      await page.locator('#new-category').click();
+      await page.locator('#category-name').fill('Synthetic archives');
+      await page.locator('#category-types').fill('ZIP 7Z TAR GZ');
+      await page.locator('#category-folder').fill('Archives');
+    }
+    const selector = view === 'settings' ? '#settings-fields fieldset:first-child'
+      : view === 'security' ? '#auth-settings-form' : '#management-dialog';
+    await capture(name, subject, selector);
+    await page.locator('#close-management').click();
+  }
+  await page.goto(preview.url); await page.locator('#downloads-table').waitFor({ state: 'visible' });
   await page.setViewportSize({ width: 390, height: 844 });
   await capture('workspace-mobile', 'Downloads workspace on a narrow mobile viewport');
   assert.deepEqual(errors, []);

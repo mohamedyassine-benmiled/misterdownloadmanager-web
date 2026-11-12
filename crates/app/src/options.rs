@@ -38,7 +38,7 @@ enum Sub {
     /// Connection → New / Edit exception: (row, server, number).
     Exception(Option<usize>, String, String),
     /// General → Download panels → Edit...: (the button over videos on, the sites it stays off).
-    Panels(bool, String),
+    Panels(bool, String, String),
     /// General → Keys...: (also take the files the browser would open).
     Keys(bool),
     /// General → Test browser integration...: the checks, as found when it opened.
@@ -221,6 +221,9 @@ pub struct OptionsDialog {
     /// Sites Logins → Cookies for video sites (#229): the browser in the list (an index into
     /// `mdm_tools::proc::cookie_browsers`), kept while Off is chosen.
     cookie_browser: usize,
+    /// Downloads → User-Agent → Automatic (#668): the default browser's, the box then shows it;
+    /// unticked, the box's own text (empty is automatic again when the window opens next).
+    ua_auto: bool,
 }
 
 impl OptionsDialog {
@@ -249,6 +252,7 @@ impl OptionsDialog {
         self.sub = Some(Sub::Panels(
             self.s.video_panel,
             self.s.video_panel_sites.clone(),
+            String::new(),
         ));
         self
     }
@@ -296,6 +300,7 @@ impl OptionsDialog {
             port: settings.remote_port.to_string(),
             device_rows: Default::default(),
             cookie_browser: cookie_browser_at(settings),
+            ua_auto: settings.own_user_agent().is_none(),
         }
     }
 
@@ -434,7 +439,7 @@ impl OptionsDialog {
         if portable {
             s.launch_on_startup = false;
         }
-        let checks: [(f32, &mut bool, &str); 6] = [
+        let checks: [(f32, &mut bool, &str); 7] = [
             (
                 94.0,
                 &mut s.launch_on_startup,
@@ -470,6 +475,13 @@ impl OptionsDialog {
                 // i18n: checkbox: the Minimize button hides MDM's windows to the notification area (system tray) instead of the taskbar
                 crate::i18n::mark("Minimize to the notification area"),
             ),
+            // MDM's: the × hides the window in the notification area, or quits.
+            (
+                210.0,
+                &mut s.close_to_tray,
+                // i18n: checkbox: closing keeps MDM running, in the notification area when available or else the taskbar, instead of quitting
+                crate::i18n::mark("Keep running when closing the window"),
+            ),
         ];
         // Greyed where no tray shows MDM's icon (some Linux desktops): nothing could bring the
         // window back from there.
@@ -478,7 +490,7 @@ impl OptionsDialog {
             // Portable: nothing is written to the registry, so no start with Windows. Manifest 2
             // extensions: an IDM-era Chrome policy with no meaning for MDM's extension (MV3):
             // shown as IDM has it, greyed (D-021).
-            let enabled = !(portable && i == 0) && i != 2 && (i != 5 || tray);
+            let enabled = !(portable && i == 0) && i != 2 && (i < 5 || tray);
             let check = winui::checkbox_light(ui, o + vec2(30.0, y), v, label, enabled);
             // Where a start with the session leaves the window (#226).
             if i == 0 && enabled && check.hovered() {
@@ -491,15 +503,20 @@ impl OptionsDialog {
                         "Started with the computer, it starts minimized: no notification area shows its icon here",
                     )
                 });
+            } else if i == 6 && check.hovered() {
+                // i18n: tooltip of the close-setting: checked keeps MDM running when the window closes, in the notification area when available or else the taskbar; downloads continue; unchecked closing quits
+                check.on_hover_text(crate::i18n::t(
+                    "Checked, closing the window keeps MDM running: it hides in the notification area when available, or minimizes to the taskbar otherwise, and downloads continue; unchecked, closing quits MDM",
+                ));
             }
         }
         group(
             ui,
             o,
             16.0,
-            215.0,
+            234.0,
             392.0,
-            179.0,
+            160.0,
             "Capture downloads from the following browsers:",
         );
         // Check list: one row per browser in the shared row list (Space ticks the selected
@@ -510,7 +527,7 @@ impl OptionsDialog {
         let ev = winui::row_list(
             ui,
             "browsers",
-            r(o, 30.0, 225.0, 362.0, 97.0),
+            r(o, 30.0, 244.0, 362.0, 78.0),
             browsers.len(),
             17.0,
             &mut self.browser_rows,
@@ -634,6 +651,7 @@ impl OptionsDialog {
             self.sub = Some(Sub::Panels(
                 self.s.video_panel,
                 self.s.video_panel_sites.clone(),
+                String::new(),
             ));
         }
     }
@@ -962,10 +980,15 @@ impl OptionsDialog {
         let Some(&cat) = cats.get(self.category) else {
             return;
         };
-        let default = display_dir(&cat.default_folder(downloads));
+        let base = if cat == Category::General {
+            std::borrow::Cow::Borrowed(downloads)
+        } else {
+            crate::model::default_downloads(downloads, &self.s.category_dirs)
+        };
+        let default = display_dir(&cat.default_folder(&base));
         let typed = self.cat_dir.trim();
         let own = (!typed.is_empty()
-            && typed.trim_end_matches('\\') != default.trim_end_matches('\\'))
+            && typed.trim_end_matches(['\\', '/']) != default.trim_end_matches(['\\', '/']))
         .then(|| typed.to_owned());
         self.s.set_category_dir(cat, own);
     }
@@ -1079,20 +1102,7 @@ impl OptionsDialog {
             s.duplicate_action = i as u8;
         }
         winui::etched_h(&p, o.x + 21.0, o.y + 367.0, 381.0);
-        text(
-            &p,
-            o.x + 21.0,
-            o.y + 388.0,
-            crate::i18n::t("User-Agent for manually added downloads:"),
-            LIGHT_TEXT(),
-        );
-        winui::edit_light(
-            ui,
-            r(o, 21.0, 398.0, 381.0, 23.0),
-            &mut s.user_agent,
-            true,
-            false,
-        );
+        self.user_agent(ui, o);
         winui::etched_h(&p, o.x + 21.0, o.y + 426.0, 381.0);
         winui::text_right(
             &p,
@@ -1109,6 +1119,67 @@ impl OptionsDialog {
             ButtonKind::Disabled,
             false,
         );
+    }
+
+    /// "User-Agent for manually added downloads" (#668): Automatic, the default browser's (the
+    /// box shows it, read-only), or the one typed in the box.
+    fn user_agent(&mut self, ui: &mut Ui, o: Pos2) {
+        let p = ui.painter().clone();
+        let s = &mut self.s;
+        // The checkbox ends where the box does; the label before it gives way ("...") if need be.
+        let auto_x = 402.0 - (winui::checkbox_caption_end(&p, 0.0, "Automatic") + 2.0);
+        let label = crate::i18n::t("User-Agent for manually added downloads:");
+        let (rect, cut) = winui::label_into(
+            &p,
+            o.x + 21.0,
+            o.y + 388.0,
+            label,
+            LIGHT_TEXT(),
+            o.x + auto_x - 6.0,
+            o.x + 21.0,
+        );
+        if cut {
+            winui::full_on_hover(ui, rect, "opt-user-agent", label);
+        }
+        let agent = mdm_engine::agent::automatic();
+        let tip = match mdm_engine::agent::automatic_browser() {
+            Some(browser) => crate::i18n::fmt(
+                // i18n: tooltip; {browser} is a browser and its version, e.g. "Brave 157"
+                crate::i18n::t("Your default browser's User-Agent: {browser}"),
+                &[("browser", &browser)],
+            ),
+            None if mdm_engine::agent::looked_for() => crate::i18n::t(
+                "Your default browser isn't one MDM knows: a current Chrome's User-Agent",
+            )
+            .to_owned(),
+            None => crate::i18n::t("Looking for your default browser...").to_owned(),
+        };
+        let tip = format!("{tip}\n{agent}");
+        let was = self.ua_auto;
+        winui::checkbox_light(
+            ui,
+            o + vec2(auto_x, 378.0),
+            &mut self.ua_auto,
+            // i18n: checkbox: the User-Agent is the default browser's, which MDM finds itself
+            "Automatic",
+            true,
+        )
+        .on_hover_text(&tip);
+        if self.ua_auto != was {
+            // Ticked: the automatic one. Unticked: the box starts from it, to be changed.
+            s.user_agent = if self.ua_auto {
+                String::new()
+            } else {
+                agent.clone()
+            };
+        }
+        let rc = r(o, 21.0, 398.0, 381.0, 23.0);
+        if self.ua_auto {
+            let mut shown = agent;
+            winui::edit_light(ui, rc, &mut shown, false, false).on_hover_text(&tip);
+        } else {
+            winui::edit_light(ui, rc, &mut s.user_agent, true, false);
+        }
     }
 
     fn connection(&mut self, ui: &mut Ui, o: Pos2) {
@@ -2310,7 +2381,7 @@ impl OptionsDialog {
             reg.week_start = [0, 1, 6][i];
         }
         // What it looks like, now.
-        let now = chrono::Local::now().naive_local();
+        let now = crate::clock::now().naive_local();
         let sample = crate::regional::format_with(crate::regional::effective(reg), now);
         // i18n: label before an example date and time written the chosen way
         let label = crate::i18n::t("Example:");
@@ -2734,10 +2805,8 @@ impl OptionsDialog {
             .map(|r| r.devices())
             .unwrap_or_default();
         let when = |secs: i64| {
-            chrono::DateTime::from_timestamp(secs, 0)
-                .map(|t| {
-                    crate::regional::short_date_time(t.with_timezone(&chrono::Local).naive_local())
-                })
+            crate::clock::local_at(secs)
+                .map(|t| crate::regional::short_date_time(t.naive_local()))
                 .unwrap_or_default()
         };
         let rows: Vec<Vec<String>> = devices
@@ -3128,7 +3197,7 @@ impl OptionsDialog {
                     Outcome::Closed => {}
                 }
             }
-            Sub::Panels(mut on, mut sites) => {
+            Sub::Panels(mut on, mut sites, mut said) => {
                 let out = window(
                     ctx,
                     "opt-panels",
@@ -3169,11 +3238,103 @@ impl OptionsDialog {
                             crate::i18n::t("(separate names by spaces)"),
                             LIGHT_TEXT(),
                         );
+                        // The list as a file, to keep or carry to a new installation (#424).
+                        let [export_at, import_at] = winui::button_row(
+                            &p,
+                            &[("Export...", 212.0, 73.0), ("Import...", 293.0, 73.0)],
+                            8.0,
+                            160.0,
+                            140.0,
+                        )[..] else {
+                            unreachable!("two buttons")
+                        };
+                        if winui::button_light(
+                            ui,
+                            r(o, export_at.0, 128.0, export_at.1, 21.0),
+                            "Export...",
+                            ButtonKind::Normal,
+                            false,
+                        )
+                        .clicked()
+                        {
+                            let title = crate::i18n::t("Export").to_owned();
+                            winui::start_pick(ui.ctx(), "opt-panels-export", move || {
+                                rfd::FileDialog::new()
+                                    .set_title(title)
+                                    .add_filter("TXT", &["txt"])
+                                    .set_file_name("sites.txt")
+                                    .save_file()
+                            });
+                        }
+                        if winui::button_light(
+                            ui,
+                            r(o, import_at.0, 128.0, import_at.1, 21.0),
+                            "Import...",
+                            ButtonKind::Normal,
+                            false,
+                        )
+                        .clicked()
+                        {
+                            let title = crate::i18n::t("Import").to_owned();
+                            winui::start_pick(ui.ctx(), "opt-panels-import", move || {
+                                rfd::FileDialog::new()
+                                    .set_title(title)
+                                    .add_filter("TXT", &["txt"])
+                                    .pick_file()
+                            });
+                        }
+                        if let Some(path) = winui::picked(ui.ctx(), "opt-panels-export") {
+                            said = match std::fs::write(
+                                &path,
+                                mdm_ipc::capture::sites_to_text(&sites),
+                            ) {
+                                Ok(()) => crate::i18n::tn(
+                                    sites.split_whitespace().count() as u64,
+                                    "{n} site saved to the file.",
+                                    "{n} sites saved to the file.",
+                                ),
+                                Err(e) => crate::i18n::fmt(
+                                    crate::i18n::t("The list could not be saved: {error}"),
+                                    &[("error", &e.to_string())],
+                                ),
+                            };
+                        }
+                        if let Some(path) = winui::picked(ui.ctx(), "opt-panels-import") {
+                            said = match read_sites_file(&path) {
+                                Ok(text) => {
+                                    let (merged, added) =
+                                        mdm_ipc::capture::merge_sites(&sites, &text);
+                                    sites = merged;
+                                    crate::i18n::tn(
+                                        added as u64,
+                                        "{n} site added from the file.",
+                                        "{n} sites added from the file.",
+                                    )
+                                }
+                                Err(e) => crate::i18n::fmt(
+                                    crate::i18n::t("The file could not be read: {error}"),
+                                    &[("error", &e.to_string())],
+                                ),
+                            };
+                        }
+                        if !said.is_empty() {
+                            let (rect, cut) = winui::text_fit(
+                                &p,
+                                o.x + 14.0,
+                                o.y + 163.0,
+                                &said,
+                                LIGHT_TEXT(),
+                                o.x + 205.0,
+                            );
+                            if cut {
+                                winui::full_on_hover(ui, rect, "opt-panels-said", &said);
+                            }
+                        }
                         ok_cancel(ui, o, 212.0, 157.0, true)
                     },
                 );
                 match out {
-                    Outcome::Open => self.sub = Some(Sub::Panels(on, sites)),
+                    Outcome::Open => self.sub = Some(Sub::Panels(on, sites, said)),
                     Outcome::Done(()) => {
                         self.s.video_panel = on;
                         self.s.video_panel_sites =
@@ -3205,7 +3366,10 @@ impl OptionsDialog {
                     "opt-account",
                     // i18n: window title: adding a debrid service account (Real-Debrid…)
                     "Add an account",
-                    [420.0, 300.0],
+                    [
+                        420.0,
+                        300.0 + crate::dialogs::grow_extra(ctx, "opt-account"),
+                    ],
                     false,
                     LIGHT_BG(),
                     |ui, o| account_dialog(ui, o, &mut e),
@@ -3643,11 +3807,22 @@ fn dns_dialog(ui: &mut Ui, o: Pos2, e: &mut DnsEdit) -> Outcome<()> {
 }
 
 /// Accounts → Add...: the service, a token typed in, and the sign-in on its thread (#44).
-#[derive(Default)]
 struct AccountEdit {
     service: mdm_debrid::ServiceKind,
     token: String,
     signin: crate::debrid::SignIn,
+}
+
+/// It starts on the first service Options lists (not `ServiceKind`'s default, Real-Debrid,
+/// which saved accounts fall back to).
+impl Default for AccountEdit {
+    fn default() -> Self {
+        AccountEdit {
+            service: mdm_debrid::ServiceKind::ALL[0],
+            token: String::new(),
+            signin: Default::default(),
+        }
+    }
 }
 
 /// Accounts → Add...: sign in by code in the browser (Real-Debrid's device flow, AllDebrid's PIN),
@@ -3658,6 +3833,8 @@ fn account_dialog(ui: &mut Ui, o: Pos2, e: &mut AccountEdit) -> Outcome<settings
     let ctx = ui.ctx().clone();
     let state = e.signin.get();
     let busy = matches!(state, S::Starting | S::Waiting { .. } | S::Checking);
+    // What the sign-in text took beyond its three lines: everything under it moves down.
+    let extra = crate::dialogs::grow_extra(&ctx, "opt-account");
     // i18n: Options → Add an account: label before the choice of debrid service
     text(
         &p,
@@ -3709,15 +3886,17 @@ fn account_dialog(ui: &mut Ui, o: Pos2, e: &mut AccountEdit) -> Outcome<settings
     if let S::Waiting { code, page, until } = &state {
         // The code, large, to type at the service's page.
         let code_font = egui::FontId::monospace(crate::theme::metrics().font_code);
+        let code_w = winui::text_width_font(&p, code_font.clone(), code);
+        // At the leading edge: mirrored in a right-to-left interface, as the buttons are.
         p.text(
-            o + vec2(14.0, 78.0),
+            winui::at(o + vec2(14.0, 78.0), code_w),
             egui::Align2::LEFT_TOP,
             code,
-            code_font.clone(),
+            code_font,
             LIGHT_TEXT(),
         );
         // The buttons as wide as their labels in this language (#192), short of the code.
-        let code_end = 14.0 + winui::text_width_font(&p, code_font, code);
+        let code_end = 14.0 + code_w;
         let [copy_at, open_at] = winui::button_row(
             &p,
             &[("Copy code", 200.0, 90.0), ("Open the page", 296.0, 110.0)],
@@ -3754,7 +3933,7 @@ fn account_dialog(ui: &mut Ui, o: Pos2, e: &mut AccountEdit) -> Outcome<settings
         let left = until
             .saturating_duration_since(std::time::Instant::now())
             .as_secs();
-        winui::paragraph(
+        let lines = winui::paragraph(
             &p,
             o.x + 14.0,
             o.y + 120.0,
@@ -3772,7 +3951,11 @@ fn account_dialog(ui: &mut Ui, o: Pos2, e: &mut AccountEdit) -> Outcome<settings
             o.x + 406.0,
             14.0,
         );
+        // Three lines fit above the token's label; a longer page or language grows the dialog.
+        crate::dialogs::grow_px(&ctx, "opt-account", lines.saturating_sub(3) as f32 * 14.0);
         ctx.request_repaint_after(std::time::Duration::from_secs(1));
+    } else {
+        crate::dialogs::grow_px(&ctx, "opt-account", 0.0);
     }
     let label = if by_code {
         // i18n: Options → Add an account: label before the field for the service's API token (the other way to sign in)
@@ -3781,20 +3964,20 @@ fn account_dialog(ui: &mut Ui, o: Pos2, e: &mut AccountEdit) -> Outcome<settings
         // i18n: Options → Add an account: label before the field for the service's API key (Premiumize: the only way to sign in; the key is on the service's Account page)
         crate::i18n::t("Paste your API key (from the service's Account page):")
     };
-    text(&p, o.x + 14.0, o.y + 178.0, label, LIGHT_TEXT());
+    text(&p, o.x + 14.0, o.y + 178.0 + extra, label, LIGHT_TEXT());
     // As wide as its label in this language (#192); the box ends 6 px before it.
     let (use_x, use_w) =
         winui::buttons_to_right(&p, 406.0, 0.0, &[("Use the token", 106.0)], 200.0)[0];
     winui::password_light(
         ui,
-        r(o, 14.0, 186.0, use_x - 6.0 - 14.0, 21.0),
+        r(o, 14.0, 186.0 + extra, use_x - 6.0 - 14.0, 21.0),
         &mut e.token,
         !busy,
     );
     // i18n: button: sign in with the token typed in
     if winui::button_light(
         ui,
-        r(o, use_x, 186.0, use_w, 21.0),
+        r(o, use_x, 186.0 + extra, use_w, 21.0),
         "Use the token",
         kind(!busy && !e.token.trim().is_empty()),
         false,
@@ -3809,7 +3992,7 @@ fn account_dialog(ui: &mut Ui, o: Pos2, e: &mut AccountEdit) -> Outcome<settings
         r(
             o,
             14.0,
-            212.0,
+            212.0 + extra,
             winui::button_fit_width(&p, "Find my token", 160.0, 392.0),
             21.0,
         ),
@@ -3843,7 +4026,7 @@ fn account_dialog(ui: &mut Ui, o: Pos2, e: &mut AccountEdit) -> Outcome<settings
     let (rect, cut) = winui::label_into(
         &p,
         o.x + 14.0,
-        o.y + 252.0,
+        o.y + 252.0 + extra,
         &line,
         color,
         o.x + 406.0,
@@ -3853,7 +4036,7 @@ fn account_dialog(ui: &mut Ui, o: Pos2, e: &mut AccountEdit) -> Outcome<settings
         winui::full_on_hover(ui, rect, "opt-account-state", &line);
     }
     let done = matches!(state, S::Done { .. });
-    match ok_cancel(ui, o, 252.0, 266.0, done) {
+    match ok_cancel(ui, o, 252.0, 266.0 + extra, done) {
         Outcome::Done(()) => match state {
             S::Done {
                 user,
@@ -3880,6 +4063,17 @@ fn open_page(url: &str) {
     if !crate::offscreen() {
         crate::launch::open(url);
     }
+}
+
+/// A list of sites from a file (Download panels' Import, #424): text, and no more than a list
+/// could be.
+fn read_sites_file(path: &std::path::Path) -> std::io::Result<String> {
+    use std::io::Read as _;
+    let mut text = Vec::new();
+    std::fs::File::open(path)?
+        .take(1 << 20)
+        .read_to_end(&mut text)?;
+    String::from_utf8(text).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
 }
 
 fn ok_cancel(ui: &mut Ui, o: Pos2, x: f32, y: f32, valid: bool) -> Outcome<()> {
@@ -4446,4 +4640,23 @@ fn kept_text(kept: crate::secrets::Kept) -> Option<&'static str> {
             "No system keyring answered, so sign-ins and passwords are kept in MDM's settings, which only you can read.",
         ),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// #424: the list written and read back through a real file: nothing lost, nothing doubled.
+    #[test]
+    fn sites_round_trip_through_a_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("sites.txt");
+        let sites = "a.test *.b.test";
+        std::fs::write(&file, mdm_ipc::capture::sites_to_text(sites)).unwrap();
+        let text = read_sites_file(&file).unwrap();
+        assert_eq!(text, "a.test\n*.b.test\n");
+        let (back, added) = mdm_ipc::capture::merge_sites("", &text);
+        assert_eq!((back.as_str(), added), (sites, 2));
+        assert_eq!(mdm_ipc::capture::merge_sites(sites, &text).1, 0);
+    }
 }

@@ -312,17 +312,32 @@ fn upper_list(exts: &[String]) -> String {
         .join(" ")
 }
 
+/// The base folder that categories without their own folder live under (#556): General's
+/// folder when one was chosen in Options → Save to, else `downloads`.
+pub fn default_downloads<'a>(
+    downloads: &'a Path,
+    dirs: &'a [(String, String)],
+) -> std::borrow::Cow<'a, Path> {
+    let general = Category::General.key();
+    dirs.iter()
+        .find(|(c, _)| *c == *general)
+        .map(|(_, d)| std::borrow::Cow::Owned(crate::dialogs::resolve_path(d)))
+        .unwrap_or(std::borrow::Cow::Borrowed(downloads))
+}
+
 /// The category's folder: the one chosen in Options → Save to (or remembered from Download
-/// File Info), else the default.
+/// File Info), else the default under [`default_downloads`] (#556).
 pub fn category_folder(cat: Category, downloads: &Path, dirs: &[(String, String)]) -> PathBuf {
+    let base = default_downloads(downloads, dirs);
     if cat.is_custom() {
-        return cat.folder(downloads);
+        return cat.folder(&base);
     }
     let key = cat.key();
     dirs.iter()
         .find(|(c, _)| *c == *key)
-        .map(|(_, d)| PathBuf::from(d))
-        .unwrap_or_else(|| cat.folder(downloads))
+        // A folder may be saved as shown, relative to the user's home.
+        .map(|(_, d)| crate::dialogs::resolve_path(d))
+        .unwrap_or_else(|| cat.folder(&base))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -380,6 +395,12 @@ pub struct Item {
     /// Content-Disposition), as a browser does (#28). Cleared once the file is made.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub name_from_url: bool,
+    /// Its name was given without waiting for its folder to be looked at (Download File Info:
+    /// a sleeping drive or a network folder can take seconds to answer, #743): nothing of its
+    /// own is on the disk yet, and it starts under that name or the next free numbered one, as
+    /// the engine finds as it starts (`Destination::Free`). Cleared once the file is made.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub number_at_start: bool,
     /// The Link grabber package it came in (#37): its archives are extracted together once
     /// every volume is there.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -396,8 +417,19 @@ pub struct Item {
     /// (or its one file, once known).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub remote: Option<RemoteSpec>,
+    /// Safe deferred main name chosen in the progress window: applied in place once the
+    /// download reaches `Status::Complete`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rename_on_complete: Option<String>,
+    /// True when a folder download's destination already held files before MDM added it, so
+    /// folder-level deferred rename refuses to sweep untracked files along.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub preexisting_folder: bool,
     #[serde(skip)]
     pub live: Option<Live>,
+    /// The session's temporary view while a torrent is being checked; never saved.
+    #[serde(skip)]
+    pub torrent_check: Option<(u64, u64)>,
     /// The engine's last view of this download (segments, connections).
     #[serde(skip)]
     pub snap: Option<mdm_engine::Snapshot>,
@@ -411,6 +443,28 @@ pub struct Item {
     /// #68), in the interface language; memory only.
     #[serde(skip)]
     pub notices: Vec<String>,
+    /// A video chosen in the browser's quality menu: the menu's look-up, for its first run only
+    /// (taken then); memory only, never written (its links are signed).
+    #[serde(skip)]
+    pub preloaded: Option<mdm_tools::video::Preloaded>,
+    /// Finished video / subtitle / gallery paths waiting to be marked as downloaded from the
+    /// web once any deferred rename in `App::poll` has moved them to their final names.
+    #[serde(skip)]
+    pub(crate) pending_mark: Option<PendingMark>,
+    /// Files known to belong to a finished gallery or debrid folder download, kept across
+    /// restarts so a requeued or resumed folder rename still checks for untracked files.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) written_files: Option<Vec<PathBuf>>,
+}
+
+/// Files saved by `yt-dlp` or `gallery-dl` waiting for Mark-of-the-Web after deferred rename.
+#[derive(Clone, Debug)]
+pub(crate) struct PendingMark {
+    pub main_file: Option<PathBuf>,
+    pub side_files: Vec<PathBuf>,
+    pub gallery_files: Vec<PathBuf>,
+    pub url: String,
+    pub referer: Option<String>,
 }
 
 /// A Link grabber package, as each of its downloads keeps it (#37).
@@ -466,7 +520,9 @@ pub struct GallerySpec {
 }
 
 /// A helper's progress (yt-dlp's, gallery-dl's) as the engine's view: one segment when its size
-/// is known, no connections, its notes as events.
+/// is known, no connections, its notes as events. A video whose streams MDM's engine downloads
+/// (#769) shows the engine's own: the streams' segments one after another, the connections of
+/// the one under way, its server.
 fn tool_snapshot(p: mdm_tools::video::Progress, url: &Url) -> mdm_engine::Snapshot {
     use mdm_tools::video::State as V;
     let (state, file, error) = match p.state {
@@ -476,6 +532,19 @@ fn tool_snapshot(p: mdm_tools::video::Progress, url: &Url) -> mdm_engine::Snapsh
         V::Stopped => (State::Cancelled, None, None),
     };
     let size = p.total;
+    let engine = p.engine.unwrap_or_default();
+    let segments = if engine.segments.is_empty() {
+        size.map(|t| {
+            vec![mdm_engine::download::SegmentView {
+                start: 0,
+                cursor: p.downloaded.min(t),
+                end: t,
+            }]
+        })
+        .unwrap_or_default()
+    } else {
+        engine.segments
+    };
     mdm_engine::Snapshot {
         state,
         url: url.clone(),
@@ -483,16 +552,8 @@ fn tool_snapshot(p: mdm_tools::video::Progress, url: &Url) -> mdm_engine::Snapsh
         size,
         downloaded: p.downloaded,
         resumable: Some(true),
-        segments: size
-            .map(|t| {
-                vec![mdm_engine::download::SegmentView {
-                    start: 0,
-                    cursor: p.downloaded.min(t),
-                    end: t,
-                }]
-            })
-            .unwrap_or_default(),
-        connections: Vec::new(),
+        segments,
+        connections: engine.connections,
         error,
         failure: None,
         events: p
@@ -505,8 +566,10 @@ fn tool_snapshot(p: mdm_tools::video::Progress, url: &Url) -> mdm_engine::Snapsh
                 text: text.clone(),
             })
             .collect(),
-        // yt-dlp's and gallery-dl's connections are theirs: not seen here (#140).
-        server: None,
+        // yt-dlp's and gallery-dl's connections are theirs: not seen here (#140); the engine's
+        // are (#769).
+        server: engine.server,
+        at_service: None,
     }
 }
 
@@ -532,14 +595,27 @@ impl Job {
         }
     }
 
-    /// The speed limit can change while a file downloads; yt-dlp takes it at the start; a
-    /// torrent's applies to the whole torrent session.
+    /// A helper program downloads it, and takes a speed limit only as it starts, so a new limit
+    /// starts it again (#708, `App::reapply_helper_limits`): gallery-dl, and yt-dlp for a video
+    /// MDM's engine doesn't download (#769: a live stream, RTMP…).
+    pub fn is_helper(&self) -> bool {
+        match self {
+            Job::Video { job, .. } => job.helper().is_some(),
+            Job::Gallery { .. } => true,
+            _ => false,
+        }
+    }
+
+    /// The speed limit can change while a file downloads, and while the engine downloads a
+    /// video's streams (#769); gallery-dl, and yt-dlp downloading by itself, take it at the start
+    /// (the app starts them again, `is_helper`); a torrent's applies to the whole torrent session.
     pub fn set_speed_limit(&self, rate: Option<u64>) {
         match self {
             Job::File(d) => d.set_speed_limit(rate),
             Job::Torrent(t) => t.set_speed_limit(rate),
             Job::Remote(r) => r.set_speed_limit(rate),
-            Job::Video { .. } | Job::Gallery { .. } => {}
+            Job::Video { job, .. } => job.set_speed_limit(rate),
+            Job::Gallery { .. } => {}
         }
     }
 
@@ -547,7 +623,8 @@ impl Job {
         match self {
             Job::File(d) => d.speed_limit(),
             Job::Torrent(t) => t.speed_limit(),
-            Job::Remote(_) | Job::Video { .. } | Job::Gallery { .. } => None,
+            Job::Video { job, .. } => job.speed_limit(),
+            Job::Remote(_) | Job::Gallery { .. } => None,
         }
     }
 }
@@ -621,6 +698,21 @@ fn push_log(log: &mut Vec<(i64, String)>, at: i64, text: String) {
     log.push((at, text));
 }
 
+/// The size a row shows after a snapshot: the server's when it said one, else what was known. A
+/// download that ended without one is as long as what came down, not what the browser announced
+/// for the file it was going to fetch (#374).
+fn size_after(
+    state: State,
+    server: Option<u64>,
+    downloaded: u64,
+    known: Option<u64>,
+) -> Option<u64> {
+    match server {
+        None if state == State::Done => Some(downloaded),
+        server => server.or(known),
+    }
+}
+
 impl Item {
     /// Add an app-side event (added, started, stopped …) to the log.
     pub fn note(&mut self, text: impl Into<String>) {
@@ -632,7 +724,6 @@ impl Item {
 
     /// The last `n` log entries as tooltip lines ("14:02:11  Connected to …").
     pub fn log_lines(&self, n: usize) -> String {
-        use chrono::TimeZone;
         self.log
             .iter()
             .rev()
@@ -640,15 +731,30 @@ impl Item {
             .rev()
             .map(|(at, text)| {
                 // In the interface's way (English month names in every language before).
-                let t = chrono::Local
-                    .timestamp_opt(*at, 0)
-                    .single()
+                // With the offset of now (crate::clock, #536).
+                let t = crate::clock::local_at(*at)
                     .map(|t| when_text(t.naive_local()))
                     .unwrap_or_default();
                 format!("{t}  {text}")
             })
             .collect::<Vec<_>>()
             .join("\n")
+    }
+
+    /// What tells where this row's files are (its place, its kind, the files it wrote), for a
+    /// look at the disk on a thread other than the window's (#743): no live download, no log.
+    pub fn place_copy(&self) -> Item {
+        let mut c = Item::new(self.id, self.url.clone(), self.dest.clone(), self.category);
+        c.file_name.clone_from(&self.file_name);
+        c.status = self.status;
+        c.downloaded = self.downloaded;
+        c.video.clone_from(&self.video);
+        c.torrent.clone_from(&self.torrent);
+        c.gallery.clone_from(&self.gallery);
+        c.remote.clone_from(&self.remote);
+        c.preexisting_folder = self.preexisting_folder;
+        c.written_files.clone_from(&self.written_files);
+        c
     }
 
     /// A new, not yet started download (queued state, nothing on disk).
@@ -677,17 +783,43 @@ impl Item {
             gallery: None,
             log: Vec::new(),
             name_from_url: false,
+            number_at_start: false,
             package: None,
             server: None,
             direct: false,
             remote: None,
+            rename_on_complete: None,
+            preexisting_folder: false,
             live: None,
+            torrent_check: None,
             snap: None,
             login: None,
             context: Default::default(),
             notices: Vec::new(),
+            preloaded: None,
+            pending_mark: None,
+            written_files: None,
         }
     }
+    /// This row's resume state is at its place. `downloaded` can't say: after a crash the list
+    /// holds what it held at its last save, often nothing.
+    pub fn owns_resume_state(&self) -> bool {
+        let state = mdm_engine::state::state_path(&self.dest);
+        mdm_engine::state::ResumeState::load(&state).is_ok_and(|s| s.url == self.url)
+    }
+
+    /// Whether this row has its place on the disk: running, part-way (its pieces and resume
+    /// state are there), or finished with the file still there. A row not started yet holds
+    /// nothing: several may wait under one name, and the first to start keeps it.
+    pub fn holds_place(&self) -> bool {
+        self.live.is_some()
+            || if self.status == Status::Complete {
+                self.dest.exists()
+            } else {
+                self.downloaded > 0 || self.owns_resume_state()
+            }
+    }
+
     /// Pull the engine's snapshot into the row. Returns true when the download just ended.
     pub fn poll(&mut self) -> bool {
         let Some(live) = &mut self.live else {
@@ -704,11 +836,12 @@ impl Item {
             self.server = Some(crate::whereis::Seen::from(server));
         }
         self.downloaded = s.downloaded;
-        self.size = s.size.or(self.size);
+        self.size = size_after(s.state, s.size, s.downloaded, self.size);
         self.resumable = s.resumable.or(self.resumable);
         if let Some(f) = &s.file {
-            // Named now: a later start from scratch keeps this name.
+            // Named now: a later start from scratch keeps this name, and its file is its own.
             let guessed = std::mem::take(&mut self.name_from_url);
+            self.number_at_start = false;
             if *f != self.dest {
                 // The file as saved (a video's real extension, a numbered duplicate, the name
                 // the server gave).
@@ -757,7 +890,7 @@ impl Item {
                     self.downloaded = self.size.unwrap_or(self.downloaded);
                 }
                 // A video and its subtitles (#68), marked as downloaded from the web once
-                // yt-dlp has saved them, as the engine's files are as they are created.
+                // yt-dlp has saved them (and after any deferred rename in `App::poll`).
                 let mut notices = Vec::new();
                 if status == Status::Complete
                     && let Some(Live {
@@ -775,35 +908,53 @@ impl Item {
                         .iter()
                         .map(|p| sub_notice(p, site))
                         .collect();
-                    let side = done.side_files;
-                    for f in s.file.iter().chain(side.iter()) {
-                        #[cfg(windows)]
-                        crate::win32::mark_downloaded(
-                            f,
-                            url.as_str(),
-                            self.context.referer.as_deref(),
-                        );
-                        #[cfg(unix)]
-                        crate::unix::mark_downloaded(
-                            f,
-                            url.as_str(),
-                            self.context.referer.as_deref(),
-                        );
-                    }
+                    self.pending_mark = Some(PendingMark {
+                        main_file: s.file.clone(),
+                        side_files: done.side_files,
+                        gallery_files: Vec::new(),
+                        url: url.to_string(),
+                        referer: self.context.referer.clone(),
+                    });
                 }
-                // A gallery's files (#58), each marked as downloaded from the web, as above.
+                // A gallery's files (#58), each marked as downloaded from the web after any
+                // deferred folder rename in `App::poll`.
                 if status == Status::Complete
                     && let Some(Live {
                         dl: Job::Gallery { job, url },
                         ..
                     }) = &self.live
-                    && matches!(url.scheme(), "http" | "https")
                 {
-                    for f in &job.saved() {
-                        #[cfg(windows)]
-                        crate::win32::mark_downloaded(f, url.as_str(), None);
-                        #[cfg(unix)]
-                        crate::unix::mark_downloaded(f, url.as_str(), None);
+                    let known = job.known_files();
+                    let list = self.written_files.get_or_insert_with(Vec::new);
+                    for p in known {
+                        if !list.contains(&p) {
+                            list.push(p);
+                        }
+                    }
+                    if matches!(url.scheme(), "http" | "https") {
+                        self.pending_mark = Some(PendingMark {
+                            main_file: None,
+                            side_files: Vec::new(),
+                            gallery_files: job.saved(),
+                            url: url.to_string(),
+                            referer: None,
+                        });
+                    }
+                }
+                if status == Status::Complete
+                    && let Some(Live {
+                        dl: Job::Remote(r), ..
+                    }) = &self.live
+                {
+                    if r.preexisting_folder() {
+                        self.preexisting_folder = true;
+                    }
+                    let saved = r.saved_files();
+                    let list = self.written_files.get_or_insert_with(Vec::new);
+                    for p in saved {
+                        if !list.contains(&p) {
+                            list.push(p);
+                        }
                     }
                 }
                 for n in &notices {
@@ -811,9 +962,24 @@ impl Item {
                 }
                 self.notices = notices;
                 self.live = None;
+                // The session's last check numbers belong to the run just ended (a finished
+                // torrent leaves the session): not left saying "Checking" until the next tick.
+                self.torrent_check = None;
                 true
             }
             None => false,
+        }
+    }
+
+    /// Why yt-dlp downloads this running video itself (#769), once it has found out: MDM's engine
+    /// downloads every other one.
+    pub fn video_helper(&self) -> Option<mdm_tools::streams::Helper> {
+        match &self.live {
+            Some(Live {
+                dl: Job::Video { job, .. },
+                ..
+            }) => job.helper(),
+            _ => None,
         }
     }
 
@@ -831,17 +997,33 @@ impl Item {
         self.live.as_ref().map_or(0.0, |l| l.rate)
     }
 
+    /// How much has come, 0 to 1, or None without a size to take a share of (a live stream,
+    /// some HLS, a server that doesn't say): no percentage rather than 0 %. A video reads at
+    /// most 99.9 % until the file is finished: another stream or the merge may still follow
+    /// (#344), and the sizes beside it stay the real ones.
+    pub fn fraction(&self) -> Option<f64> {
+        let total = self.size.filter(|t| *t > 0)?;
+        let f = (self.downloaded as f64 / total as f64).clamp(0.0, 1.0);
+        Some(if self.video.is_some() && self.status != Status::Complete {
+            f.min(mdm_tools::video::MAX_WHILE_RUNNING)
+        } else {
+            f
+        })
+    }
+
     /// The Status column: `13.38%`, `Complete`, `Error`, or blank.
-    /// A torrent at its debrid service (#44), before its files come: "45% at Real-Debrid" (the
-    /// percentage first: the list's Status column is narrow).
+    /// A torrent at its debrid service (#44), before its files come, or a file-host link whose file
+    /// the service fetches first (TorBox): "45% at Real-Debrid" (the percentage first: the list's
+    /// Status column is narrow).
     pub fn at_service(&self) -> Option<String> {
-        let Some(Live {
-            dl: Job::Remote(r), ..
-        }) = &self.live
-        else {
-            return None;
+        let (service, progress) = match &self.live {
+            Some(Live {
+                dl: Job::Remote(r), ..
+            }) => r.at_service().map(|(s, p)| (s.to_owned(), p))?,
+            Some(_) => self.snap.as_ref()?.at_service.clone()?,
+            None => return None,
         };
-        let (service, progress) = r.at_service()?;
+        let service = service.as_str();
         Some(crate::i18n::fmt(
             // i18n: a torrent's status while the user's debrid service downloads it, before MDM gets its files; {service} the service ("Real-Debrid"), {percent} how far it is ("45%")
             crate::i18n::t("{percent} at {service}"),
@@ -855,9 +1037,37 @@ impl Item {
         ))
     }
 
+    /// "Checking 42%" while a torrent's files are read and checked (added over files already
+    /// there, Recheck): a running one from its live numbers (librqbit counts the bytes checked),
+    /// one not running from the session's (`torrent_check`, every 2 s). Whole percents: the
+    /// list's Status column is narrow.
+    pub fn torrent_checking(&self) -> Option<String> {
+        self.torrent.as_ref()?;
+        let (checked, total) = match (&self.live, &self.snap) {
+            (Some(_), Some(s)) if s.state == State::Verifying => {
+                (s.downloaded, s.size.unwrap_or(0))
+            }
+            (Some(_), _) => return None,
+            (None, _) => self.torrent_check?,
+        };
+        let ratio = if total > 0 {
+            checked as f64 / total as f64
+        } else {
+            0.0
+        };
+        Some(crate::i18n::fmt(
+            // i18n: a torrent's status while its files are read and checked; {percent} is how much is checked, e.g. "42%"
+            crate::i18n::t("Checking {percent}"),
+            &[("percent", &crate::i18n::percent(ratio.min(1.0), 0))],
+        ))
+    }
+
     pub fn status_text(&self) -> String {
         if let Some(at) = self.at_service() {
             return at;
+        }
+        if let Some(checking) = self.torrent_checking() {
+            return checking;
         }
         if self
             .snap
@@ -875,8 +1085,8 @@ impl Item {
             // says what the download is doing.
             // i18n: a download's status (state it is in, not a command): waiting in a queue for its turn
             Status::Queued if self.downloaded == 0 => crate::i18n::t("Waiting").into(),
-            _ => match (self.size, self.status) {
-                (Some(t), _) if t > 0 => percent(self.downloaded as f64 / t as f64),
+            _ => match (self.fraction(), self.status) {
+                (Some(f), _) => percent(f),
                 // i18n: a download's status (state it is in, not a command): stopped by the user
                 (_, Status::Stopped) => crate::i18n::t("Stopped").into(),
                 (_, Status::Queued) => crate::i18n::t("Waiting").into(),
@@ -900,7 +1110,7 @@ impl Item {
 /// The "Last Try Date" and "Added" columns as stored, e.g. `Oct 28 21:44:12 2026` (the list's
 /// format; read back by `stamp_time`).
 pub fn now_stamp() -> String {
-    chrono::Local::now().format(STAMP).to_string()
+    crate::clock::now().format(STAMP).to_string()
 }
 
 const STAMP: &str = "%b %d %H:%M:%S %Y";
@@ -911,32 +1121,43 @@ pub fn stamp_time(stored: &str) -> Option<chrono::NaiveDateTime> {
 }
 
 /// A stored stamp as the list shows it: in the formats chosen in Options → Regional; else IDM's
-/// own text in English, and the user's Windows region format in other languages (its digits and
-/// order; month names would be in the region's language).
+/// own text in English (on the system's 12- or 24-hour clock), and the user's Windows region
+/// format in other languages (its digits and order; month names would be in the region's
+/// language).
 pub fn date_text(stored: &str) -> String {
     let Some(t) = stamp_time(stored) else {
         return stored.to_owned();
     };
-    if english() && !crate::regional::current().custom {
-        return stored.to_owned();
-    }
     when_text(t)
 }
 
 /// A local time as the interface writes dates and times (Options → Regional; IDM's text in
-/// English; the Windows region's elsewhere).
+/// English, on the system's clock; the Windows region's elsewhere).
 pub fn when_text(t: chrono::NaiveDateTime) -> String {
-    if crate::regional::current().custom {
+    let formats = crate::regional::current();
+    if formats.custom {
         return crate::i18n::ltr(&crate::regional::short_date_time(t));
     }
     if english() {
-        return t.format(STAMP).to_string();
+        return stamp_text(t, formats.clock24);
     }
     #[cfg(windows)]
     if let Some(s) = crate::win32::local_date_time(t) {
         return crate::i18n::ltr(&s);
     }
     crate::i18n::ltr(&crate::regional::short_date_time(t))
+}
+
+/// IDM's text for a time, as stored (`Oct 28 21:44:12 2026`) on a 24-hour clock, and with the
+/// system's 12-hour clock (#392) `Oct 28 9:44:12 PM 2026`.
+fn stamp_text(t: chrono::NaiveDateTime, clock24: bool) -> String {
+    use chrono::Timelike;
+    format!(
+        "{} {} {}",
+        t.format("%b %d"),
+        crate::regional::time_text(t.hour(), t.minute(), t.second(), clock24),
+        t.format("%Y")
+    )
 }
 
 /// Whether numbers are written IDM's way (English): `7.05 MB`, `13.38%`, `1 min 22 sec`.
@@ -1050,8 +1271,77 @@ pub fn time(secs: f64) -> String {
 }
 
 #[cfg(test)]
+mod size_tests {
+    use super::*;
+
+    #[test]
+    fn a_finished_download_is_as_long_as_what_came_down() {
+        // The browser announced 178 MB; the server sent a 15 KB page and no size.
+        assert_eq!(
+            size_after(State::Done, None, 14473, Some(186662440)),
+            Some(14473)
+        );
+        assert_eq!(
+            size_after(State::Downloading, None, 14473, Some(186662440)),
+            Some(186662440)
+        );
+        assert_eq!(size_after(State::Done, Some(100), 100, None), Some(100));
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
+
+    fn video_item(size: Option<u64>, downloaded: u64, status: Status) -> Item {
+        let url = Url::parse("https://example.org/a.mp4").unwrap();
+        let mut it = Item::new(1, url, PathBuf::from("a.mp4"), Category::Video);
+        it.size = size;
+        it.downloaded = downloaded;
+        it.status = status;
+        it.video = Some(VideoSpec {
+            selector: "18".into(),
+            subs: Default::default(),
+        });
+        it
+    }
+
+    /// Without a size there's no share to show: no 0 % (from #384).
+    #[test]
+    fn no_size_no_percentage() {
+        let it = video_item(None, 5_000_000, Status::Downloading);
+        assert_eq!(it.fraction(), None);
+        assert_eq!(video_item(Some(0), 5, Status::Downloading).fraction(), None);
+    }
+
+    /// A video with all its bytes in may still be merging: 99.9 % until the file is finished,
+    /// with the real sizes beside it.
+    #[test]
+    fn a_video_reads_100_only_when_finished() {
+        let m = 1 << 20;
+        let running = video_item(Some(100 * m), 100 * m, Status::Downloading);
+        assert_eq!(running.fraction(), Some(0.999));
+        let done = video_item(Some(100 * m), 100 * m, Status::Complete);
+        assert_eq!(done.fraction(), Some(1.0));
+        let mut file = video_item(Some(100), 100, Status::Downloading);
+        file.video = None;
+        assert_eq!(file.fraction(), Some(1.0));
+    }
+
+    #[test]
+    fn a_folder_saved_as_shown_is_under_home() {
+        let home = dirs::home_dir().unwrap();
+        let dirs = vec![("Video".to_owned(), "Downloads/Video".to_owned())];
+        let got = category_folder(Category::Video, Path::new("x"), &dirs);
+        assert_eq!(got, home.join("Downloads/Video"));
+        assert!(got.is_absolute());
+        let whole = home.join("Elsewhere").display().to_string();
+        let dirs = vec![("Video".to_owned(), whole.clone())];
+        assert_eq!(
+            category_folder(Category::Video, Path::new("x"), &dirs),
+            PathBuf::from(whole)
+        );
+    }
 
     #[test]
     fn categories() {
@@ -1082,6 +1372,28 @@ mod stamp_tests {
         let oct = super::stamp_time("Oct 28 21:44:12 2026").unwrap();
         assert!(oct < apr, "October 2026 comes before April 2027");
         assert!(super::stamp_time("not a date").is_none());
+    }
+
+    #[test]
+    fn english_stamps_follow_the_clock() {
+        let at = |s| super::stamp_time(s).unwrap();
+        // 24-hour: exactly as stored.
+        for s in ["Oct 28 21:44:12 2026", "Jan 01 00:05:09 2027"] {
+            assert_eq!(super::stamp_text(at(s), true), s);
+        }
+        // 12-hour (#392): midnight and noon are 12.
+        assert_eq!(
+            super::stamp_text(at("Oct 28 21:44:12 2026"), false),
+            "Oct 28 9:44:12 PM 2026"
+        );
+        assert_eq!(
+            super::stamp_text(at("Jan 01 00:05:09 2027"), false),
+            "Jan 01 12:05:09 AM 2027"
+        );
+        assert_eq!(
+            super::stamp_text(at("Jun 15 12:00:00 2027"), false),
+            "Jun 15 12:00:00 PM 2027"
+        );
     }
 }
 

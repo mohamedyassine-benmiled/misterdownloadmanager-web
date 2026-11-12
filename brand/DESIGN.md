@@ -56,7 +56,9 @@ README headings, prose, links, tables, summaries and fenced code use GitHub's na
 
 Use a readable document hierarchy: product heading, brief attributed fork statement, descriptive section links, evidence, then numbered setup instructions with selectable code. Preserve native headings, lists and tables rather than composing a simulated application or promotional card grid. The approved first-viewport composition belongs to the surface contract, not a new app layout system.
 
-The README displays the square mark at (88 × 88 px), the workspace image with a width attribute of (1100 px), detail captures at (600 px) and the mobile capture at (320 px), within GitHub's responsive document flow. Its `picture` element selects dark-theme workspace evidence with a light fallback. Additional screenshots use native expandable `details` sections and descriptive alt text. The mobile caption explicitly explains horizontal scrolling in the existing toolbar, navigation and transfer table; do not imply a redesigned mobile UI.
+The README displays the square mark at (128 × 128 px) beneath the product heading, then a centered tagline and fork credit. Grey, unlinked Windows/Linux/Docker and Firefox/Chrome badges communicate pending publication; live star links target this fork. GitHub-native navigation, benefit copy and feature tables follow the full-width workspace image (1100 px width attribute). Its `picture` element selects dark-theme workspace evidence with a light fallback.
+
+Twelve Web UI images appear in a six-row, two-column HTML table with top-aligned cells and descriptive captions. The mobile capture has a 260 px width attribute; other grid images fit their cells rather than imposing a fixed detail-image width. Captions explicitly explain post-add torrent selection and horizontal scrolling on narrow screens. The user requested upstream's README structure, not a replacement app or site design; no custom fonts, CSS or motion ship in the README.
 
 ## Elevation & Depth
 
@@ -76,11 +78,13 @@ The SVG is newly authored fork artwork, not a recolored upstream logo or third-p
 
 ### Screenshot evidence
 
-[captures.json](../docs/images/webmister/captures.json) inventories the light/dark workspace, download-details, torrent-files and mobile images, their viewports, origins and source hashes. `node tools/web/readme-shots.mjs` captures the shipped HTML/CSS/JS against the public `tools/web/preview.mjs` fixture using Chromium/Playwright. Desktop capture viewports are (1440 × 940 px); mobile is (390 × 844 px); detail images are element captures, not full-viewport exports.
+[captures.json](../docs/images/webmister/captures.json) inventories twelve captures: light/dark workspace, download details, torrent files, mobile workspace, add URL, add torrent, connection settings, authentication settings, devices, queues and categories. `node tools/web/readme-shots.mjs` captures the shipped HTML/CSS/JS against the public `tools/web/preview.mjs` fixture using Chromium/Playwright. Desktop viewports are 1440 × 940 px, extended to 1440 × 1600 px for management controls; mobile is 390 × 844 px. Dialog/form/fieldset screenshots are element captures, not full-viewport exports. Viewports, origins and source hashes are recorded in the manifest; shipping PNGs also carry embedded source-origin metadata.
 
 **The Evidence Caption Rule.** Keep synthetic demonstration data explicitly labeled in images and adjacent captions; screenshots are neither live transfers nor speed benchmarks, and must never expose private account or server data.
 
-README captions distinguish post-add torrent selection from a pre-start picker. Preserve that distinction and the release-availability caveat: prepared publication machinery is not evidence of an already downloadable release. The reproduction commands document provenance; this documentation pass does not run them or publish anything.
+README captions distinguish post-add torrent selection from a pre-start picker. Preserve that distinction and the release-availability caveat: prepared publication machinery is not evidence of an already downloadable release. The captures were regenerated for this README pass; doing so neither validates the server release nor publishes artifacts.
+
+**The Benchmark Attribution Rule.** The owner approved an upstream benchmark section with the original chart, selected report medians and source revision/date. Label those as upstream MDM results, not measurements of Webmister, its current engine, containers or remote deployments. Never promote them into the fork's hero speed claim.
 
 ## Do's and Don'ts
 

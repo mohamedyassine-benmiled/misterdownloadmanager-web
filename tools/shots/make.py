@@ -325,7 +325,9 @@ def docs(run: Path | None, extra: list[Path]) -> None:
 # Pictures that stay PNG: the social card (og:image: some sites don't read WebP), the logo and
 # the icons the README shows.
 PNG_OK = {"docs/images/social-preview.png", "docs/images/logo.png"}
-PNG_DIRS = ("docs/images/icons/", "docs/images/browsers/")
+# Fork captures keep lossless PNG and embedded provenance. Their inventory/source hashes
+# are checked by tools/web-release/test_docs.py; size and reference checks still apply here.
+PNG_DIRS = ("docs/images/icons/", "docs/images/browsers/", "docs/images/webmister/")
 SCREEN_DIRS = ("website/assets/screens/", "website/assets/browser/", "website/assets/win/")
 TEXT = (".md", ".html", ".py", ".ps1", ".mjs", ".js", ".css", ".toml", ".yml", ".json", ".sh", ".rs", ".txt")
 

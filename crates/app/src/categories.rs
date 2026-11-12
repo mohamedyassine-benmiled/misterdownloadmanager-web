@@ -334,10 +334,15 @@ pub fn apply(settings: &mut Settings, e: CategoryEdit, downloads: &Path) -> Cate
         }
     };
     crate::model::set_custom(&settings.custom_categories);
-    let typed = e.folder.trim_end_matches('\\');
-    let default = cat.default_folder(downloads).display().to_string();
-    let own =
-        (!typed.is_empty() && typed != default.trim_end_matches('\\')).then(|| typed.to_owned());
+    let typed = e.folder.trim_end_matches(['\\', '/']);
+    let base = if cat == Category::General {
+        std::borrow::Cow::Borrowed(downloads)
+    } else {
+        crate::model::default_downloads(downloads, &settings.category_dirs)
+    };
+    let default = cat.default_folder(&base).display().to_string();
+    let own = (!typed.is_empty() && typed != default.trim_end_matches(['\\', '/']))
+        .then(|| typed.to_owned());
     settings.set_category_dir(cat, own);
     crate::model::set_custom(&settings.custom_categories);
     cat
@@ -381,6 +386,14 @@ pub fn restored_names() -> String {
 
 #[cfg(test)]
 mod tests {
+    // Whole paths on the system the tests run on.
+    const SONGS: &str = if cfg!(windows) {
+        r"E:\Songs"
+    } else {
+        "/mnt/Songs"
+    };
+    const ALL: &str = if cfg!(windows) { r"F:\All" } else { "/mnt/All" };
+
     use super::*;
 
     /// The category registry is the process's: its tests take turns.
@@ -407,7 +420,7 @@ mod tests {
         let downloads = Path::new(r"C:\Users\u\Downloads");
         apply(
             &mut s,
-            edit(Category::Music, "Songs", "MP3 FLAC", r"E:\Songs"),
+            edit(Category::Music, "Songs", "MP3 FLAC", SONGS),
             downloads,
         );
         assert_eq!(Category::Music.label(), "Songs");
@@ -423,10 +436,7 @@ mod tests {
             Category::General,
             "WAV was taken off"
         );
-        assert_eq!(
-            s.category_dir(Category::Music, downloads),
-            Path::new(r"E:\Songs")
-        );
+        assert_eq!(s.category_dir(Category::Music, downloads), Path::new(SONGS));
         assert_eq!(
             Category::Music.default_folder(downloads),
             downloads.join("Music"),
@@ -486,19 +496,16 @@ mod tests {
             },
             downloads,
         );
-        s.set_category_dir(Category::General, Some(r"F:\All".into()));
+        s.set_category_dir(Category::General, Some(ALL.into()));
         restore(&mut s);
         assert!(!Category::Video.deleted());
         assert_eq!(Category::Video.label(), "Video");
         assert_eq!(Category::of("film.mp4"), Category::Video);
         assert_eq!(
             s.category_dir(Category::Video, downloads),
-            downloads.join("Video")
+            Path::new(ALL).join("Video")
         );
-        assert_eq!(
-            s.category_dir(Category::General, downloads),
-            Path::new(r"F:\All")
-        );
+        assert_eq!(s.category_dir(Category::General, downloads), Path::new(ALL));
         assert!(Category::all().contains(&books));
         s = Settings::default();
         s.publish_categories();

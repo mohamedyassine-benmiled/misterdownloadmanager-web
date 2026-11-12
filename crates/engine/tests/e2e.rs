@@ -690,7 +690,7 @@ async fn probe_is_a_plain_get() {
     assert_eq!(log.iter().filter(|e| e.range.is_none()).count(), 1);
     assert!(
         log.iter()
-            .all(|e| e.user_agent.as_deref() == Some(mdm_engine::download::DEFAULT_USER_AGENT))
+            .all(|e| e.user_agent.as_deref() == Some(mdm_engine::agent::automatic().as_str()))
     );
 }
 
@@ -768,6 +768,117 @@ fn on_disk(range: Option<&str>, saved: &mdm_engine::state::ResumeState) -> u64 {
         .map(|g| to.min(g.end).saturating_sub(from.max(g.cursor)))
         .sum();
     (to - from) - to_fetch
+}
+
+/// Watch `dl` to its end: the file its view last named, and the path it reports. The view is what
+/// the app's row follows.
+async fn view_and_outcome(dl: Download) -> (Option<std::path::PathBuf>, std::path::PathBuf) {
+    let until = std::time::Instant::now() + SETTLE;
+    let file = loop {
+        let v = dl.snapshot();
+        if v.state == mdm_engine::download::State::Done {
+            break v.file;
+        }
+        assert!(
+            !matches!(
+                v.state,
+                mdm_engine::download::State::Failed | mdm_engine::download::State::Cancelled
+            ),
+            "{:?}",
+            v.error
+        );
+        assert!(std::time::Instant::now() < until, "no end: {:?}", v.state);
+        tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+    };
+    (file, dl.wait().await.unwrap().path)
+}
+
+/// #442: a file took the destination while the download ran, so it was saved under the next
+/// number. The view says that name (the row used to keep the old one and open the other file).
+#[tokio::test]
+async fn the_view_names_the_file_when_its_place_was_taken_meanwhile() {
+    // Several connections, and one connection on a server that refuses ranges.
+    for query in ["seed=11&rate=4M", "seed=12&rate=4M&no_range=true"] {
+        let s = server("").await;
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("master.mp4");
+        let dl = Download::start(
+            Request {
+                url: s
+                    .url(&format!("/gen/2M/master.mp4?{query}"))
+                    .parse()
+                    .unwrap(),
+                headers: Default::default(),
+                dest: Destination::File(dest.clone()),
+            },
+            fast_opts(),
+        );
+        // Another program's file, once the download is under way.
+        while dl.snapshot().file.is_none() {
+            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        }
+        std::fs::write(&dest, b"someone else's").unwrap();
+        let (file, path) = view_and_outcome(dl).await;
+        assert_eq!(path, dir.path().join("master (1).mp4"), "{query}");
+        assert_eq!(file.as_deref(), Some(path.as_path()), "{query}");
+        assert_eq!(std::fs::read(&dest).unwrap(), b"someone else's");
+    }
+}
+
+/// #743: a name given before its folder was looked at (Download File Info doesn't wait for a
+/// slow disk) is numbered as the download starts when it is taken by then, by a file or by
+/// another download's part file: neither is touched, and the view names the file made.
+#[tokio::test]
+async fn a_name_given_unlooked_is_numbered_as_it_starts() {
+    let s = server("").await;
+    let dir = tempfile::tempdir().unwrap();
+    let dest = dir.path().join("master.mp4");
+    std::fs::write(&dest, b"someone else's").unwrap();
+    let part = mdm_engine::naming::part_path(&dir.path().join("master (1).mp4"));
+    std::fs::write(&part, b"another download's").unwrap();
+    let dl = Download::start(
+        Request {
+            url: s.url("/gen/256K/master.mp4?seed=7").parse().unwrap(),
+            headers: Default::default(),
+            dest: Destination::Free(dest.clone()),
+        },
+        fast_opts(),
+    );
+    let (file, path) = view_and_outcome(dl).await;
+    assert_eq!(path, dir.path().join("master (2).mp4"));
+    assert_eq!(file.as_deref(), Some(path.as_path()));
+    assert_eq!(std::fs::read(&dest).unwrap(), b"someone else's");
+    assert_eq!(std::fs::read(&part).unwrap(), b"another download's");
+    assert_eq!(std::fs::metadata(&path).unwrap().len(), 256 * 1024);
+    // Free, it keeps its name.
+    let free = dir.path().join("free.mp4");
+    let dl = Download::start(
+        Request {
+            url: s.url("/gen/64K/free.mp4?seed=8").parse().unwrap(),
+            headers: Default::default(),
+            dest: Destination::Free(free.clone()),
+        },
+        fast_opts(),
+    );
+    assert_eq!(view_and_outcome(dl).await.1, free);
+}
+
+/// The same for a resumed download: the row follows, and the resume itself still works.
+#[tokio::test]
+async fn the_view_names_the_file_when_a_resume_finds_its_place_taken() {
+    let s = server("rate=1M").await;
+    let (dir, state) = paused(&s, "/gen/8M/master.mp4?seed=13").await;
+    let dest = mdm_engine::state::ResumeState::load(&state).unwrap().dest;
+    std::fs::write(&dest, b"someone else's").unwrap();
+    s.set_faults(Faults::default());
+    let dl = Download::resume(state.clone(), Default::default(), fast_opts()).unwrap();
+    let (file, path) = view_and_outcome(dl).await;
+    assert_eq!(path.parent(), Some(dir.path()));
+    assert_ne!(path, dest);
+    assert_eq!(file.as_deref(), Some(path.as_path()));
+    assert_eq!(std::fs::metadata(&path).unwrap().len(), 8 << 20);
+    assert!(!state.exists(), "state file removed on completion");
+    assert_eq!(std::fs::read(&dest).unwrap(), b"someone else's");
 }
 
 #[tokio::test]
@@ -1426,6 +1537,61 @@ async fn stop_is_prompt_under_a_low_limit() {
     );
 }
 
+/// #621: a limit raised or removed while connections wait under the old one applies to those
+/// waits at once. Here they wait at 256 bytes/s, where a chunk owes half a minute (the wait used
+/// to be sat out: 1 MiB took 29 s after the limit went up), then the limit goes away (the global
+/// cap) or up four million times (this download's).
+#[tokio::test]
+async fn a_raised_limit_wakes_the_connections_waiting() {
+    let s = server("").await;
+    for (seed, global) in [(44u64, true), (43, false)] {
+        let dir = tempfile::tempdir().unwrap();
+        let req = Request {
+            url: s
+                .url(&format!("/gen/1M/raised.bin?seed={seed}"))
+                .parse()
+                .unwrap(),
+            headers: Default::default(),
+            dest: Destination::Dir(dir.path().to_owned()),
+        };
+        let cap = std::sync::Arc::new(mdm_engine::limiter::Limiter::new(Some(256)));
+        let opts = Options {
+            speed_limit: (!global).then_some(256),
+            global: global.then(|| cap.clone()),
+            ..fast_opts()
+        };
+        let dl = Download::start(req, opts);
+        // Long enough for the connections to be waiting their turn.
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        let before = dl.snapshot().downloaded;
+        let raised = std::time::Instant::now();
+        if global {
+            cap.set(None);
+        } else {
+            dl.set_speed_limit(Some(1 << 30));
+        }
+        let out = tokio::time::timeout(std::time::Duration::from_secs(60), dl.wait())
+            .await
+            .expect("still waiting a minute after the limit went up")
+            .expect("download succeeds");
+        let took = raised.elapsed();
+        println!("global: {global}, {before} bytes before, the rest in {took:?}");
+        assert_eq!(out.size, 1 << 20);
+        let mut want = vec![0; 1 << 20];
+        content::fill(seed, 0, &mut want);
+        assert!(
+            std::fs::read(&out.path).unwrap() == want,
+            "content mismatch"
+        );
+        // Unlimited, 1 MiB from this machine takes well under a second; the slack is for a
+        // busy one. The old waits took a minute.
+        assert!(
+            took < std::time::Duration::from_secs(10),
+            "global: {global}, took {took:?} after the limit went up"
+        );
+    }
+}
+
 #[tokio::test]
 async fn the_finished_file_can_take_the_servers_date() {
     // Options → Downloads → "Set file creation date as provided by the server": the lab server
@@ -1546,4 +1712,431 @@ async fn a_one_time_link_is_read_from_the_kept_answer() {
         dest: Destination::Dir(dir.path().to_owned()),
     };
     assert!(Download::start(req, fast_opts()).wait().await.is_err());
+}
+
+/// A download watched from outside while it runs (`a_slow_flush_does_not_stop_the_transfer`).
+struct Watched {
+    /// From the start until every byte had arrived (`Snapshot::downloaded` counts the bytes
+    /// waiting in memory for the disk too): the transfer, without what the disk takes after it.
+    received: std::time::Duration,
+    /// While the first slow flush held the writes (`gate` taken exclusively): the bytes that
+    /// arrived meanwhile, and the bytes still to come when it began.
+    during_flush: Option<(u64, u64)>,
+}
+
+async fn watch(
+    d: Download,
+    size: u64,
+    gate: Option<std::sync::Arc<std::sync::RwLock<()>>>,
+) -> (Result<mdm_engine::Outcome, mdm_engine::Error>, Watched) {
+    use mdm_engine::download::State;
+    let started = std::time::Instant::now();
+    let mut received = None;
+    // `downloaded` when the flush was first seen holding the gate.
+    let mut flush_began: Option<u64> = None;
+    let mut during_flush = None;
+    loop {
+        let v = d.snapshot();
+        let flushing = gate.as_ref().is_some_and(|g| g.try_read().is_err());
+        if flushing && flush_began.is_none() && during_flush.is_none() {
+            flush_began = Some(v.downloaded);
+        } else if !flushing && let Some(at) = flush_began.take() {
+            during_flush = Some((v.downloaded - at, size - at));
+        }
+        if received.is_none() && v.downloaded >= size {
+            received = Some(started.elapsed());
+        }
+        if matches!(v.state, State::Done | State::Failed | State::Cancelled) {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(2)).await;
+    }
+    let received = received.unwrap_or_else(|| started.elapsed());
+    (
+        d.wait().await,
+        Watched {
+            received,
+            during_flush,
+        },
+    )
+}
+
+/// #361: a flush that holds up every write (as on NTFS) must not hold up the download: the
+/// connections keep receiving meanwhile and none of them reconnects for it. Before: the
+/// connections stood still during each 1.5 s flush, one per save tick, and were then told apart
+/// as slow (reconnections, on top of the stalls).
+///
+/// It measures the transfer, not the disk: the bytes received while the flush runs, and the
+/// time until every byte arrived. The time until the download completes also counts the real
+/// disk taking in 160 MB: on GitHub's Windows runners that alone took 1 s to over 13 s (Windows
+/// held the writes into its cache to the disk's pace: 19 MB writes took up to 5.9 s with no
+/// flush running), and failed the old wall-clock bound now and then (#518): 7.9 s against
+/// 2.6 s, with every byte received in 1.4 s against 1.0 s.
+#[tokio::test]
+async fn a_slow_flush_does_not_stop_the_transfer() {
+    const SIZE: u64 = 160 << 20;
+    let s = server("rate=20M").await; // 8 connections, about 160 MB/s together
+    let dir = tempfile::tempdir().unwrap();
+    // The same download with a disk that never stalls, on this machine at this moment: the
+    // yardstick the slow flush is measured against (#518: a fixed limit failed on busy runners).
+    let (done, yardstick) = watch(
+        Download::start(
+            Request {
+                url: s.url("/gen/160M/a.bin?seed=518").parse().unwrap(),
+                headers: Default::default(),
+                dest: Destination::Dir(dir.path().to_owned()),
+            },
+            Options {
+                save_interval: std::time::Duration::from_millis(100),
+                ..fast_opts()
+            },
+        ),
+        SIZE,
+        None,
+    )
+    .await;
+    done.expect("the yardstick download succeeds");
+    tokio::time::timeout(SETTLE, s.settled())
+        .await
+        .expect("every request ends");
+    let before = s.log().len();
+    let slow = mdm_engine::download::SlowFlush {
+        takes: std::time::Duration::from_millis(1500),
+        gate: Default::default(),
+    };
+    let gate = slow.gate.clone();
+    let opts = Options {
+        save_interval: std::time::Duration::from_millis(100),
+        slow_flush: Some(slow),
+        ..fast_opts()
+    };
+    let (out, slowed) = watch(
+        Download::start(
+            Request {
+                url: s.url("/gen/160M/a.bin?seed=361").parse().unwrap(),
+                headers: Default::default(),
+                dest: Destination::Dir(dir.path().to_owned()),
+            },
+            opts,
+        ),
+        SIZE,
+        Some(gate),
+    )
+    .await;
+    let out = out.expect("download succeeds");
+    assert_eq!(out.size, SIZE);
+    let data = std::fs::read(&out.path).unwrap();
+    let mut want = vec![0; data.len()];
+    content::fill(361, 0, &mut want);
+    assert!(data == want, "content mismatch");
+    tokio::time::timeout(SETTLE, s.settled())
+        .await
+        .expect("every request ends");
+    let log = s.log().split_off(before);
+    // The connections kept receiving while the flush held their writes: 16 MiB in its 1.5 s
+    // (or the rest of the file), where connections waiting for the disk take in a batch each at
+    // most (8 x 256 KiB). Measured: 143 MB; with the connections writing during the flush, 0.6
+    // to 2.8 MB (and every byte in 2.2 s against 1.0 s, which the bound below lets through).
+    let (grew, left) = slowed
+        .during_flush
+        .expect("a slow flush ran while the connections received");
+    assert!(
+        grew >= (16 << 20).min(left),
+        "{grew} bytes received during the slow flush ({left} left when it began)"
+    );
+    // Every byte arrived about as soon as without the slow flush, with room for a busy machine:
+    // 4.5 s more, or most of the yardstick again when it is long (a busy runner slows this run as
+    // much as the yardstick's). Before the fix every tick's flush stalled all writes for 1.5 s,
+    // one per 0.1 s tick: 7.6 s measured against about 1 s.
+    let allowed = (yardstick.received + std::time::Duration::from_millis(4500))
+        .max(yardstick.received.mul_f64(1.8) + std::time::Duration::from_millis(1500));
+    assert!(
+        slowed.received < allowed,
+        "every byte in {:?}, the same download without the slow flush {:?}",
+        slowed.received,
+        yardstick.received
+    );
+    // No connection reconnected because of the disk's stall: the probe, seven more, and the
+    // planner's closing splits only.
+    assert!(log.len() < 48, "{} requests: {log:?}", log.len());
+}
+
+/// #372: a server that refuses a browser's User-Agent with 403 (seen on a public
+/// PDF) is asked once more with MDM's own, and the download goes on.
+#[tokio::test]
+async fn a_refused_browser_agent_is_asked_again_as_mdm() {
+    let s = server("rate=20M&refuse_agent=Chrome").await;
+    let browser = "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/156.0 Safari/537.36";
+    let dir = tempfile::tempdir().unwrap();
+    // Without the fallback, the 403 is the end of it.
+    let refused = Download::start(
+        Request {
+            url: s.url("/gen/2M/a.bin?seed=372").parse().unwrap(),
+            headers: Default::default(),
+            dest: Destination::Dir(dir.path().to_owned()),
+        },
+        Options {
+            user_agent: browser.to_owned(),
+            automatic_agent: false,
+            ..fast_opts()
+        },
+    )
+    .wait()
+    .await;
+    assert!(
+        matches!(refused, Err(mdm_engine::Error::Status(s)) if s.as_u16() == 403),
+        "{refused:?}"
+    );
+    // With it, the same download succeeds under MDM's agent, every connection.
+    let out = Download::start(
+        Request {
+            url: s.url("/gen/2M/a.bin?seed=372").parse().unwrap(),
+            headers: Default::default(),
+            dest: Destination::Dir(dir.path().to_owned()),
+        },
+        Options {
+            user_agent: browser.to_owned(),
+            automatic_agent: false,
+            agent_fallback: Some("MDM-test".to_owned()),
+            ..fast_opts()
+        },
+    )
+    .wait()
+    .await
+    .expect("download succeeds after the fallback");
+    assert_eq!(out.size, 2 << 20);
+    tokio::time::timeout(SETTLE, s.settled())
+        .await
+        .expect("every request ends");
+    let log = s.log();
+    assert!(
+        log.iter().any(|e| e.outcome.contains("refuse_agent")),
+        "{log:?}"
+    );
+    assert!(
+        log.iter()
+            .filter(|e| e.status == 200 || e.status == 206)
+            .all(|e| e.user_agent.as_deref() == Some("MDM-test")),
+        "{log:?}"
+    );
+}
+
+/// A download handed over by the browser: `link` with a session cookie and the page as Referer,
+/// and where the browser's own download of it ended (`browser_final`).
+async fn handed_over(
+    link: String,
+    browser_final: Option<&str>,
+    dir: &std::path::Path,
+) -> Result<mdm_engine::Outcome, mdm_engine::Error> {
+    let mut headers = reqwest::header::HeaderMap::new();
+    headers.insert(reqwest::header::COOKIE, "sid=1".parse().unwrap());
+    headers.insert(
+        reqwest::header::REFERER,
+        "http://127.0.0.1/program/".parse().unwrap(),
+    );
+    Download::start(
+        Request {
+            url: link.parse().unwrap(),
+            headers,
+            dest: Destination::Dir(dir.to_owned()),
+        },
+        Options {
+            browser_final: browser_final.map(|u| u.parse().unwrap()),
+            ..fast_opts()
+        },
+    )
+    .wait()
+    .await
+}
+
+/// #630: a site that refuses MDM the link (FileHippo's 412) while the browser's own download of
+/// it ended on another host (its CDN): the download goes on from there, without the link's
+/// cookie (another host) but with the page as Referer.
+#[tokio::test]
+async fn a_refused_link_goes_on_where_the_browser_download_ended() {
+    let s = server("rate=20M").await;
+    let port = s.addr().port();
+    let link = s.url("/gen/2M/fh.bin?seed=630&refuse=412");
+    let cdn = format!("http://localhost:{port}/gen/2M/fh.bin?seed=630");
+    let dir = tempfile::tempdir().unwrap();
+    // Without the browser's address, the 412 is the end of it (what 0.5.2 did).
+    let refused = handed_over(link.clone(), None, dir.path()).await;
+    assert!(
+        matches!(refused, Err(mdm_engine::Error::Status(s)) if s.as_u16() == 412),
+        "{refused:?}"
+    );
+    let out = handed_over(link, Some(&cdn), dir.path())
+        .await
+        .expect("the download goes on where the browser's ended");
+    let mut want = vec![0; 2 << 20];
+    content::fill(630, 0, &mut want);
+    assert!(
+        std::fs::read(&out.path).unwrap() == want,
+        "content mismatch"
+    );
+    assert_eq!(out.path.file_name().unwrap(), "fh.bin");
+    tokio::time::timeout(SETTLE, s.settled())
+        .await
+        .expect("every request ends");
+    let log = s.log();
+    let refused = |browser_like: bool| {
+        log.iter()
+            .filter(|e| e.outcome == "fault:refuse" && e.sec_fetch_mode.is_some() == browser_like)
+            .count()
+    };
+    assert_eq!(
+        refused(false),
+        2,
+        "the link was asked once per download: {log:?}"
+    );
+    // Without the browser's address, it was asked once more the way a browser connects (#668),
+    // refused too; with it, the browser's address got the file first.
+    let once_more = if cfg!(feature = "browser-connection") {
+        1
+    } else {
+        0
+    };
+    assert_eq!(refused(true), once_more, "{log:?}");
+    let served: Vec<_> = log
+        .iter()
+        .filter(|e| e.status == 200 || e.status == 206)
+        .collect();
+    assert!(!served.is_empty());
+    for e in served {
+        assert!(
+            e.host
+                .as_deref()
+                .is_some_and(|h| h.starts_with("localhost")),
+            "{e:?}"
+        );
+        assert_eq!(e.cookie, None, "the link's cookie reached another host");
+        assert_eq!(e.referer.as_deref(), Some("http://127.0.0.1/program/"));
+    }
+}
+
+/// #630: a one-time link the browser already spent (410) is followed on the same site, where
+/// the session's cookie still goes; when the browser's address is refused too, the link's own
+/// refusal is the one told.
+#[tokio::test]
+async fn a_spent_link_goes_on_where_the_browser_download_ended() {
+    let s = server("rate=20M").await;
+    let link = s.url("/gen/1M/once.bin?seed=631&once=1");
+    // The browser's own download used it up.
+    let spent = reqwest::get(&link).await.unwrap();
+    assert_eq!(spent.status(), 200);
+    drop(spent.bytes().await);
+    let dir = tempfile::tempdir().unwrap();
+    let final_url = s.url("/gen/1M/once.bin?seed=631&require_cookie=sid=1");
+    let out = handed_over(link.clone(), Some(&final_url), dir.path())
+        .await
+        .expect("the download goes on where the browser's ended");
+    let mut want = vec![0; 1 << 20];
+    content::fill(631, 0, &mut want);
+    assert!(
+        std::fs::read(&out.path).unwrap() == want,
+        "content mismatch"
+    );
+    // Both refused: the link's 410 is told, not the other address's 403.
+    let gone = s.url("/gen/1M/once.bin?seed=631&refuse=403");
+    let refused = handed_over(link, Some(&gone), dir.path()).await;
+    assert!(
+        matches!(refused, Err(mdm_engine::Error::Status(s)) if s.as_u16() == 410),
+        "{refused:?}"
+    );
+}
+
+/// The span a ranged request asked for (`bytes=a-b`), in bytes.
+fn asked_len(range: &str) -> Option<u64> {
+    let (a, b) = range.strip_prefix("bytes=")?.split_once('-')?;
+    Some(b.parse::<u64>().ok()? - a.parse::<u64>().ok()? + 1)
+}
+
+/// #769: a server that slows long answers down (YouTube's media servers, yt-dlp's
+/// `http_chunk_size`): under `request_cap` every request, the first one too, asks for at most
+/// that many bytes, one after another on each connection, and the file comes whole.
+#[tokio::test]
+async fn requests_stay_within_the_cap() {
+    let s = server("rate=8M").await;
+    const CAP: u64 = 256 * 1024;
+    let opts = Options {
+        request_cap: Some(CAP),
+        max_connections: 4,
+        ..fast_opts()
+    };
+    let (log, size) = fetch(&s, "/gen/3M/capped.bin?seed=769", 769, opts).await;
+    assert_eq!(size, 3 << 20);
+    let file: Vec<&LogEntry> = log.iter().filter(|e| e.path.starts_with("/gen/")).collect();
+    assert!(
+        file.iter().all(|e| e.status == 206),
+        "every answer is a range"
+    );
+    let spans: Vec<u64> = file
+        .iter()
+        .map(|e| e.range.as_deref().and_then(asked_len).expect("a range"))
+        .collect();
+    assert!(
+        spans.iter().all(|n| *n <= CAP),
+        "a request over the cap: {spans:?}"
+    );
+    // 3 MB in pieces of 256 KB at most: twelve requests or more, kept alive on few connections.
+    assert!(spans.len() >= 12, "{} requests", spans.len());
+    assert!(
+        file.iter().any(|e| e.conn_req > 1),
+        "the next piece goes on the same connection"
+    );
+    assert!(max_concurrent(&log) >= 2, "connections ran in parallel");
+}
+
+/// #769: a capped download stopped half-way resumes with capped requests and comes whole.
+#[tokio::test]
+async fn a_capped_download_resumes_within_the_cap() {
+    let s = server("rate=2M").await;
+    const CAP: u64 = 128 * 1024;
+    let dir = tempfile::tempdir().unwrap();
+    let dest = dir.path().join("capped-resume.bin");
+    let opts = Options {
+        request_cap: Some(CAP),
+        max_connections: 3,
+        save_interval: std::time::Duration::from_millis(100),
+        ..fast_opts()
+    };
+    let req = Request {
+        url: s.url("/gen/2M/r.bin?seed=770").parse().unwrap(),
+        headers: Default::default(),
+        dest: Destination::File(dest.clone()),
+    };
+    let dl = Download::start(req, opts.clone());
+    loop {
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        if dl.snapshot().downloaded > 600 * 1024 {
+            break;
+        }
+    }
+    dl.cancel();
+    let _ = dl.wait().await;
+    let state = mdm_engine::state::state_path(&dest);
+    assert!(state.exists(), "the resume state is kept");
+    s.clear_log();
+    let out = Download::resume(state, Default::default(), opts)
+        .expect("resumes")
+        .wait()
+        .await
+        .expect("completes");
+    let data = std::fs::read(&out.path).unwrap();
+    let mut want = vec![0; data.len()];
+    content::fill(770, 0, &mut want);
+    assert!(data.len() == 2 << 20 && data == want, "content mismatch");
+    tokio::time::timeout(SETTLE, s.settled())
+        .await
+        .expect("every request ends");
+    let spans: Vec<u64> = s
+        .log()
+        .iter()
+        .filter(|e| e.path.starts_with("/gen/"))
+        .filter_map(|e| e.range.as_deref().and_then(asked_len))
+        .collect();
+    assert!(
+        !spans.is_empty() && spans.iter().all(|n| *n <= CAP),
+        "{spans:?}"
+    );
 }

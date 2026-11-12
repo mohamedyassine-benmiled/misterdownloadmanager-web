@@ -1,12 +1,33 @@
-<p align="center"><img src="brand/webmister.svg" width="88" height="88" alt="Webmister: a W and a download arrow"></p>
-
 # Webmister Download Manager
 
-**Mister Download Manager, on your server and in your browser.**
+<p align="center"><img src="brand/webmister.svg" width="128" height="128" alt="Webmister: a W and a download arrow"></p>
 
-Webmister is an **independent, Web-focused fork of [Mister Download Manager](https://github.com/anefzaoui/misterdownloadmanager)** by Ahmed Nefzaoui and its contributors. This fork adds a browser workspace, owner authentication, remote extension capture and self-hosted deployment around MDM's existing Rust application and download engines. It is not the official MDM project or an official MDM release.
+<h3 align="center">Mister Download Manager, on your server and in your browser.</h3>
 
-[Downloads](https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web/releases) · [Docker Compose](#run-with-docker-compose) · [Browser extension](#browser-extension) · [Native server](#run-without-docker) · [Known limitations](#status-and-limitations)
+<p align="center">An <b>independent, Web-focused fork</b> of <a href="https://github.com/anefzaoui/misterdownloadmanager">Mister Download Manager</a>, created by Ahmed Nefzaoui and contributors.<br>Not the official MDM project or an official MDM release.</p>
+
+<!-- Publication gate: badges below are deliberately unlinked. Enable each download only
+after its fork artifact/image is published and verified. Enable Add to Firefox/Chrome
+only after actual fork store listings exist; release packages are not store publication. -->
+<p align="center">
+  <img src="https://img.shields.io/badge/Download%20for-Windows%20%7C%20soon-6b7280?style=flat-square" alt="Windows server download — not published yet" height="34">
+  <img src="https://img.shields.io/badge/Download%20for-Linux%20%7C%20soon-6b7280?style=flat-square&amp;logo=linux&amp;logoColor=white" alt="Linux server download — not published yet" height="34">
+  <img src="https://img.shields.io/badge/Docker-amd64%20%7C%20soon-6b7280?style=flat-square&amp;logo=docker&amp;logoColor=white" alt="Docker linux/amd64 image — publication pending" height="34">
+</p>
+
+<p align="center">
+  <b>Browser extension:</b><br>
+  <img src="https://img.shields.io/badge/Add%20to-Firefox%20%7C%20soon-6b7280?style=flat-square&amp;logo=firefoxbrowser&amp;logoColor=white" alt="Add to Firefox — fork store listing not published" height="34">
+  <img src="https://img.shields.io/badge/Add%20to-Chrome%20%7C%20soon-6b7280?style=flat-square&amp;logo=googlechrome&amp;logoColor=white" alt="Add to Chrome — fork store listing not published" height="34"><br>
+  <sub>Store buttons stay disabled until publication. The Chromium package is for Chrome, Edge, Brave, Opera and other Chromium browsers.<br>For manual ZIP/XPI installation, see <a href="#browser-extension">Browser extension</a>.</sub>
+</p>
+
+<p align="center">
+  <a href="https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web/stargazers"><img src="https://img.shields.io/github/stars/mohamedyassine-benmiled/misterdownloadmanager-web?style=social&amp;label=Star%20Webmister" alt="Star Webmister Download Manager on GitHub" height="28"></a><br>
+  <sub><b>Like the idea? Give it a star.</b> Help others find a self-hosted download manager.</sub>
+</p>
+
+<p align="center">Windows and Linux x86-64 server bundles · Docker linux/amd64<br>Free and open source · no ads, no trial, no cloud registration</p>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/webmister/workspace-dark.png">
@@ -15,40 +36,129 @@ Webmister is an **independent, Web-focused fork of [Mister Download Manager](htt
 
 *The actual shipped Web UI, captured with explicitly labeled demonstration transfers. These are not live downloads or speed benchmarks. No private account or server data is shown.*
 
-## What this fork adds
+<p align="center">
+  <a href="https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web/actions/workflows/web-image.yml"><img src="https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web/actions/workflows/web-image.yml/badge.svg?branch=main" alt="Webmister Web and image checks"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-2a78d6?style=flat-square" alt="GPL-3.0-or-later license"></a>
+</p>
 
-- **A downloads-first Web workspace:** add links, magnets and torrent files; start, pause, remove, search and filter downloads.
-- **Familiar MDM controls:** persistent toolbar, category/queue tree, light/dark themes and desktop-style progress dialogs.
-- **Headless operation:** run the normal application with `--web`; control it without a desktop session.
-- **Owner administration:** protected login sessions, CSRF checks, authentication settings and separately scoped extension devices.
-- **Queues and schedules:** manage queue membership, concurrency and supported scheduling options.
-- **File and torrent tools:** checksums, bounded move/rename, source replacement, post-add torrent selection, peers, trackers and rechecking.
-- **Explicit data-reuse decisions:** review existing torrent files before verification/reuse; choose an existing Web download or a separately named copy for duplicate links.
-- **Remote browser capture:** send downloads to your server without installing a native messaging host on the browsing computer.
+| [Why Webmister](#why-webmister) | [Screenshots](#screenshots) | [Downloads](#downloads) | [Run with Compose](#run-with-docker-compose) | [Limitations](#status-and-limitations) |
+| --- | --- | --- | --- | --- |
 
-Downloads are written to the **server**, not to the computer running your browser. The underlying executable names, data formats and protocol IDs remain compatible with MDM; the fork identity lives in the Web UI, extension and release packaging.
+## Why Webmister?
+
+**The familiar download manager. A server that does the work. A browser to control it.**
+
+Run Webmister on your server, open its HTTPS workspace, and keep your downloads in one place.
+The categories, toolbar, transfer list and progress dialogs are familiar MDM controls—not a
+second desktop to stream or a native app to install on every browsing computer.
+
+| Download on your server | Control it in your browser | Keep the MDM engine |
+| --- | --- | --- |
+| Files go to your server's storage. Closing the browser does not stop the server. | Add links, manage queues and inspect transfers from another device on your LAN/VPN. | Rust download engines, resumable transfers, torrents and compatible data formats underneath. |
+
+Webmister adds the Web workspace, owner authentication, device pairing and deployment packaging
+around MDM's existing application. Downloads are written to the **server**, not to the computer
+running your browser. This is an evolving fork, [not full desktop/Web parity](#status-and-limitations).
 
 ## Screenshots
 
-<details>
-<summary>Progress and torrent file controls</summary>
+<table>
+  <tr valign="top">
+    <td width="50%"><img src="docs/images/webmister/workspace-light.png" alt="Webmister light workspace with synthetic downloads"><br><sub><b>Your downloads, in one tab.</b> Categories, source filters and queue controls stay within reach.</sub></td>
+    <td width="50%"><img src="docs/images/webmister/workspace-dark.png" alt="The same synthetic Webmister workspace in dark mode"><br><sub><b>Day or dark.</b> The same familiar workspace in either theme.</sub></td>
+  </tr>
+  <tr valign="top">
+    <td><img src="docs/images/webmister/download-details.png" alt="Synthetic download progress and connection details"><br><sub><b>Look inside a transfer.</b> Progress, connection details and file tools in a familiar dialog.</sub></td>
+    <td><img src="docs/images/webmister/torrent-files.png" alt="Synthetic torrent with post-add file selection"><br><sub><b>Choose what to keep.</b> Torrent file selection and verification details after adding—not a pre-start picker.</sub></td>
+  </tr>
+  <tr valign="top">
+    <td><img src="docs/images/webmister/add-url.png" alt="Webmister add-link dialog with a synthetic example URL"><br><sub><b>Paste a link.</b> Choose a category and when to download it.</sub></td>
+    <td><img src="docs/images/webmister/add-torrent.png" alt="Webmister torrent admission dialog with a synthetic magnet link"><br><sub><b>Magnets and torrent files.</b> Add them from the same workspace.</sub></td>
+  </tr>
+  <tr valign="top">
+    <td><img src="docs/images/webmister/settings-downloads.png" alt="Webmister connection settings using fixture values"><br><sub><b>Set the defaults.</b> Connection counts and speed-limit controls for the server.</sub></td>
+    <td><img src="docs/images/webmister/settings-security.png" alt="Webmister owner authentication settings with synthetic values"><br><sub><b>Your server, your login.</b> Owner authentication and session policy, separate from extension devices.</sub></td>
+  </tr>
+  <tr valign="top">
+    <td><img src="docs/images/webmister/devices.png" alt="Webmister device management showing a synthetic browser extension"><br><sub><b>Pair a browser.</b> Connect an extension without installing a native host on that computer.</sub></td>
+    <td><img src="docs/images/webmister/queues.png" alt="Webmister queue editor with a synthetic overnight schedule"><br><sub><b>Download on your schedule.</b> Set concurrency, days and start/stop times.</sub></td>
+  </tr>
+  <tr valign="top">
+    <td align="center"><img src="docs/images/webmister/workspace-mobile.png" width="260" alt="Synthetic Webmister workspace at a mobile viewport"><br><sub><b>Check in from your phone.</b> On narrow screens, the toolbar, navigation and transfer table scroll horizontally.</sub></td>
+    <td><img src="docs/images/webmister/categories.png" alt="Webmister category editor using a synthetic downloads folder"><br><sub><b>Give files a place.</b> Manage categories and folders inside the server's downloads directory.</sub></td>
+  </tr>
+</table>
 
-<img src="docs/images/webmister/download-details.png" width="600" alt="Webmister download progress dialog with connection details">
-
-<img src="docs/images/webmister/torrent-files.png" width="600" alt="Webmister torrent dialog with post-add file selection">
-
-*Rendered controls with synthetic sample transfers. Torrent selection shown here is after adding, not a pre-start file picker.*
-</details>
-
-<details>
-<summary>Mobile workspace</summary>
-
-<img src="docs/images/webmister/workspace-mobile.png" width="320" alt="Webmister download workspace on a narrow mobile viewport">
-
-*On narrow screens, the toolbar, navigation and transfer table can scroll horizontally to keep controls accessible.*
-</details>
+*All Web UI captures use synthetic demonstration data. They show shipped controls, not live
+transfers, measured speeds or private server data.*
 
 The screenshots and their source hashes are reproducible with [`tools/web/readme-shots.mjs`](tools/web/readme-shots.mjs). The original logo source is [`brand/webmister.svg`](brand/webmister.svg).
+
+## What it does
+
+- **Downloads on your server.** Run with `--web` without a desktop session; use the browser to
+  add, start, pause, remove, search and filter transfers.
+- **Uses MDM's download engines.** Multi-connection HTTP downloads and resumable transfers,
+  with the existing engine and saved-state formats underneath.
+- **Catches browser downloads remotely.** Pair the extension with your server; no native
+  messaging host is needed on the browsing computer. If the server cannot accept a transfer,
+  the browser keeps it. Browser-session downloads have [important limits](#browser-extension).
+- **Handles torrents and magnets.** Add torrent files or magnet links, change file selection
+  after adding, inspect peers and trackers, and request rechecking.
+- **Queues work for later.** Manage queue membership, concurrency and supported schedules;
+  the server must stay running for the schedule to run.
+- **Keeps file decisions explicit.** Review existing torrent files before verification/reuse;
+  open an existing duplicate link or add a separately numbered copy.
+- **Provides useful file tools.** Checksums, bounded move/rename and source replacement from
+  the transfer details.
+- **Separates owner access from device access.** Protected owner sessions, CSRF checks,
+  authentication settings and revocable extension devices.
+- **Feels familiar.** Category and queue trees, a persistent toolbar, light/dark themes and
+  desktop-style progress dialogs, served as a Web UI.
+- **Stays free and open source.** No ads, no trial, no cloud registration. You create a local
+  owner account to administer your own server.
+
+[Run with Compose](#run-with-docker-compose) · [Use the extension](#browser-extension) ·
+[Run a native server](#run-without-docker) · [Web development](docs/web-development.md)
+
+## The engine underneath: upstream's benchmark
+
+**These are Mister Download Manager's upstream results, not a Webmister benchmark.**
+
+Upstream compared MDM at commit `caa200c` with IDM 6.42 on 29 October 2026: the same Windows
+computer, generated files from a local test server, seven runs per scenario, both programs at
+their default settings. Its report records MDM finishing first in all seven scenarios.
+
+| Selected upstream scenario | MDM median | IDM median |
+| --- | --- | --- |
+| 1 GiB over a fast local link | 1.009 s | 5.456 s |
+| 100 MiB with 150 ms latency | 3.844 s | 7.622 s |
+| 50 MiB with interrupted connections | 1.647 s | 5.428 s |
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/bench-time-dark.svg">
+    <img src="docs/images/bench-time-light.svg" width="880" alt="Upstream MDM benchmark: median completion times versus IDM across seven local-server scenarios; not measured for Webmister">
+  </picture>
+</p>
+
+Source: [upstream benchmark report, machine and raw results](https://github.com/anefzaoui/misterdownloadmanager/blob/b35b42d4cab545fb63cba9765681ad4c7f67c4f2/docs/bench/run5/REPORT.md).
+The report and harness are also preserved in [`docs/bench/run5/REPORT.md`](docs/bench/run5/REPORT.md)
+and [`tools/bench`](tools/bench).
+
+Webmister inherits MDM's engine, but these measurements were **not rerun against this fork,
+its current engine revision, a container or a remote deployment**. Your server, disk, source
+and network determine your speeds; this section is engine background, not a speed guarantee.
+
+## Built on MDM, not on IDM
+
+Webmister builds on MDM's open-source implementation; it is not a from-scratch engine of its
+own. Upstream describes MDM as a clean-room implementation of a familiar workflow, built on
+public standards—not a modification of Internet Download Manager.
+
+The upstream and fork artwork retain their [attribution and license notices](ATTRIBUTION.md).
+Neither Webmister nor MDM is affiliated with or endorsed by Tonec Inc. “Internet Download
+Manager” and “IDM” are trademarks of their owner, named here only for the attributed comparison.
 
 ## Downloads
 
@@ -194,6 +304,12 @@ Legacy `--headless` and `--listen` remain supported. Omit the host selection to 
 
 ## Build from source
 
+Use the Rust toolchain in `rust-toolchain.toml` (MSVC on Windows). The default engine's
+browser-like TLS connection builds BoringSSL from source and additionally requires **CMake,
+LLVM's libclang and NASM on Windows**; on Linux, install `cmake` and `libclang-dev`.
+These prerequisites apply inside Docker's builder stage too; see the current build/release
+validation limits below.
+
 ```sh
 git clone https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web.git
 cd misterdownloadmanager-web
@@ -205,6 +321,10 @@ Use `webmister:local` as the Compose image instead of GHCR. Or build natively us
 ```sh
 cargo build --locked --release -p mdm-app -p mdm-cli -p mdm-nmhost -p mdm-mcp
 ```
+
+If you cannot build BoringSSL, `cargo build --locked --release -p mdm-app --no-default-features`
+builds the app without the browser-like connection. This is a reduced-feature build, not
+equivalent release validation; sites that reject MDM's normal connection may remain unavailable.
 
 The build-from-checkout Compose file is [`docker/compose.yml`](docker/compose.yml); see [`docker/.env.example`](docker/.env.example). Developer tests and environment details are in [Web development](docs/web-development.md).
 
@@ -227,3 +347,15 @@ See [release operations](docs/web-releases.md) and the [upstream integration pla
 Webmister builds on **[Mister Download Manager](https://github.com/anefzaoui/misterdownloadmanager)**, created by **Ahmed Nefzaoui and contributors**. The original application, download engines, translations and desktop artwork remain credited to their authors; see [ATTRIBUTION.md](ATTRIBUTION.md) and the source notices. The new Webmister name/mark identify this independent fork, not an endorsement by the upstream project.
 
 Licensed under **[GPL-3.0-or-later](LICENSE)**. Source is available in this repository and at each release tag. Please report fork/Web issues [here](https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web/issues), and support upstream development through its own project.
+
+## Help Webmister grow
+
+Found a rough edge? [Report it here](https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web/issues).
+Please leave passwords, pairing codes, device tokens and private download addresses out of reports.
+For engine development and the original desktop application, visit
+[Mister Download Manager](https://github.com/anefzaoui/misterdownloadmanager).
+
+<p align="center">
+  <a href="https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web/stargazers"><img src="https://img.shields.io/github/stars/mohamedyassine-benmiled/misterdownloadmanager-web?style=social&amp;label=Star%20Webmister" alt="Star Webmister Download Manager on GitHub" height="28"></a><br>
+  <sub>If Webmister is useful, a star helps the next person find it.</sub>
+</p>
