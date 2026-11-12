@@ -148,7 +148,20 @@ try {
   ok('application-loop settings, custom category, bounded paths and queue schedules');
 
   const pairing = await request('v1/devices/pair', { current_password: password });
-  const device = await request('pair', { code: pairing.code, name: 'Integration extension' }, anonymous.request);
+  // Owner enrollment uses the same peer address and pairing throttle. Wait for
+  // that throttle rather than assuming the preceding UI work took a second.
+  let device;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const response = await anonymous.request.post(base + 'api/pair', { data: { code: pairing.code, name: 'Integration extension' }, timeout: 8000 });
+    device = await response.json();
+    if (response.status() !== 429 || device.code !== 'too-soon') {
+      assert.equal(response.status(), 200, JSON.stringify(device));
+      assert.equal(device.error, undefined, JSON.stringify(device));
+      break;
+    }
+    if (attempt === 4) assert.fail('pairing remained rate limited');
+    await new Promise((resolve) => setTimeout(resolve, 350));
+  }
   assert.equal(device.scope, 'capture');
   const bearer = { authorization: 'Bearer ' + device.token };
   const status = await anonymous.request.get(base + 'api/status', { headers: bearer });
