@@ -1,8 +1,11 @@
 # Experimental qBittorrent API work
 
 Webmister is **not yet a verified qBittorrent replacement**. Do not replace an existing
-qBittorrent container. The opt-in experimental adapter now advertises API 2.8.0 for a future
-side-by-side client test, but has not been tested with real Sonarr or Radarr. Login, category
+qBittorrent container. The opt-in experimental adapter advertises API 2.8.0 for compatibility
+discovery. In a side-by-side deployment, Sonarr found an episode through Jackett, submitted it
+to Webmister, observed its completion and imported the resulting file. Radarr's connection test
+also passed, but a Radarr download and import has not yet been tested. Other compatible clients
+have not been verified. Login, category
 creation/listing, torrent submission, torrent pause/resume and reporting are implemented.
 A file-list endpoint uses MDM's torrent metadata and live
 per-file progress, or completion status for selected files. Missing per-file progress is reported
@@ -19,8 +22,8 @@ completed seeding session is not controlled by its ordinary download pause actio
 Experimental torrent-info and properties endpoints translate MDM's torrent counters and stored
 paths. They return unavailable if any selected torrent has missing metadata or an unknown size. Common
 filters, selected sort keys and pagination are implemented; other filters and sort keys return not
-implemented. These endpoints still require validation
-against real qBittorrent clients and must not be treated as a compatibility guarantee.
+implemented. The complete endpoint and lifecycle behavior still requires validation and must
+not be treated as a full compatibility guarantee.
 The experimental preferences response includes MDM's configured save path, DHT and seeding
 settings; it is not a complete qBittorrent preferences object.
 Assigning an existing MDM category updates the torrent's category without moving its existing
@@ -60,7 +63,7 @@ The app also has an owner-only internal torrent snapshot containing actual engin
 It is not a qBittorrent response: Webmister category keys and paths cannot be substituted for
 qBittorrent categories or import paths without additional mapping and validation.
 
-Before compatibility can be claimed, exercise the complete torrent lifecycle, restart recovery,
+Before full compatibility can be claimed, exercise the complete torrent lifecycle, restart recovery,
 the exact pinned Sonarr/Radarr versions and the user's Linux Docker volumes. The
 user's qBittorrent data and configuration must remain intact during any side-by-side tests.
 

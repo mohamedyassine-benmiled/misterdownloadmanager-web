@@ -105,6 +105,12 @@ The screenshots and their source hashes are reproducible with [`tools/web/readme
   the browser keeps it. Browser-session downloads have [important limits](#browser-extension).
 - **Handles torrents and magnets.** Add torrent files or magnet links, change file selection
   after adding, inspect peers and trackers, and request rechecking.
+- **Connects to media automation apps.** An opt-in, experimental qBittorrent-compatible Web
+  API lets Sonarr, Radarr and other compatible clients send torrents to Webmister and check
+  their progress. A Sonarr download and import has been tested end to end; Radarr's connection
+  test passed, but a Radarr download and import and other clients are not yet verified. This is
+  not full qBittorrent API parity or a proven replacement. See the
+  [compatibility notes and setup](docs/qbittorrent-compatibility.md).
 - **Queues work for later.** Manage queue membership, concurrency and supported schedules;
   the server must stay running for the schedule to run.
 - **Keeps file decisions explicit.** Review existing torrent files before verification/reuse;
