@@ -3,7 +3,7 @@
 # to their owner. See README.md for first-run security and owner enrollment.
 services:
   webmister:
-    image: "${MDM_IMAGE:-ghcr.io/mohamedyassine-benmiled/misterdownloadmanager-web:latest}"
+    image: "${MDM_IMAGE:-ghcr.io/mohamedyassine-benmiled/webmisterdownloadmanager:latest}"
     restart: unless-stopped
     init: true
     user: "${MDM_UID:-1000}:${MDM_GID:-1000}"

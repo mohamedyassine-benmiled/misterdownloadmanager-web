@@ -23,7 +23,7 @@ only after actual fork store listings exist; release packages are not store publ
 </p>
 
 <p align="center">
-  <a href="https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web/stargazers"><img src="https://img.shields.io/github/stars/mohamedyassine-benmiled/misterdownloadmanager-web?style=social&amp;label=Star%20Webmister" alt="Star Webmister Download Manager on GitHub" height="28"></a><br>
+  <a href="https://github.com/mohamedyassine-benmiled/webmisterdownloadmanager/stargazers"><img src="https://img.shields.io/github/stars/mohamedyassine-benmiled/webmisterdownloadmanager?style=social&amp;label=Star%20Webmister" alt="Star Webmister Download Manager on GitHub" height="28"></a><br>
   <sub><b>Like the idea? Give it a star.</b> Help others find a self-hosted download manager.</sub>
 </p>
 
@@ -37,7 +37,7 @@ only after actual fork store listings exist; release packages are not store publ
 *The actual shipped Web UI, captured with explicitly labeled demonstration transfers. These are not live downloads or speed benchmarks. No private account or server data is shown.*
 
 <p align="center">
-  <a href="https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web/actions/workflows/web-image.yml"><img src="https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web/actions/workflows/web-image.yml/badge.svg?branch=main" alt="Webmister Web and image checks"></a>
+  <a href="https://github.com/mohamedyassine-benmiled/webmisterdownloadmanager/actions/workflows/web-image.yml"><img src="https://github.com/mohamedyassine-benmiled/webmisterdownloadmanager/actions/workflows/web-image.yml/badge.svg?branch=main" alt="Webmister Web and image checks"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-2a78d6?style=flat-square" alt="GPL-3.0-or-later license"></a>
 </p>
 
@@ -168,7 +168,7 @@ Manager” and “IDM” are trademarks of their owner, named here only for the 
 
 ## Downloads
 
-Use **this fork's [GitHub Releases](https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web/releases)** and select a `web-vX.Y.Z` Webmister release—not the original project's downloads or extension-store listings.
+Use **this fork's [GitHub Releases](https://github.com/mohamedyassine-benmiled/webmisterdownloadmanager/releases)** and select a `web-vX.Y.Z` Webmister release—not the original project's downloads or extension-store listings.
 
 | Release artifact | Purpose |
 | --- | --- |
@@ -181,10 +181,10 @@ Use **this fork's [GitHub Releases](https://github.com/mohamedyassine-benmiled/m
 
 Native bundles include both extension packages, the GPL license and upstream attribution. They are portable server archives, **not branded desktop installers**. Executables are not claimed to be code-signed; checksum files are not claimed to be signed attestations. Inspect the source and verify the download hashes.
 
-The registry path stays tied to the existing repository:
+The container registry path follows the repository name:
 
 ```text
-ghcr.io/mohamedyassine-benmiled/misterdownloadmanager-web
+ghcr.io/mohamedyassine-benmiled/webmisterdownloadmanager
 ```
 
 `latest` is the latest stable Webmister image; `edge` follows successful main-branch publications. Version tags and `sha-<full-commit>` tags are also produced. Pin the published `@sha256:…` digest for controlled deployments. Container support currently targets **linux/amd64**, not ARM.
@@ -211,7 +211,7 @@ The configured UID/GID must own and be able to write both folders. Do not let Do
 ```yaml
 services:
   webmister:
-    image: ghcr.io/mohamedyassine-benmiled/misterdownloadmanager-web:latest
+    image: ghcr.io/mohamedyassine-benmiled/webmisterdownloadmanager:latest
     restart: unless-stopped
     init: true
     user: "${MDM_UID:-1000}:${MDM_GID:-1000}"
@@ -318,7 +318,7 @@ These prerequisites apply inside Docker's builder stage too; see the current bui
 validation limits below.
 
 ```sh
-git clone https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web.git
+git clone https://github.com/mohamedyassine-benmiled/webmisterdownloadmanager.git
 cd misterdownloadmanager-web
 docker build -f docker/web.Dockerfile -t webmister:local .
 ```
@@ -353,16 +353,16 @@ See [release operations](docs/web-releases.md) and the [upstream integration pla
 
 Webmister builds on **[Mister Download Manager](https://github.com/anefzaoui/misterdownloadmanager)**, created by **Ahmed Nefzaoui and contributors**. The original application, download engines, translations and desktop artwork remain credited to their authors; see [ATTRIBUTION.md](ATTRIBUTION.md) and the source notices. The new Webmister name/mark identify this independent fork, not an endorsement by the upstream project.
 
-Licensed under **[GPL-3.0-or-later](LICENSE)**. Source is available in this repository and at each release tag. Please report fork/Web issues [here](https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web/issues), and support upstream development through its own project.
+Licensed under **[GPL-3.0-or-later](LICENSE)**. Source is available in this repository and at each release tag. Please report fork/Web issues [here](https://github.com/mohamedyassine-benmiled/webmisterdownloadmanager/issues), and support upstream development through its own project.
 
 ## Help Webmister grow
 
-Found a rough edge? [Report it here](https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web/issues).
+Found a rough edge? [Report it here](https://github.com/mohamedyassine-benmiled/webmisterdownloadmanager/issues).
 Please leave passwords, pairing codes, device tokens and private download addresses out of reports.
 For engine development and the original desktop application, visit
 [Mister Download Manager](https://github.com/anefzaoui/misterdownloadmanager).
 
 <p align="center">
-  <a href="https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web/stargazers"><img src="https://img.shields.io/github/stars/mohamedyassine-benmiled/misterdownloadmanager-web?style=social&amp;label=Star%20Webmister" alt="Star Webmister Download Manager on GitHub" height="28"></a><br>
+  <a href="https://github.com/mohamedyassine-benmiled/webmisterdownloadmanager/stargazers"><img src="https://img.shields.io/github/stars/mohamedyassine-benmiled/webmisterdownloadmanager?style=social&amp;label=Star%20Webmister" alt="Star Webmister Download Manager on GitHub" height="28"></a><br>
   <sub>If Webmister is useful, a star helps the next person find it.</sub>
 </p>

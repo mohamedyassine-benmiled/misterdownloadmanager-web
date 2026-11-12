@@ -45,7 +45,7 @@ global `ours` merge rules to hide changes. Continue ordinary upstream merge comm
 
 | Item | 2026-11-12 observation |
 | --- | --- |
-| Fork | `mohamedyassine-benmiled/misterdownloadmanager-web` |
+| Fork | `mohamedyassine-benmiled/webmisterdownloadmanager` |
 | Fork HEAD | `197c00161c2a`; substantial additional uncommitted work |
 | Upstream | `anefzaoui/misterdownloadmanager` @ `b35b42d4cab545fb63cba9765681ad4c7f67c4f2` |
 | Common ancestor | `da019249c9dedbd5744917b097e506841ea9fa3d` |

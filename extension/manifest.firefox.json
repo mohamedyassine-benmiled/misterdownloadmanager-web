@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "default_locale": "en",
     "name": "Webmister Download Manager",
-    "homepage_url": "https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web",
+    "homepage_url": "https://github.com/mohamedyassine-benmiled/webmisterdownloadmanager",
     "version": "0.1.0",
     "description": "Independent Mister Download Manager fork: capture downloads locally or send them to your self-hosted Webmister server.",
     "browser_specific_settings": {

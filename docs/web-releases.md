@@ -38,7 +38,7 @@ is not the fork release recipe. Current target platform: **linux/amd64** only.
 Configured registry name:
 
 ```text
-ghcr.io/mohamedyassine-benmiled/misterdownloadmanager-web
+ghcr.io/mohamedyassine-benmiled/webmisterdownloadmanager
 ```
 
 The workflow lowercases `github.repository`, so another fork publishes under its own
@@ -115,13 +115,13 @@ and explicit owner authorization are required before an actual publication attem
 After the first successful publication, for example:
 
 ```sh
-docker pull ghcr.io/mohamedyassine-benmiled/misterdownloadmanager-web:edge
+docker pull ghcr.io/mohamedyassine-benmiled/webmisterdownloadmanager:edge
 mkdir -p /srv/mdm-config /srv/downloads
 # Set ownership/private permissions for UID/GID 1000, or choose --user appropriately.
 docker run -d --name mdm --restart unless-stopped \
   -p 127.0.0.1:8463:8463 \
   -v /srv/mdm-config:/config -v /srv/downloads:/downloads \
-  ghcr.io/mohamedyassine-benmiled/misterdownloadmanager-web:edge
+  ghcr.io/mohamedyassine-benmiled/webmisterdownloadmanager:edge
 ```
 
 The image entry point already supplies `--web`; extra flags follow the image name.

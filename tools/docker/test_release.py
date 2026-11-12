@@ -19,6 +19,11 @@ class ReleasePolicyTests(unittest.TestCase):
         self.assertFalse(value["release"])
         self.assertEqual([tag.split(":")[-1] for tag in value["tags"]], ["sha-" + "a" * 40, "edge"])
 
+    def test_renamed_repository_uses_new_package(self):
+        value = plan("mohamedyassine-benmiled/webmisterdownloadmanager", "push", "refs/heads/main", "a" * 40)
+        self.assertEqual(value["image"], "ghcr.io/mohamedyassine-benmiled/webmisterdownloadmanager")
+        self.assertIn(value["image"] + ":edge", value["tags"])
+
     def test_versioned_release_and_prerelease(self):
         stable = self.plan(ref="refs/tags/web-v1.2.3")
         self.assertTrue(stable["release"])

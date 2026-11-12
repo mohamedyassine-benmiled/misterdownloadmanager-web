@@ -146,7 +146,7 @@ def package(release_version, platform, binaries, extension_dir, output, source_c
         (folder / "WEBMISTER.json").write_text(json.dumps({"brand": BRAND, "version": release_version, "engine_version": engine_version(), "commit": source_commit, "platform": platform}, indent=2) + "\n", encoding="utf-8")
         (folder / "README.txt").write_text(
             f"{BRAND} {release_version}\nIndependent Web-focused fork of Mister Download Manager. GPL-3.0-or-later.\n"
-            "Source and instructions: https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web\n"
+            "Source and instructions: https://github.com/mohamedyassine-benmiled/webmisterdownloadmanager\n"
             "Run webmister.cmd (Windows) or ./webmister (Linux), with --port 8463 --webhost 127.0.0.1.\n"
             "Use --data and --downloads for explicit server folders. Protect the data folder.\n"
             "Open the logged HTTPS address, verify its certificate fingerprint, then create the owner account with the logged code.\n"

@@ -1,5 +1,5 @@
 # Fork-owned Web image. Keep upstream's root Dockerfile available unchanged.
-# Build with: docker build -f docker/web.Dockerfile -t misterdownloadmanager-web .
+# Build with: docker build -f docker/web.Dockerfile -t webmisterdownloadmanager .
 ARG PROFILE=release
 FROM rust:1-trixie AS build
 ARG PROFILE

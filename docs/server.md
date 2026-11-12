@@ -22,7 +22,7 @@ Build the fork image from source, or use the configured GHCR publication workflo
 after its first successful release; see [Web image releases](web-releases.md).
 
 ```sh
-git clone https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web
+git clone https://github.com/mohamedyassine-benmiled/webmisterdownloadmanager
 cd misterdownloadmanager-web
 docker build -f docker/web.Dockerfile -t misterdownloadmanager .
 ```

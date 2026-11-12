@@ -1,6 +1,6 @@
 [Unit]
 Description=Mister Download Manager headless server
-Documentation=https://github.com/mohamedyassine-benmiled/misterdownloadmanager-web
+Documentation=https://github.com/mohamedyassine-benmiled/webmisterdownloadmanager
 Wants=network-online.target
 After=network-online.target
 RequiresMountsFor=/srv/downloads
