@@ -1,5 +1,10 @@
 # Run MDM on a server
 
+> **Webmister transport:** HTTP is the default and is unencrypted. Keep it on loopback or a
+> trusted protected network; credentials and session tokens can be intercepted. Set
+> `MDM_REMOTE_TLS=1` and use an `https://` value for `MDM_REMOTE_URL` to enable the built-in
+> self-signed HTTPS listener. The upstream HTTPS-specific examples below require that setting.
+
 Run Mister Download Manager on a home server or a NAS (Docker, Unraid, any Linux machine) without
 a window, and send it downloads from your phone or your browser: the server downloads them into
 its own folders, such as a network share.

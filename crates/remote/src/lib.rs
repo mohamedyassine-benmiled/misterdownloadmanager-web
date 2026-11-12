@@ -32,6 +32,8 @@ pub use devices::Device;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Config {
     pub on: bool,
+    /// Serve HTTPS with a self-signed certificate instead of plain HTTP.
+    pub tls: bool,
     /// 0: any free port (tests).
     pub port: u16,
     /// "" every local network address; an address; an adapter's name ([`addrs::chosen`]).
@@ -48,6 +50,7 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             on: false,
+            tls: false,
             port: PORT,
             listen: String::new(),
             hosts: Vec::new(),
@@ -167,7 +170,17 @@ impl Remote {
         match self.status() {
             Status::Listening(mut addrs) => {
                 addrs.sort_by_key(|a| addrs::rank(a.ip()));
-                addrs.iter().map(|a| addrs::url(a.ip(), a.port())).collect()
+                let tls = self.inner.state.lock().unwrap().config.tls;
+                addrs
+                    .iter()
+                    .map(|a| {
+                        if tls {
+                            addrs::url(a.ip(), a.port())
+                        } else {
+                            addrs::url(a.ip(), a.port()).replacen("https://", "http://", 1)
+                        }
+                    })
+                    .collect()
             }
             _ => Vec::new(),
         }
@@ -251,7 +264,12 @@ impl Inner {
         let mut names = vec!["localhost".to_owned()];
         names.extend(addrs::host_name());
         names.extend(ips.iter().map(IpAddr::to_string));
-        let identity = match tls::identity(&this.dir, &names) {
+        let identity = match st
+            .config
+            .tls
+            .then(|| tls::identity(&this.dir, &names))
+            .transpose()
+        {
             Ok(i) => i,
             Err(e) => {
                 tracing::warn!("remote control: no certificate: {e}");
@@ -259,7 +277,7 @@ impl Inner {
                 return;
             }
         };
-        st.fingerprint = Some(identity.fingerprint.clone());
+        st.fingerprint = identity.as_ref().map(|i| i.fingerprint.clone());
         let mut bound = Vec::new();
         let mut failure = None;
         for ip in &ips {
@@ -279,20 +297,38 @@ impl Inner {
             if l.set_nonblocking(true).is_err() {
                 continue;
             }
-            let state = http::State::new(this.clone(), st.config.hosts.clone(), st.generation);
-            let tls = identity.config.clone();
+            // An explicitly configured HTTPS public URL represents TLS terminated by a proxy.
+            // Never trust a request's forwarded headers to select cookie or origin security.
+            let public_https = std::env::var("MDM_REMOTE_URL")
+                .ok()
+                .and_then(|v| url::Url::parse(&v).ok())
+                .is_some_and(|u| u.scheme() == "https");
+            let state = http::State::new(
+                this.clone(),
+                st.config.hosts.clone(),
+                st.generation,
+                st.config.tls || public_https,
+            );
+            let tls = identity.as_ref().map(|i| i.config.clone());
             let task = this.rt.spawn(async move {
                 let Ok(tcp) = tokio::net::TcpListener::from_std(l) else {
                     return;
                 };
-                let hosts = state.hosts.clone();
-                let host_ok: Arc<dyn Fn(&str) -> bool + Send + Sync> =
-                    Arc::new(move |h: &str| addrs::host_allowed(h, &hosts));
-                let Ok(listener) = tls::Listener::new(tcp, tls, host_ok) else {
-                    return;
-                };
-                let app = http::router(state).into_make_service_with_connect_info::<http::Peer>();
-                let _ = axum::serve(listener, app).await;
+                if let Some(tls) = tls {
+                    let hosts = state.hosts.clone();
+                    let host_ok: Arc<dyn Fn(&str) -> bool + Send + Sync> =
+                        Arc::new(move |h: &str| addrs::host_allowed(h, &hosts));
+                    let Ok(listener) = tls::Listener::new(tcp, tls, host_ok) else {
+                        return;
+                    };
+                    let app =
+                        http::router(state).into_make_service_with_connect_info::<http::Peer>();
+                    let _ = axum::serve(listener, app).await;
+                } else {
+                    let app =
+                        http::router(state).into_make_service_with_connect_info::<http::Peer>();
+                    let _ = axum::serve(tcp, app).await;
+                }
             });
             st.tasks.push(task);
             addrs.push(addr);

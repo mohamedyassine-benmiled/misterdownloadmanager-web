@@ -11,6 +11,7 @@ use crate::auth::{self, Auth, Client, Error, Identity};
 use crate::http::{self, Peer, S, State};
 
 const COOKIE: &str = "__Secure-mdm-session";
+const HTTP_COOKIE: &str = "mdm-session";
 
 pub fn routes() -> Router<Arc<State>> {
     Router::new()
@@ -57,14 +58,16 @@ pub(crate) async fn call<T: Send + 'static>(
         .map_err(|_| Error::Unavailable)?
 }
 
-fn cookie(headers: &HeaderMap) -> Option<String> {
+fn cookie(headers: &HeaderMap, secure: bool) -> Option<String> {
     let all = headers
         .get_all(header::COOKIE)
         .iter()
         .filter_map(|h| h.to_str().ok())
         .flat_map(|h| h.split(';'))
         .filter_map(|c| c.trim().split_once('='))
-        .filter(|(name, value)| *name == COOKIE && value.len() == 64)
+        .filter(|(name, value)| {
+            *name == if secure { COOKIE } else { HTTP_COOKIE } && value.len() == 64
+        })
         .map(|(_, v)| v.to_owned())
         .collect::<Vec<_>>();
     (all.len() == 1).then(|| all[0].clone())
@@ -83,7 +86,7 @@ fn client(a: &Auth, headers: &HeaderMap, peer: Peer) -> Result<Client, Error> {
     Client::resolve(peer.0.ip(), forwarded, has_forwarding, a.policy()?)
 }
 
-fn cookie_header(raw: &str, clear: bool) -> Result<HeaderValue, Error> {
+fn cookie_header(raw: &str, clear: bool, secure: bool) -> Result<HeaderValue, Error> {
     let path = std::env::var("MDM_REMOTE_URL")
         .ok()
         .and_then(|s| url::Url::parse(&s).ok())
@@ -102,16 +105,18 @@ fn cookie_header(raw: &str, clear: bool) -> Result<HeaderValue, Error> {
         format!("{path}/")
     };
     HeaderValue::from_str(&format!(
-        "{COOKIE}={raw}; Path={path}; Secure; HttpOnly; SameSite=Strict; Max-Age={}",
+        "{}={raw}; Path={path}; {}HttpOnly; SameSite=Strict; Max-Age={}",
+        if secure { COOKIE } else { HTTP_COOKIE },
+        if secure { "Secure; " } else { "" },
         if clear { 0 } else { 86400 }
     ))
     .map_err(|_| Error::Unavailable)
 }
 
-fn with_cookie(body: serde_json::Value, raw: Option<String>) -> Response {
+fn with_cookie(body: serde_json::Value, raw: Option<String>, secure: bool) -> Response {
     let mut r = http::json(body.to_string());
     if let Some(raw) = raw {
-        match cookie_header(&raw, false) {
+        match cookie_header(&raw, false, secure) {
             Ok(h) => {
                 r.headers_mut().insert(header::SET_COOKIE, h);
             }
@@ -132,7 +137,7 @@ pub(crate) async fn identity(
         .map(|p| p.0)
         .ok_or(Error::InvalidClient)?;
     let headers = parts.headers.clone();
-    let raw = cookie(&headers);
+    let raw = cookie(&headers, s.secure);
     let mutation = !matches!(parts.method, Method::GET | Method::HEAD | Method::OPTIONS);
     call(s, move |a| {
         let c = client(a, &headers, peer)?;
@@ -175,14 +180,14 @@ impl FromRequestParts<Arc<State>> for Browser {
 }
 
 async fn session(s: S, ConnectInfo(peer): ConnectInfo<Peer>, headers: HeaderMap) -> Response {
-    let raw = cookie(&headers);
+    let raw = cookie(&headers, s.secure);
     match call(&s, move |a| {
         let c = client(a, &headers, peer)?;
         a.session(raw.as_deref(), c, crate::devices::now())
     })
     .await
     {
-        Ok((view, cookie)) => with_cookie(serde_json::to_value(view).unwrap(), cookie),
+        Ok((view, cookie)) => with_cookie(serde_json::to_value(view).unwrap(), cookie, s.secure),
         Err(e) => failure(e),
     }
 }
@@ -226,6 +231,7 @@ async fn setup(
         Ok((raw, id)) => with_cookie(
             serde_json::json!({ "csrf": id.csrf, "owner": true }),
             Some(raw),
+            s.secure,
         ),
         Err(e) => failure(e),
     }
@@ -249,6 +255,7 @@ async fn login(
         Ok((raw, id)) => with_cookie(
             serde_json::json!({ "csrf": id.csrf, "owner": true }),
             Some(raw),
+            s.secure,
         ),
         Err(e) => failure(e),
     }
@@ -261,7 +268,7 @@ async fn logout(s: S, Browser(id): Browser) -> Response {
     })
     .await;
     let mut r = StatusCode::NO_CONTENT.into_response();
-    if let Ok(h) = cookie_header("", true) {
+    if let Ok(h) = cookie_header("", true, s.secure) {
         r.headers_mut().insert(header::SET_COOKIE, h);
     }
     r
@@ -343,7 +350,7 @@ async fn credentials(
     {
         Ok(()) => {
             let mut r = http::json("{\"ok\":true}".into());
-            if let Ok(h) = cookie_header("", true) {
+            if let Ok(h) = cookie_header("", true, s.secure) {
                 r.headers_mut().insert(header::SET_COOKIE, h);
             }
             r

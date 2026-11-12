@@ -26,7 +26,7 @@ pub fn start(
 pub fn public_url() -> Option<String> {
     let url = std::env::var("MDM_REMOTE_URL").ok()?;
     let url = url.trim();
-    url.starts_with("https://").then(|| url.to_owned())
+    (url.starts_with("https://") || url.starts_with("http://")).then(|| url.to_owned())
 }
 
 /// The names `--hosts` gave a headless run (#157), over `MDM_REMOTE_HOSTS`.
@@ -53,6 +53,7 @@ pub fn config(settings: &Settings) -> mdm_remote::Config {
         .collect();
     mdm_remote::Config {
         on: settings.remote_on,
+        tls: std::env::var("MDM_REMOTE_TLS").is_ok_and(|v| v == "1"),
         port: settings.remote_port,
         listen: settings.remote_listen.clone(),
         hosts,

@@ -18,7 +18,7 @@ const scratch = path.join(root, 'target/headless-tests');
 await mkdir(scratch, { recursive: true });
 const dir = await mkdtemp(path.join(scratch, 'run-'));
 const downloads = path.join(dir, 'downloads');
-const env = { ...process.env, MDM_DATA_DIR: path.join(dir, 'config'), MDM_REMOTE_URL: '', MDM_REMOTE: 'on', MDM_OFFSCREEN: '1' };
+const env = { ...process.env, MDM_DATA_DIR: path.join(dir, 'config'), MDM_REMOTE_URL: '', MDM_REMOTE_TLS: '1', MDM_REMOTE: 'on', MDM_OFFSCREEN: '1' };
 let child, extensionContext, output = '', checks = 0;
 let starts = 0;
 const ok = (name) => { checks++; console.log('ok - ' + name); };

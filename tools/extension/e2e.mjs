@@ -871,7 +871,7 @@ async function remoteServer() {
   const downloads = path.join(dir, "Downloads");
   fs.mkdirSync(rdata, { recursive: true });
   const args = ["--headless", "--data", rdata, "--downloads", downloads, "--listen", "127.0.0.1", "--port", String(REMOTE_PORT)];
-  const proc = spawn(appExe, args, { env: { ...process.env, MDM_DATA_DIR: rdata }, stdio: "ignore", windowsHide: true });
+  const proc = spawn(appExe, args, { env: { ...process.env, MDM_DATA_DIR: rdata, MDM_REMOTE_TLS: "1", MDM_REMOTE_URL: "" }, stdio: "ignore", windowsHide: true });
   const code = async () => {
     const a = JSON.parse(await ipc({ pair: true }, rdata));
     if (!a.code) throw new Error(`no pairing code: ${JSON.stringify(a)}`);

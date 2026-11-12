@@ -50,12 +50,20 @@ export async function run(h) {
   {
     const { api, listeners } = remoteApi(); load(api, true); await settle();
     const send = ask(listeners), start = requests.length;
-    for (const url of ["bad", "http://nas.test/", "https://user:secret@nas.test/", "https://nas.test/?token=x", "https://nas.test/#pair=1"]) {
+    for (const url of ["bad", "ftp://nas.test/", "https://user:secret@nas.test/", "https://nas.test/?token=x", "https://nas.test/#pair=1"]) {
       assert.equal((await send({ type: "remote-pair", url, code: "12345678" }, remoteSender)).why, "address", url);
       assert.equal((await send({ type: "remote-open", url }, remoteSender)).why, "address", url);
     }
     assert.equal(requests.length, start);
-    ok("remote: rejects plaintext, embedded credentials, queries and fragments before any request");
+    ok("remote: rejects unsupported schemes, embedded credentials, queries and fragments before any request");
+  }
+  {
+    const { api, listeners, store } = fakeApi({ firefox: true, host: false });
+    const base = "http://nas.test/";
+    h.served = { [`${base}api/pair`]: jsonReply({ token: remoteToken }), [`${base}api/status`]: jsonReply(remoteList) };
+    load(api, true); await settle();
+    assert.equal((await ask(listeners)({ type: "remote-pair", url: base, code: "12345678" }, remoteSender)).ok, true);
+    assert.equal(store.remote.url, base);
   }
   for (const firefox of [true, false]) {
     const { api, calls, listeners } = remoteApi(firefox);

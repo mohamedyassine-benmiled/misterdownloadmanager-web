@@ -33,14 +33,16 @@ pub struct State {
     pub(crate) inner: Arc<Inner>,
     pub hosts: Vec<String>,
     generation: u64,
+    pub(crate) secure: bool,
 }
 
 impl State {
-    pub fn new(inner: Arc<Inner>, hosts: Vec<String>, generation: u64) -> Arc<State> {
+    pub fn new(inner: Arc<Inner>, hosts: Vec<String>, generation: u64, secure: bool) -> Arc<State> {
         Arc::new(State {
             inner,
             hosts,
             generation,
+            secure,
         })
     }
 }
@@ -55,6 +57,15 @@ impl axum::extract::connect_info::Connected<axum::serve::IncomingStream<'_, crat
     for Peer
 {
     fn connect_info(stream: axum::serve::IncomingStream<'_, crate::tls::Listener>) -> Self {
+        Peer(*stream.remote_addr())
+    }
+}
+
+impl
+    axum::extract::connect_info::Connected<axum::serve::IncomingStream<'_, tokio::net::TcpListener>>
+    for Peer
+{
+    fn connect_info(stream: axum::serve::IncomingStream<'_, tokio::net::TcpListener>) -> Self {
         Peer(*stream.remote_addr())
     }
 }
@@ -140,10 +151,10 @@ async fn guard(s: S, req: Request, next: Next) -> Response {
     }
     // Another site's page sending requests here (its scripts can't read the token, but none of
     // its requests are taken either). The page itself may be opened from a link anywhere.
-    if req.uri().path().starts_with("/api/") && !same_origin(headers, &host) {
+    if req.uri().path().starts_with("/api/") && !same_origin(headers, &host, s.secure) {
         return error(StatusCode::FORBIDDEN, "other-origin");
     }
-    if !web::browser_origin_allowed(req.uri().path(), headers, &host) {
+    if !web::browser_origin_allowed(req.uri().path(), headers, &host, s.secure) {
         return error(StatusCode::FORBIDDEN, "other-origin");
     }
     let mut res = next.run(req).await;
@@ -175,7 +186,7 @@ async fn guard(s: S, req: Request, next: Next) -> Response {
 
 /// No `Origin`, or this server's own (`https://` + the `Host` asked for); and not a request a
 /// browser marks as sent from another site.
-fn same_origin(headers: &HeaderMap, host: &str) -> bool {
+fn same_origin(headers: &HeaderMap, host: &str, secure: bool) -> bool {
     let cross = headers
         .get("sec-fetch-site")
         .and_then(|v| v.to_str().ok())
@@ -196,7 +207,10 @@ fn same_origin(headers: &HeaderMap, host: &str) -> bool {
     }
     let origin_ok = match origin {
         None => true,
-        Some(o) => o.eq_ignore_ascii_case(&format!("https://{host}")),
+        Some(o) => o.eq_ignore_ascii_case(&format!(
+            "{}://{host}",
+            if secure { "https" } else { "http" }
+        )),
     };
     origin_ok && !cross
 }

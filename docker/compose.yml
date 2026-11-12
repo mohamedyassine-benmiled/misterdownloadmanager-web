@@ -22,7 +22,9 @@ services:
       - "${MDM_BIND_ADDRESS:-127.0.0.1}:${MDM_WEB_PORT:-8463}:8463"
     environment:
       # The address you open the page with (the server's, with the port above).
-      MDM_REMOTE_URL: "${MDM_REMOTE_URL:-https://localhost:8463/}"
+      MDM_REMOTE_URL: "${MDM_REMOTE_URL:-http://localhost:8463/}"
+      # Set to 1 to serve HTTPS with a self-signed certificate.
+      MDM_REMOTE_TLS: "${MDM_REMOTE_TLS:-0}"
       # Names besides the server's address you open the page with (comma-separated).
       MDM_REMOTE_HOSTS: "${MDM_REMOTE_HOSTS:-localhost}"
       MDM_DATA_DIR: /config

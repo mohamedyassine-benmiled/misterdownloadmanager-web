@@ -44,7 +44,7 @@ import json
 import ssl
 import sys
 import urllib.request
-base = f'https://127.0.0.1:{sys.argv[1]}/'
+base = f'http://127.0.0.1:{sys.argv[1]}/'
 context = ssl._create_unverified_context()  # isolated fixture's generated self-signed cert
 with urllib.request.urlopen(base + 'api/v1/auth/session', context=context, timeout=10) as response:
     view = json.load(response)
@@ -54,4 +54,4 @@ with urllib.request.urlopen(base, context=context, timeout=10) as response:
 PY
 docker stop --time 60 "$name" >/dev/null
 [ "$(docker inspect --format '{{.State.ExitCode}}' "$name")" = 0 ]
-echo "Web image: non-root startup, --web/--port/--webhost, HTTPS, owner gate, health and clean stop passed."
+echo "Web image: non-root startup, --web/--port/--webhost, HTTP, owner gate, health and clean stop passed."

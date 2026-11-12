@@ -15,13 +15,23 @@ pub(super) fn routes() -> Router<Arc<State>> {
         )
 }
 
-pub(super) fn browser_origin_allowed(path: &str, headers: &HeaderMap, host: &str) -> bool {
+pub(super) fn browser_origin_allowed(
+    path: &str,
+    headers: &HeaderMap,
+    host: &str,
+    secure: bool,
+) -> bool {
     // Extension origins may capture through the legacy API, never administer browser sessions.
     !(path.starts_with("/api/v1/")
         && headers
             .get(header::ORIGIN)
             .and_then(|o| o.to_str().ok())
-            .is_some_and(|o| !o.eq_ignore_ascii_case(&format!("https://{host}"))))
+            .is_some_and(|o| {
+                !o.eq_ignore_ascii_case(&format!(
+                    "{}://{host}",
+                    if secure { "https" } else { "http" }
+                ))
+            }))
 }
 
 pub(super) async fn paired(parts: &mut Parts, state: &Arc<State>) -> Result<String, Box<Response>> {

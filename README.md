@@ -48,7 +48,7 @@ only after actual fork store listings exist; release packages are not store publ
 
 **The familiar download manager. A server that does the work. A browser to control it.**
 
-Run Webmister on your server, open its HTTPS workspace, and keep your downloads in one place.
+Run Webmister on your server, open its web workspace, and keep your downloads in one place.
 The categories, toolbar, transfer list and progress dialogs are familiar MDM controls—not a
 second desktop to stream or a native app to install on every browsing computer.
 
@@ -216,7 +216,8 @@ services:
       MDM_DATA_DIR: /config
       MDM_DOWNLOADS: /downloads
       MDM_REMOTE_PORT: "8463"
-      MDM_REMOTE_URL: https://localhost:8463/
+      MDM_REMOTE_URL: http://localhost:8463/
+      MDM_REMOTE_TLS: "0"
       MDM_REMOTE_HOSTS: localhost
       TZ: Etc/UTC
     volumes:
@@ -242,8 +243,8 @@ docker compose up -d
 docker compose logs webmister
 ```
 
-1. Open **https://localhost:8463/** on the Docker host. For a remote server, use a LAN/VPN address as described below or an SSH tunnel: `ssh -L 8463:127.0.0.1:8463 user@server`.
-2. Compare the self-signed certificate's SHA-256 fingerprint with the server logs before accepting it, or install a certificate trusted by your browser.
+1. Open **http://localhost:8463/** on the Docker host. For a remote server, use an SSH tunnel: `ssh -L 8463:127.0.0.1:8463 user@server`.
+2. HTTP is unencrypted: passwords, pairing codes and session tokens can be intercepted. Keep it on loopback or a trusted protected network. For built-in HTTPS, set `MDM_REMOTE_TLS=1` and set `MDM_REMOTE_URL` to the matching `https://` URL; verify the self-signed certificate's fingerprint before accepting it.
 3. Use the one-time setup code in the logs to create the owner username/password. This is a server-local account, not a cloud registration.
 4. Add a download or pair your browser extension. Files appear under the host's `downloads/` folder.
 
@@ -253,7 +254,7 @@ Get a fresh setup/pairing code when needed:
 docker compose exec webmister misterdownloadmanager-cli pair
 ```
 
-For access from another device, replace the published `127.0.0.1` with the Docker host's specific **LAN/VPN IP**, update `MDM_REMOTE_URL` to the HTTPS URL clients will use, and add any DNS hostname to `MDM_REMOTE_HOSTS`. Restrict access with the host firewall/VPN. Do not publish the port directly to the Internet. Leave the **container** listener automatic; its loopback is not the Docker host's loopback.
+For access from another device, replace the published `127.0.0.1` with the Docker host's specific **LAN/VPN IP**, update `MDM_REMOTE_URL` to the URL clients will use, and add any DNS hostname to `MDM_REMOTE_HOSTS`. Use HTTPS or a protected tunnel; restrict access with the host firewall/VPN. Do not publish the port directly to the Internet. Leave the **container** listener automatic; its loopback is not the Docker host's loopback.
 
 ### Update or stop
 
@@ -274,7 +275,7 @@ Use the **Webmister packages from the same release**, not the original project's
 
 1. **Chromium:** unzip `…-extension-chromium.zip`, open your browser's extensions page, enable Developer mode, choose **Load unpacked**, and select the folder containing `manifest.json`.
 2. **Firefox:** open `about:debugging` → **This Firefox** → **Load Temporary Add-on** and select the unsigned XPI or its unpacked `manifest.json`. Temporary installation lasts until Firefox restarts. A normal persistent installation requires Mozilla signing, which this release pipeline does not perform.
-3. Open your server's HTTPS page in that same browser and verify/trust its certificate.
+3. Open your server's page in that same browser. If using built-in HTTPS, verify/trust its certificate.
 4. In the Web UI, open **Browser extensions and devices**, generate a pairing code, then enter the server URL and code in the extension's **Another MDM** destination.
 
 Remote mode does not need a native host. Revocation keeps the selected server destination and returns the transfer to the browser rather than silently switching to local MDM. Browser-session cookies, proxy credentials and POST bodies are not forwarded to the server; authenticated/browser-session downloads may need to stay in the browser.
@@ -295,7 +296,7 @@ On Windows, use `misterdownloadmanager.exe` or `webmister.cmd` with the same fla
 | Parameter | Meaning |
 | --- | --- |
 | `--web` | Explicitly enable headless Web operation |
-| `--port N` | HTTPS port; default 8463 |
+| `--port N` | HTTP or HTTPS port; default 8463 |
 | `--webhost IP` | Local IP or adapter to bind, e.g. `127.0.0.1`, `[::1]` or a LAN address—not a public URL |
 | `--data PATH` | Private, persistent configuration/account folder |
 | `--downloads PATH` | Server download root |

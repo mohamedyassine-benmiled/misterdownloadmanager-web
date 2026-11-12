@@ -16,7 +16,7 @@ function create({ ext, withTimeout, showStatus, refreshRules, resetRules, waitFo
   function address(value) {
     try {
       const u = new URL(String(value).trim());
-      if (u.protocol !== "https:" || u.username || u.password || u.search || u.hash) return null;
+      if (!["http:", "https:"].includes(u.protocol) || u.username || u.password || u.search || u.hash) return null;
       if (!u.pathname.endsWith("/")) u.pathname += "/";
       return u.href;
     } catch {

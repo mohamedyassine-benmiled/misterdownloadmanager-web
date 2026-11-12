@@ -16,6 +16,18 @@ fn start(
     Arc<Mutex<Vec<mdm_ipc::Command>>>,
     tempfile::TempDir,
 ) {
+    start_mode(rt, true)
+}
+
+fn start_mode(
+    rt: &tokio::runtime::Runtime,
+    tls: bool,
+) -> (
+    Remote,
+    String,
+    Arc<Mutex<Vec<mdm_ipc::Command>>>,
+    tempfile::TempDir,
+) {
     let dir = tempfile::tempdir().unwrap();
     let (tx, rx) = std::sync::mpsc::channel::<mdm_ipc::Incoming>();
     let seen = Arc::new(Mutex::new(Vec::new()));
@@ -46,6 +58,7 @@ fn start(
     let remote = Remote::new(rt.handle().clone(), dir.path().join("remote"), sink, texts);
     remote.apply(Config {
         on: true,
+        tls,
         port: 0,
         listen: "127.0.0.1".into(),
         hosts: vec!["mdm.example".into()],
@@ -55,8 +68,35 @@ fn start(
     };
     assert_eq!(addrs.len(), 1);
     assert!(addrs[0].ip().is_loopback());
-    let base = format!("https://127.0.0.1:{}/", addrs[0].port());
+    let base = format!(
+        "{}://127.0.0.1:{}/",
+        if tls { "https" } else { "http" },
+        addrs[0].port()
+    );
     (remote, base, seen, dir)
+}
+
+#[test]
+fn http_owner_session_and_origin_protection() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let (remote, base, _, _dir) = start_mode(&rt, false);
+    assert!(remote.fingerprint().is_none());
+    assert!(remote.urls()[0].starts_with("http://"));
+    rt.block_on(async {
+        let c = client();
+        let origin = base.trim_end_matches('/');
+        let setup = c.post(format!("{base}api/v1/auth/setup"))
+            .header("origin", origin)
+            .json(&serde_json::json!({"code":remote.start_pairing(),"username":"owner","password":"correct horse battery staple"}))
+            .send().await.unwrap();
+        assert_eq!(setup.status(), 200);
+        let set = setup.headers()["set-cookie"].to_str().unwrap();
+        assert!(set.starts_with("mdm-session=") && set.contains("HttpOnly") && !set.contains("Secure"));
+        let cookie = set.split(';').next().unwrap().to_owned();
+        assert_eq!(c.get(format!("{base}api/v1/auth/settings")).header("cookie", &cookie).header("origin", origin).send().await.unwrap().status(), 200);
+        assert_eq!(c.get(format!("{base}api/v1/auth/settings")).header("cookie", &cookie).header("origin", "http://evil.example").send().await.unwrap().status(), 403);
+    });
+    remote.stop();
 }
 
 fn client() -> reqwest::Client {
@@ -293,6 +333,7 @@ fn never_every_address() {
     for listen in ["0.0.0.0", "::", "203.0.113.9"] {
         remote.apply(Config {
             on: true,
+            tls: false,
             port: 0,
             listen: listen.into(),
             hosts: Vec::new(),
